@@ -1,0 +1,24 @@
+# Modelo de REPOSITÓRIO DE DADOS da Statera (Copier): `statera init <pasta>`.
+_min_copier_version: "9.4"
+_answers_file: .copier-answers.yml
+_templates_suffix: .jinja
+
+name:
+  type: str
+  help: Nome do repositório de dados (minúsculas e hífens), ex. estat-trabalho
+  validator: "{% if not (name | regex_search('^[a-z0-9-]+$')) %}Use minúsculas, números e hífens{% endif %}"
+organization:
+  type: str
+  help: Órgão ou programa (sem nome de ministério ou secretaria, que mudam)
+namespace:
+  type: str
+  help: Espaço de nomes de todos os identificadores, ex. br.gov.estat-trabalho
+acronym:
+  type: str
+  default: "{{ name }}"
+statera_git:
+  type: str
+  default: ssh://git@github.com/Jaimenms/statera.git
+statera_version:
+  type: str
+  default: "0.1.0"

@@ -1,0 +1,16 @@
+rule: RN-BAR-001
+model: bar_uf_mensal
+variables: {period: "2026-02", cut_date: "2026-03-10"}
+cases:
+  - id: conta_no_mes_do_fato
+    description: Dois registros de janeiro (um recebido em fevereiro) e um de fevereiro, em SP.
+    inputs:
+      int_bar__registros:
+        - {id_registro: R1, cod_uf: 35, competencia: "2026-01", valor: 100.00, data_corte: "2026-03-10"}
+        - {id_registro: R2, cod_uf: 35, competencia: "2026-01", valor: 300.00, data_corte: "2026-03-10"}
+        - {id_registro: R3, cod_uf: 35, competencia: "2026-02", valor: 50.00, data_corte: "2026-03-10"}
+      ref_uf:
+        - {cod_uf: 35, sigla_uf: SP, nome_uf: São Paulo}
+    expected:
+      - {competencia: "2026-01", sigla_uf: SP, registros: 2, valor_total: 400.00, valor_medio: 200.00}
+      - {competencia: "2026-02", sigla_uf: SP, registros: 1, valor_total: 50.00, valor_medio: 50.00}

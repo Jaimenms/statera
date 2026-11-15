@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:owners:0.1",
+  "title": "Responsáveis por uma unidade (produto ou domínio) ou por um escopo transversal",
+  "description": "Formaliza curador, dono técnico e revisores. Fonte para gerar o CODEOWNERS.",
+  "type": "object",
+  "required": [
+    "scope",
+    "curator",
+    "technical_owner",
+    "required_reviewers",
+    "data_protection_officer",
+    "paths"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "scope": {
+      "enum": [
+        "product",
+        "shared"
+      ]
+    },
+    "curator": {
+      "$ref": "#/$defs/papel"
+    },
+    "technical_owner": {
+      "$ref": "#/$defs/papel"
+    },
+    "deputies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/papel"
+      }
+    },
+    "required_reviewers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/papel"
+      }
+    },
+    "data_protection_officer": {
+      "$ref": "#/$defs/papel"
+    },
+    "paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "roles"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "minLength": 1
+          },
+          "roles": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/papel"
+            }
+          }
+        }
+      }
+    },
+    "unit": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    }
+  },
+  "if": {
+    "properties": {
+      "scope": {
+        "enum": [
+          "product"
+        ]
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "unit"
+    ]
+  },
+  "$defs": {
+    "papel": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    }
+  }
+}

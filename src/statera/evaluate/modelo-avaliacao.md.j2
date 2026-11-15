@@ -1,0 +1,28 @@
+# Avaliação da edição {{ competencia }} — {{ produto }}
+
+> Gerada automaticamente ao fim da edição (GSBPM 8.1 e 8.2).{% if sintetico %} **DADOS SINTÉTICOS.**{% endif +%}
+> Data de corte: {{ data_corte }} · versão do pacote: {{ versao }} · execução: `{{ execucao }}`.
+
+**Resumo:** {{ alertas | length }} indicador(es) em alerta de {{ indicadores | length }}.
+
+| Indicador | Dimensão | Valor | Alerta | Situação |
+|---|---|---:|---|---|
+{% for i in indicadores %}
+| {{ i.id }} {{ i.nome }} | {{ i.dimensao }} | {{ i.valor_formatado }} | {{ i.alerta_texto }} | {{ "⚠ alerta" if i.em_alerta else "ok" }} |
+{% endfor %}
+
+{% if alertas %}
+## O que olhar
+
+{% for i in alertas %}
+- **{{ i.id }} {{ i.nome }}**: {{ i.descricao }} Valor {{ i.valor_formatado }} (alerta {{ i.alerta_texto }}).
+{% endfor %}
+{% endif %}
+
+## Plano de ação em aberto (GSBPM 8.3)
+
+| Ação | Origem | Responsável | Situação |
+|---|---|---|---|
+{% for a in acoes %}
+| {{ a.id }} {{ a.acao }} | {{ a.origem }} | {{ a.responsavel }} | {{ a.situacao }} |
+{% endfor %}

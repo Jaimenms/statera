@@ -1,0 +1,101 @@
+# ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+# Gerado por `statera dbt generate`. Fontes: statera.toml e as unidades (modelos, referências, testes, macros e consultas).
+# Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+# Medalhão: bronze = sources (extrações datadas); silver = staging + intermediate; gold = marts;
+# ref = seeds. As variáveis são sobrescritas a cada edição por `statera run`.
+name: statera_foo_bar
+version: 0.1.0
+config-version: 2
+profile: statera_foo_bar
+model-paths:
+- products/bar/5-process/models
+- products/baz/5-process/models
+- products/foo/5-process/models
+- dbt/generated
+seed-paths:
+- references/uf
+test-paths: []
+macro-paths:
+- dbt/macros
+analysis-paths:
+- products/bar/queries
+- products/baz/queries
+docs-paths:
+- dbt/docs
+target-path: target
+packages-install-path: dbt/dbt_packages
+clean-targets:
+- target
+- logs
+- dbt/dbt_packages
+vars:
+  cut_date: '2099-12-31'
+  period: 2099-12
+  batches: {}
+  period_column: competencia
+  cut_date_column: data_corte
+  valid_from_column: valid_from
+  valid_to_column: valid_to
+seeds:
+  statera_foo_bar:
+    +schema: ref
+models:
+  statera_foo_bar:
+    staging:
+      +schema: silver
+      +materialized: view
+      +meta:
+        layer: silver
+      foo:
+        stg_foo__registros:
+          +group: foo
+          +access: public
+    intermediate:
+      +schema: silver
+      +materialized: table
+      +meta:
+        layer: silver
+      bar:
+        int_bar__registros:
+          +group: bar
+      baz:
+        int_baz__registros:
+          +group: baz
+    marts:
+      +schema: gold
+      +materialized: table
+      +meta:
+        layer: gold
+      bar:
+        bar_uf_mensal:
+          +group: bar
+          +meta:
+            product: bar
+            contract: gold-bar-uf-mensal
+            urn: br.gov.foo-bar.bar.gold.bar-uf-mensal
+            classification: broad · aggregated · none
+        bar_variacao_uf_mensal:
+          +group: bar
+          +meta:
+            product: bar
+            contract: gold-bar-variacao-uf-mensal
+            urn: br.gov.foo-bar.bar.gold.bar-variacao-uf-mensal
+            classification: broad · aggregated · none
+      baz:
+        baz_mediana_uf_mensal:
+          +group: baz
+          +meta:
+            product: baz
+            contract: gold-baz-mediana-uf-mensal
+            urn: br.gov.foo-bar.baz.gold.baz-mediana-uf-mensal
+            classification: broad · aggregated · none
+        baz_uf_mensal:
+          +group: baz
+          +meta:
+            product: baz
+            contract: gold-baz-uf-mensal
+            urn: br.gov.foo-bar.baz.gold.baz-uf-mensal
+            classification: broad · aggregated · none
+data_tests:
+  statera_foo_bar:
+    +severity: error

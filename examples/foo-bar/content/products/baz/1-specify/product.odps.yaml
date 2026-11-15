@@ -1,0 +1,57 @@
+# Produto de DIVULGAÇÃO calculado por código LEGADO: um script SPSS (executado pelo GNU PSPP) e um
+# script R (executado pelo Rscript), ambos chamados de modelos Python do dbt. Nível 2 (reprodutível): o script roda pelo repositório, sobre o corte de foo,
+# mas ainda não foi reescrito nem tem processo to-be. EXEMPLO ILUSTRATIVO, DADOS SINTÉTICOS.
+apiVersion: v1.0.0
+kind: DataProduct
+id: baz
+name: Baz — valor médio e mediana por UF (scripts SPSS e R legados)
+version: 0.1.0
+status: active
+domain: foo
+tenant: Foo Bar (exemplo mínimo)
+description:
+  purpose: Valor médio (script SPSS) e mediana (script R) dos registros por UF e competência, pelos scripts que já existiam.
+  usage: Divulgação mensal enquanto o script não é reescrito em SQL ou pandas.
+  limitations: >
+    O valor médio é calculado pelo PSPP, que não é o SPSS: a equivalência precisa ser certificada
+    antes de o resultado substituir o do SPSS. Exige o GNU PSPP e o R instalados. DADOS SINTÉTICOS.
+tags: [mensal, legado, spss, r]
+customProperties:
+  - {property: alignment, value: consumer}
+  - {property: visibility, value: public}
+  - {property: theme, value: foo}
+  - {property: frequency, value: monthly}
+  - {property: purpose, value: official-release}
+  - {property: bases, value: [sistema-foo]}
+  - {property: urn, value: br.gov.foo-bar.baz}
+  - {property: conformanceLevel, value: 2}
+  - {property: legacyParity, value: in-progress}
+inputPorts:
+  - {name: registros, version: 1.0.0, contractId: bronze-foo-registros}
+  - {name: ufs, version: 1.0.0, contractId: ref-uf}
+outputPorts:
+  - name: valor-medio-uf
+    description: Valor médio dos registros por UF e competência (script SPSS legado, via PSPP)
+    type: table
+    customProperties:
+      - {property: spreadsheetTab, value: "UF"}
+    version: 0.1.0
+    contractId: gold-baz-uf-mensal
+    inputContracts:
+      - {id: bronze-foo-registros, version: 1.0.0}
+      - {id: ref-uf, version: 1.0.0}
+  - name: mediana-uf
+    description: Mediana do valor por UF e competência (script R legado, via Rscript)
+    type: table
+    customProperties:
+      - {property: spreadsheetTab, value: "Mediana"}
+    version: 0.1.0
+    contractId: gold-baz-mediana-uf-mensal
+    inputContracts:
+      - {id: bronze-foo-registros, version: 1.0.0}
+      - {id: ref-uf, version: 1.0.0}
+team:
+  name: Equipe técnica de Bar
+  members:
+    - {username: "papel:equipe-bar", role: owner}
+productCreatedTs: "2026-11-14T00:00:00Z"

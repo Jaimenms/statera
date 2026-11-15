@@ -1,0 +1,51 @@
+# ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+# Gerado por `statera rules sync`. Fontes: <unidade>/5-process/rules/*/cases.yaml (um unit test por caso de cada regra).
+# Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+version: 2
+unit_tests:
+- name: rn_bar_001__conta_no_mes_do_fato
+  description: 'RN-BAR-001: Dois registros de janeiro (um recebido em fevereiro) e um de fevereiro, em SP.'
+  model: bar_uf_mensal
+  given:
+  - input: ref('int_bar__registros')
+    rows:
+    - id_registro: R1
+      cod_uf: 35
+      competencia: 2026-01
+      valor: 100.0
+      data_corte: '2026-03-10'
+    - id_registro: R2
+      cod_uf: 35
+      competencia: 2026-01
+      valor: 300.0
+      data_corte: '2026-03-10'
+    - id_registro: R3
+      cod_uf: 35
+      competencia: 2026-02
+      valor: 50.0
+      data_corte: '2026-03-10'
+  - input: ref('ref_uf')
+    rows:
+    - cod_uf: 35
+      sigla_uf: SP
+      nome_uf: São Paulo
+  expect:
+    rows:
+    - competencia: 2026-01
+      sigla_uf: SP
+      registros: 2
+      valor_total: 400.0
+      valor_medio: 200.0
+    - competencia: 2026-02
+      sigla_uf: SP
+      registros: 1
+      valor_total: 50.0
+      valor_medio: 50.0
+  config:
+    meta:
+      rule: RN-BAR-001
+      caso: conta_no_mes_do_fato
+  overrides:
+    vars:
+      period: 2026-02
+      cut_date: '2026-03-10'

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:publication-series:0.1",
+  "title": "Catálogo de uma série de publicações",
+  "description": "Descreve a série (estável). Cada edição é registrada fora do repositório de código, em registro_de_edicoes.",
+  "type": "object",
+  "required": [
+    "series",
+    "title",
+    "product",
+    "frequency",
+    "license",
+    "files_per_edition",
+    "revision_policy",
+    "correction_policy",
+    "edition_registry",
+    "main_resource"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "series": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string"
+    },
+    "product": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Pasta em products/ (tabelas = portas de saída do ODPS)."
+    },
+    "frequency": {
+      "enum": [
+        "monthly",
+        "quarterly",
+        "semiannual",
+        "annual",
+        "biweekly"
+      ]
+    },
+    "start": {
+      "type": "string",
+      "pattern": "^[0-9]{4}(-[0-9]{2})?$"
+    },
+    "license": {
+      "type": "object",
+      "required": [
+        "name",
+        "path"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "description": "No formato de licenses do Frictionless Data Package."
+    },
+    "page": {
+      "type": "string",
+      "format": "uri",
+      "description": "Página da série no portal, onde o público baixa as edições (dcat:landingPage)."
+    },
+    "open_data_portal": {
+      "type": "object",
+      "required": [
+        "organization",
+        "dataset"
+      ],
+      "properties": {
+        "organization": {
+          "type": "string"
+        },
+        "dataset": {
+          "type": "string"
+        }
+      }
+    },
+    "files_per_edition": {
+      "type": "object",
+      "required": [
+        "tables",
+        "spreadsheet",
+        "summary"
+      ],
+      "properties": {
+        "tables": {
+          "type": "string",
+          "pattern": "\\{porta\\}"
+        },
+        "spreadsheet": {
+          "type": "string",
+          "pattern": "\\{competencia\\}"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "string"
+    },
+    "revision_policy": {
+      "type": "string"
+    },
+    "correction_policy": {
+      "type": "string"
+    },
+    "edition_registry": {
+      "type": "object",
+      "required": [
+        "edition",
+        "index",
+        "written_by"
+      ],
+      "properties": {
+        "edition": {
+          "type": "string",
+          "pattern": "\\{competencia\\}"
+        },
+        "index": {
+          "type": "string"
+        },
+        "written_by": {
+          "type": "string"
+        }
+      }
+    },
+    "main_resource": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Porta de saída que resume a edição."
+    }
+  }
+}

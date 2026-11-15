@@ -1,0 +1,68 @@
+# Processo em YAML, espelho do BPMN 2.0, e plano de execução: `statera run --product bar --period AAAA-MM`.
+id: Processo_Bar_ToBe
+name: Produção mensal de Bar (TO-BE)
+
+lanes:
+  - {id: Lane_Pipeline, name: Pipeline (statera run), role: equipe-dados}
+  - {id: Lane_Equipe, name: Equipe técnica de Bar, role: equipe-bar}
+
+elements:
+  - {id: Start_DataCorte, type: startEvent, name: Data de corte do calendário, lane: Lane_Pipeline, event: timer}
+  - id: Event_Corte
+    type: intermediateCatchEvent
+    name: Corte de foo disponível
+    lane: Lane_Pipeline
+    event: message
+    statera: {awaits: 'py:statera.collect.pin_cut'}
+  - id: Task_Transformar
+    type: serviceTask
+    name: Calcular as tabelas do produto (dbt build)
+    lane: Lane_Pipeline
+    statera:
+      type: automatic
+      gsbpm: 5.3-5.7
+      durationMin: 1
+      implementation: dbt:build
+      models: [stg_foo__registros, int_bar__registros, bar_uf_mensal, bar_variacao_uf_mensal]
+  - id: Task_Controles
+    type: serviceTask
+    name: Verificar contratos e controles entre edições
+    lane: Lane_Pipeline
+    statera: {type: automatic, gsbpm: '6.2', durationMin: 1, implementation: 'py:statera.analyse.step'}
+  - {id: Gateway_Controles, type: exclusiveGateway, name: 'Controles OK?', lane: Lane_Pipeline}
+  - id: Task_Pacote
+    type: serviceTask
+    name: Gerar xlsx, sumário e Data Package
+    lane: Lane_Pipeline
+    statera: {type: automatic, gsbpm: 6.4;7.2, durationMin: 1, implementation: 'py:statera.disseminate.step'}
+  - id: Task_Investigar
+    type: userTask
+    name: Investigar a falha
+    lane: Lane_Equipe
+    statera: {type: manual, gsbpm: '5.3', durationMin: 60, exception: true}
+  - id: Task_Aprovar
+    type: userTask
+    name: Revisar e aprovar a divulgação
+    lane: Lane_Equipe
+    statera: {type: manual, gsbpm: '6.5', durationMin: 30}
+  - {id: Gateway_Aprovado, type: exclusiveGateway, name: 'Aprovado?', lane: Lane_Equipe}
+  - id: Task_Publicar
+    type: userTask
+    name: Publicar o pacote
+    lane: Lane_Equipe
+    statera: {type: semi-automatic, gsbpm: '7.3', durationMin: 10, implementation: 'py:statera.disseminate.publish'}
+  - {id: End_Publicado, type: endEvent, name: Edição publicada, lane: Lane_Equipe}
+
+flows:
+  - {id: Flow_1, from: Start_DataCorte, to: Event_Corte}
+  - {id: Flow_2, from: Event_Corte, to: Task_Transformar}
+  - {id: Flow_3, from: Task_Transformar, to: Task_Controles}
+  - {id: Flow_4, from: Task_Controles, to: Gateway_Controles}
+  - {id: Flow_5, from: Gateway_Controles, to: Task_Pacote, name: sim, condition: ok}
+  - {id: Flow_6, from: Gateway_Controles, to: Task_Investigar, name: não, condition: failed}
+  - {id: Flow_7, from: Task_Investigar, to: Task_Transformar}
+  - {id: Flow_8, from: Task_Pacote, to: Task_Aprovar}
+  - {id: Flow_9, from: Task_Aprovar, to: Gateway_Aprovado}
+  - {id: Flow_10, from: Gateway_Aprovado, to: Task_Publicar, name: sim, condition: approved}
+  - {id: Flow_11, from: Gateway_Aprovado, to: Task_Aprovar, name: não, condition: rejected}
+  - {id: Flow_12, from: Task_Publicar, to: End_Publicado}

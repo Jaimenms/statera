@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:classification-asset:0.1",
+  "title": "customProperties.classificacao de um contrato ODCS (perfil statera)",
+  "type": "object",
+  "required": [
+    "sharing",
+    "nature",
+    "secrecy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sharing": {
+      "enum": [
+        "broad",
+        "restricted",
+        "specific"
+      ],
+      "description": "Nível de compartilhamento (Decreto nº 10.046/2019)."
+    },
+    "nature": {
+      "enum": [
+        "aggregated",
+        "deidentified",
+        "personal",
+        "sensitive-personal"
+      ],
+      "description": "Natureza do dado (LGPD)."
+    },
+    "secrecy": {
+      "enum": [
+        "none",
+        "statistical",
+        "tax",
+        "other"
+      ],
+      "description": "Sigilo (legislação específica; LAI)."
+    },
+    "disclosureControl": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "method",
+            "column",
+            "minimum",
+            "suppressedColumns"
+          ],
+          "additionalProperties": false,
+          "description": "Supressão de células de tabelas agregadas: suprime as medidas onde a contagem fica abaixo do mínimo.",
+          "properties": {
+            "method": {
+              "const": "cell-suppression"
+            },
+            "column": {
+              "type": "string"
+            },
+            "minimum": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "suppressedColumns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "unpublishedColumns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "method",
+            "k",
+            "quasiIdentifiers",
+            "suppressibleColumns"
+          ],
+          "additionalProperties": false,
+          "description": "k-anonimato com supressão local, para microdados desidentificados: toda combinação de quase-identificadores aparece em pelo menos k registros. Onde não aparece, apaga os valores das colunas suprimíveis, na ordem; o que ainda ficar abaixo de k é removido.",
+          "properties": {
+            "method": {
+              "const": "k-anonymity"
+            },
+            "k": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "quasiIdentifiers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "Colunas que, combinadas, poderiam identificar uma pessoa (município, ocupação, idade, sexo…)."
+            },
+            "suppressibleColumns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "Quase-identificadores que podem ser apagados, do mais específico para o menos."
+            },
+            "unpublishedColumns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

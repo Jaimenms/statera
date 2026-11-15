@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: baz_uf_mensal
+    description: >
+      Valor médio por UF e competência, pelo script SPSS legado (baz_uf_mensal.sps) executado pelo
+      GNU PSPP de dentro de um modelo Python (RN-BAZ-001).
+    config:
+      cut_date: "{{ var('cut_date') }}"  # modelos Python leem variáveis pela config
+    columns:
+      - name: competencia
+        data_tests: [not_null]
+
+  - name: baz_mediana_uf_mensal
+    description: >
+      Mediana do valor por UF e competência, pelo script R legado (baz_mediana_uf_mensal.R) executado
+      pelo Rscript de dentro de um modelo Python (RN-BAZ-002).
+    config:
+      cut_date: "{{ var('cut_date') }}"  # modelos Python leem variáveis pela config
+    columns:
+      - name: competencia
+        data_tests: [not_null]

@@ -1,0 +1,32 @@
+# Produto INTERNO alinhado à fonte (ODPS v1.0): extrai o Sistema Foo em lotes e libera CORTES.
+apiVersion: v1.0.0
+kind: DataProduct
+id: foo
+name: Foo — registros do Sistema Foo (extração)
+version: 1.0.0
+status: active
+domain: foo
+tenant: Foo Bar (exemplo mínimo)
+description:
+  purpose: Extração incremental dos registros do Sistema Foo, um por solicitação recebida.
+  usage: Entrada do produto de divulgação bar, sempre por um corte.
+  limitations: Registros chegam com atraso; a mesma competência muda entre cortes. DADOS SINTÉTICOS.
+tags: [interno, fonte]
+customProperties:
+  - {property: alignment, value: source}
+  - {property: visibility, value: internal}
+  - {property: urn, value: br.gov.foo-bar.foo}
+  - {property: process, value: 2-design/processes/to-be.yaml}
+  - {property: conformanceLevel, value: 3}
+  - {property: sourceSystems, value: [Sistema Foo]}
+  - property: authorizedConsumers
+    value:
+      - {product: bar, purpose: "estatística mensal de registros e valor por UF"}
+      - {product: baz, purpose: "valor médio por UF pelo script SPSS legado"}
+outputPorts:
+  - {name: registros, description: Registros do Sistema Foo, type: table, version: 1.0.0, contractId: bronze-foo-registros}
+team:
+  name: Equipe de dados
+  members:
+    - {username: "papel:equipe-dados", role: owner}
+productCreatedTs: "2026-11-14T00:00:00Z"

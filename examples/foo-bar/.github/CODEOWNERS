@@ -1,0 +1,23 @@
+# ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+# Gerado por `statera codeowners`. Fontes: governance/shared-owners.yaml, governance/roles.yaml e <unidade>/1-specify/owners.yaml.
+# Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+# Equipes fictícias (@org-exemplo) nesta demonstração.
+
+# --- governance/shared-owners.yaml
+*                                                            @org-exemplo/curadoria
+/content/references/                                         @org-exemplo/curadoria
+/content/dbt/                                                @org-exemplo/equipe-dados
+/content/dbt_project.yml                                     @org-exemplo/equipe-dados
+/content/governance/                                         @org-exemplo/curadoria
+
+# --- products/bar/1-specify/owners.yaml
+/content/products/bar/                                       @org-exemplo/equipe-bar
+/content/products/bar/1-specify/classification.yaml          @org-exemplo/encarregado
+
+# --- products/baz/1-specify/owners.yaml
+/content/products/baz/                                       @org-exemplo/equipe-bar
+/content/products/baz/1-specify/classification.yaml          @org-exemplo/encarregado
+
+# --- products/foo/1-specify/owners.yaml
+/content/products/foo/                                       @org-exemplo/equipe-dados
+/content/products/foo/1-specify/classification.yaml          @org-exemplo/encarregado

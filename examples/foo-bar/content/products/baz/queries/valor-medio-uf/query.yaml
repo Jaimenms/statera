@@ -1,0 +1,17 @@
+# Consulta recorrente (schema: statera query.schema.json). O SQL é uma analysis do dbt.
+id: br.gov.foo-bar.query.valor-medio-uf
+title: Série do valor médio de uma UF
+description: Série mensal do valor médio de uma UF, da tabela de divulgação de baz.
+theme: foo
+product: baz
+bases: [gold.baz_uf_mensal]
+frequency: on-demand
+purpose: on-request
+parameters:
+  - {name: uf, type: uf, required: true, description: Sigla da UF}
+rules: [RN-BAZ-001]
+limitations: Calculado pelo script SPSS legado; competências recentes ainda mudam.
+output_classification: {sharing: broad, nature: aggregated, secrecy: none}
+owner: equipe-bar
+status: cataloged
+version: 0.1.0

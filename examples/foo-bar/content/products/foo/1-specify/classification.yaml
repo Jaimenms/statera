@@ -1,0 +1,6 @@
+# Aprovação da classificação (encarregado de dados). Valores ILUSTRATIVOS.
+unit: foo
+reviewed_on: "2026-11-14"
+approved_by: encarregado-lgpd
+assets:
+  - {contract: bronze-foo-registros, sharing: restricted, nature: personal, secrecy: other, legal_basis: "Registro administrativo (ilustrativo)"}

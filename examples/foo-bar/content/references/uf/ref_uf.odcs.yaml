@@ -1,0 +1,42 @@
+# Contrato ODCS v3.1 — referência oficial (IBGE), consumida por versão.
+# Cópia local nesta demonstração: em produção, a autoridade publica e os órgãos consomem por versão.
+apiVersion: v3.1.0
+kind: DataContract
+id: ref-uf
+name: Unidades da Federação
+version: 1.0.0
+status: active
+domain: referencias
+tags: [ref]
+description:
+  purpose: "Unidades da Federação e grandes regiões, com os códigos do IBGE."
+  usage: "Agregação geográfica de todos os produtos."
+  limitations: "Cópia local; a fonte oficial é o IBGE."
+servers:
+  - {server: warehouse-local, type: duckdb, database: dbt/data/warehouse.duckdb, schema: ref, environment: dev}
+schema:
+  - name: ref_uf
+    physicalName: ref.ref_uf
+    physicalType: table
+    logicalType: object
+    properties:
+      - {name: cod_uf, logicalType: integer, physicalType: "INTEGER", required: true, primaryKey: true, primaryKeyPosition: 1, classification: broad}
+      - {name: sigla_uf, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
+      - {name: nome_uf, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
+      - {name: cod_regiao, logicalType: integer, physicalType: "INTEGER", required: true, classification: broad}
+      - {name: regiao, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
+    quality:
+      - {id: linhas_presentes, type: library, metric: rowCount, mustBe: 27}
+team:
+  name: Curadoria
+  members:
+    - {username: "papel:curadoria", role: owner}
+customProperties:
+  - {property: layer, value: ref}
+  - {property: urn, value: br.gov.foo-bar.uf.ref.ref-uf}
+  - {property: dbtSeed, value: ref_uf}
+  - {property: authority, value: "IBGE"}
+  - {property: temporality, value: stable}
+  - property: classification
+    value: {sharing: broad, nature: aggregated, secrecy: none}
+contractCreatedTs: "2026-11-13T00:00:00Z"

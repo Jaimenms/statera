@@ -1,0 +1,12 @@
+# Responsáveis pelo que não é de um produto: referências, projeto dbt, governança.
+scope: shared
+curator: curadoria
+technical_owner: equipe-dados
+required_reviewers: [curadoria]
+data_protection_officer: encarregado-lgpd
+paths:
+  - {pattern: "*", roles: [curadoria]}
+  - {pattern: /references/, roles: [curadoria]}
+  - {pattern: /dbt/, roles: [equipe-dados]}
+  - {pattern: /dbt_project.yml, roles: [equipe-dados]}
+  - {pattern: /governance/, roles: [curadoria]}

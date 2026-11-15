@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: foo
+    description: Registros do Sistema Foo, extraídos em lotes (bronze). DADOS SINTÉTICOS.
+    schema: bronze
+    meta: {layer: bronze, product: foo, gsbpm: "4.3"}
+    tables:
+      - name: foo_registros
+        meta: {contract: bronze-foo-registros}
+        columns:
+          - name: id_registro
+            data_tests: [not_null]

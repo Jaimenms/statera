@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:query:0.1",
+  "title": "Consulta recorrente catalogada (edital, item 13: tema, produto, base, periodicidade e finalidade)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "description",
+    "theme",
+    "bases",
+    "frequency",
+    "purpose",
+    "parameters",
+    "limitations",
+    "output_classification",
+    "owner",
+    "status",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z]+(\\.[a-z0-9-]+)+\\.query\\.[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "product": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "bases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^(bronze|silver|gold|ref)\\.[a-z0-9_]+$"
+      }
+    },
+    "frequency": {
+      "enum": [
+        "on-demand",
+        "monthly",
+        "quarterly",
+        "annual"
+      ]
+    },
+    "purpose": {
+      "enum": [
+        "on-request",
+        "study",
+        "dashboard",
+        "internal-control",
+        "official-release"
+      ]
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "type": {
+            "enum": [
+              "period",
+              "date",
+              "ibge-code",
+              "uf",
+              "integer",
+              "short-text",
+              "cut"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "default": {}
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "string"
+    },
+    "output_classification": {
+      "type": "object",
+      "required": [
+        "sharing",
+        "nature",
+        "secrecy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sharing": {
+          "enum": [
+            "broad",
+            "restricted",
+            "specific"
+          ],
+          "description": "Nível de compartilhamento (Decreto nº 10.046/2019)."
+        },
+        "nature": {
+          "enum": [
+            "aggregated",
+            "deidentified",
+            "personal",
+            "sensitive-personal"
+          ],
+          "description": "Natureza do dado (LGPD)."
+        },
+        "secrecy": {
+          "enum": [
+            "none",
+            "statistical",
+            "tax",
+            "other"
+          ],
+          "description": "Sigilo (legislação específica; LAI)."
+        },
+        "disclosureControl": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "method",
+                "column",
+                "minimum",
+                "suppressedColumns"
+              ],
+              "additionalProperties": false,
+              "description": "Supressão de células de tabelas agregadas: suprime as medidas onde a contagem fica abaixo do mínimo.",
+              "properties": {
+                "method": {
+                  "const": "cell-suppression"
+                },
+                "column": {
+                  "type": "string"
+                },
+                "minimum": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "suppressedColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1
+                },
+                "unpublishedColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "method",
+                "k",
+                "quasiIdentifiers",
+                "suppressibleColumns"
+              ],
+              "additionalProperties": false,
+              "description": "k-anonimato com supressão local, para microdados desidentificados: toda combinação de quase-identificadores aparece em pelo menos k registros. Onde não aparece, apaga os valores das colunas suprimíveis, na ordem; o que ainda ficar abaixo de k é removido.",
+              "properties": {
+                "method": {
+                  "const": "k-anonymity"
+                },
+                "k": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "quasiIdentifiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "description": "Colunas que, combinadas, poderiam identificar uma pessoa (município, ocupação, idade, sexo…)."
+                },
+                "suppressibleColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "description": "Quase-identificadores que podem ser apagados, do mais específico para o menos."
+                },
+                "unpublishedColumns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "authors": {
+      "type": "array",
+      "description": "Quem produziu a consulta (crédito a pessoas), além do papel responsável. Inclusive quem não é da equipe de dados.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "contact": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "exploratory",
+        "cataloged",
+        "certified",
+        "deprecated"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  }
+}

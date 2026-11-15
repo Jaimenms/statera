@@ -1,0 +1,3 @@
+# Esqueleto do produto (especificação 01): este arquivo existe em todo produto, com conteúdo ou
+# com `not_applicable: <motivo>`.
+not_applicable: "a definir: indicadores de serviço da extração do Sistema Foo (atraso, completude)"

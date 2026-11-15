@@ -1,0 +1,10 @@
+# Quem responde pelo produto. Papéis, não pessoas. Caminhos relativos à pasta do produto.
+scope: product
+unit: {{ product }}
+curator: {{ curator }}
+technical_owner: {{ technical_owner }}
+required_reviewers: [{{ technical_owner }}]
+data_protection_officer: {{ data_protection_officer }}
+paths:
+  - {pattern: /, roles: [{{ technical_owner }}]}
+  - {pattern: /1-specify/classification.yaml, roles: [{{ data_protection_officer }}]}

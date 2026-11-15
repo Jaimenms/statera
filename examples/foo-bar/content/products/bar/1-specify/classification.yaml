@@ -1,0 +1,7 @@
+# Aprovação da classificação (encarregado de dados). Valores ILUSTRATIVOS.
+unit: bar
+reviewed_on: "2026-11-14"
+approved_by: encarregado-lgpd
+assets:
+  - {contract: gold-bar-uf-mensal, sharing: broad, nature: aggregated, secrecy: none, legal_basis: "LAI: informação estatística agregada"}
+  - {contract: gold-bar-variacao-uf-mensal, sharing: broad, nature: aggregated, secrecy: none, legal_basis: "LAI: informação estatística agregada"}

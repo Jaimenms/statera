@@ -1,0 +1,44 @@
+# Processo em YAML, espelho do BPMN 2.0, e plano de execução: `statera run --product foo --cut-date AAAA-MM-DD`.
+id: Processo_Foo_ToBe
+name: Extração do Sistema Foo (TO-BE)
+
+lanes:
+  - {id: Lane_Dados, name: Equipe de dados (statera run), role: equipe-dados}
+
+elements:
+  - {id: Start_Corte, type: startEvent, name: Data de corte pedida pelos consumidores, lane: Lane_Dados, event: timer}
+  - id: Task_Extrair
+    type: serviceTask
+    name: Extrair o incremento recebido desde a última carga
+    lane: Lane_Dados
+    outputs: [Store_Bronze]
+    statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:statera.collect.step'}
+  - id: Task_Validar
+    type: serviceTask
+    name: Verificar o contrato do bronze no corte
+    lane: Lane_Dados
+    statera: {type: automatic, gsbpm: '4.4', durationMin: 1, implementation: 'py:statera.analyse.step'}
+  - {id: Gateway_Ok, type: exclusiveGateway, name: 'Carga OK?', lane: Lane_Dados}
+  - id: Task_MarcarCorte
+    type: serviceTask
+    name: Marcar o corte e avisar os consumidores
+    lane: Lane_Dados
+    statera: {type: automatic, gsbpm: '7.3', durationMin: 1, implementation: 'py:statera.disseminate.mark_cut'}
+  - id: Task_Investigar
+    type: userTask
+    name: Investigar a carga com o Sistema Foo
+    lane: Lane_Dados
+    statera: {type: manual, gsbpm: '4.3', durationMin: 60, exception: true}
+  - {id: End_Corte, type: endEvent, name: Corte disponível, lane: Lane_Dados}
+
+data:
+  - {id: Store_Bronze, type: dataStoreReference, name: Bronze (lotes imutáveis), asset: bronze-foo-registros}
+
+flows:
+  - {id: Flow_1, from: Start_Corte, to: Task_Extrair}
+  - {id: Flow_2, from: Task_Extrair, to: Task_Validar}
+  - {id: Flow_3, from: Task_Validar, to: Gateway_Ok}
+  - {id: Flow_4, from: Gateway_Ok, to: Task_MarcarCorte, name: sim, condition: ok}
+  - {id: Flow_5, from: Gateway_Ok, to: Task_Investigar, name: não, condition: failed}
+  - {id: Flow_6, from: Task_Investigar, to: Task_Extrair}
+  - {id: Flow_7, from: Task_MarcarCorte, to: End_Corte}

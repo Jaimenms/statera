@@ -1,0 +1,240 @@
+<!doctype html>
+<!--
+  ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+  Gerado por `statera bpmn`. Fontes: products/bar/2-design/processes/to-be.bpmn.
+  Para mudar: edite as fontes e rode `statera bpmn`.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produção mensal de Bar (TO-BE)</title>
+<link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.30.1/dist/assets/diagram-js.css">
+<link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.30.1/dist/assets/bpmn-js.css">
+<style>html,body{margin:0;height:100%;font-family:Helvetica,Arial,sans-serif;background:#fff}
+#topo{padding:8px 16px;border-bottom:1px solid #ddd} #canvas{height:calc(100% - 50px)}</style>
+</head>
+<body>
+<div id="topo"><strong>Produção mensal de Bar (TO-BE)</strong> — arraste para mover, role para ampliar.
+Fonte: <code>products/bar/2-design/processes/to-be.bpmn</code></div>
+<div id="canvas"></div>
+<script src="https://unpkg.com/bpmn-js@18.30.1/dist/bpmn-navigated-viewer.production.min.js"></script>
+<script id="diagrama" type="application/xml"><?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+  Gerado por `statera bpmn`. Fontes: to-be.yaml (o processo em YAML, espelho do BPMN).
+  Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+  Para desenhar: abra este .bpmn no Camunda Modeler ou no bpmn.io e rode
+  `statera bpmn import <este arquivo>` para levar a mudança ao YAML.
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:statera="urn:statera:bpmn:1.0" id="Definitions_Processo_Bar_ToBe" targetNamespace="urn:statera:processos" exporter="statera (statera bpmn)" exporterVersion="1.0">
+  <bpmn:collaboration id="Collab_Processo_Bar_ToBe">
+    <bpmn:participant id="Pool_Processo_Bar_ToBe" name="Produção mensal de Bar (TO-BE)" processRef="Processo_Bar_ToBe" />
+  </bpmn:collaboration>
+  <bpmn:process id="Processo_Bar_ToBe" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Processo_Bar_ToBe">
+      <bpmn:lane id="Lane_Pipeline" name="Pipeline (statera run)" statera:papel="equipe-dados">
+        <bpmn:flowNodeRef>Start_DataCorte</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_Corte</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Transformar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Controles</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Controles</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Pacote</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Equipe" name="Equipe técnica de Bar" statera:papel="equipe-bar">
+        <bpmn:flowNodeRef>Task_Investigar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Aprovar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Aprovado</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Publicar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Publicado</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_DataCorte" name="Data de corte do calendário">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="Def_Start_DataCorte" />
+    </bpmn:startEvent>
+    <bpmn:intermediateCatchEvent id="Event_Corte" name="Corte de foo disponível" statera:awaits="py:statera.collect.pin_cut">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Def_Event_Corte" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="Task_Transformar" name="Calcular as tabelas do produto (dbt build)" statera:type="automatic" statera:gsbpm="5.3-5.7" statera:durationMin="1" statera:implementation="dbt:build" statera:models="stg_foo__registros,int_bar__registros,bar_uf_mensal,bar_variacao_uf_mensal">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Controles" name="Verificar contratos e controles entre edições" statera:type="automatic" statera:gsbpm="6.2" statera:durationMin="1" statera:implementation="py:statera.analyse.step">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_Controles" name="Controles OK?">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_Pacote" name="Gerar xlsx, sumário e Data Package" statera:type="automatic" statera:gsbpm="6.4;7.2" statera:durationMin="1" statera:implementation="py:statera.disseminate.step">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_Investigar" name="Investigar a falha" statera:type="manual" statera:gsbpm="5.3" statera:durationMin="60" statera:exception="true">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Aprovar" name="Revisar e aprovar a divulgação" statera:type="manual" statera:gsbpm="6.5" statera:durationMin="30">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_Aprovado" name="Aprovado?">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_Publicar" name="Publicar o pacote" statera:type="semi-automatic" statera:gsbpm="7.3" statera:durationMin="10" statera:implementation="py:statera.disseminate.publish">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Publicado" name="Edição publicada">
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_DataCorte" targetRef="Event_Corte" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Event_Corte" targetRef="Task_Transformar" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Transformar" targetRef="Task_Controles" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_Controles" targetRef="Gateway_Controles" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_Controles" targetRef="Task_Pacote" name="sim">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${situacao == 'ok'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_Controles" targetRef="Task_Investigar" name="não">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${situacao == 'failed'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Investigar" targetRef="Task_Transformar" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_Pacote" targetRef="Task_Aprovar" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_Aprovar" targetRef="Gateway_Aprovado" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Gateway_Aprovado" targetRef="Task_Publicar" name="sim">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${situacao == 'approved'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Gateway_Aprovado" targetRef="Task_Aprovar" name="não">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${situacao == 'rejected'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_Publicar" targetRef="End_Publicado" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_Processo_Bar_ToBe">
+    <bpmndi:BPMNPlane id="Plane_Processo_Bar_ToBe" bpmnElement="Collab_Processo_Bar_ToBe">
+      <bpmndi:BPMNShape id="Pool_Processo_Bar_ToBe_di" bpmnElement="Pool_Processo_Bar_ToBe" isHorizontal="true">
+        <dc:Bounds x="20" y="80" width="1900" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Pipeline_di" bpmnElement="Lane_Pipeline" isHorizontal="true">
+        <dc:Bounds x="50" y="80" width="1870" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Equipe_di" bpmnElement="Lane_Equipe" isHorizontal="true">
+        <dc:Bounds x="50" y="230" width="1870" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_DataCorte_di" bpmnElement="Start_DataCorte">
+        <dc:Bounds x="162" y="137" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="130" y="177" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_Corte_di" bpmnElement="Event_Corte">
+        <dc:Bounds x="337" y="137" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="305" y="177" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Transformar_di" bpmnElement="Task_Transformar">
+        <dc:Bounds x="460" y="115" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Controles_di" bpmnElement="Task_Controles">
+        <dc:Bounds x="635" y="115" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Controles_di" bpmnElement="Gateway_Controles" isMarkerVisible="true">
+        <dc:Bounds x="855" y="130" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="830" y="99" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Pacote_di" bpmnElement="Task_Pacote">
+        <dc:Bounds x="985" y="115" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Investigar_di" bpmnElement="Task_Investigar">
+        <dc:Bounds x="985" y="265" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Aprovar_di" bpmnElement="Task_Aprovar">
+        <dc:Bounds x="1160" y="265" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Aprovado_di" bpmnElement="Gateway_Aprovado" isMarkerVisible="true">
+        <dc:Bounds x="1380" y="280" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1355" y="249" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Publicar_di" bpmnElement="Task_Publicar">
+        <dc:Bounds x="1510" y="265" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Publicado_di" bpmnElement="End_Publicado">
+        <dc:Bounds x="1737" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1705" y="327" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="198" y="155" />
+        <di:waypoint x="337" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="373" y="155" />
+        <di:waypoint x="460" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="600" y="155" />
+        <di:waypoint x="635" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="775" y="155" />
+        <di:waypoint x="855" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="905" y="155" />
+        <di:waypoint x="985" y="155" />
+        <bpmndi:BPMNLabel><dc:Bounds x="911" y="137" width="30" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="880" y="180" />
+        <di:waypoint x="880" y="305" />
+        <di:waypoint x="985" y="305" />
+        <bpmndi:BPMNLabel><dc:Bounds x="886" y="184" width="30" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1055" y="345" />
+        <di:waypoint x="1055" y="370" />
+        <di:waypoint x="570" y="370" />
+        <di:waypoint x="570" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1125" y="155" />
+        <di:waypoint x="1142" y="155" />
+        <di:waypoint x="1142" y="305" />
+        <di:waypoint x="1160" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1300" y="305" />
+        <di:waypoint x="1380" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="1430" y="305" />
+        <di:waypoint x="1510" y="305" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1436" y="287" width="30" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="1405" y="330" />
+        <di:waypoint x="1405" y="367" />
+        <di:waypoint x="1230" y="367" />
+        <di:waypoint x="1230" y="345" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1411" y="334" width="30" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12_di" bpmnElement="Flow_12">
+        <di:waypoint x="1650" y="305" />
+        <di:waypoint x="1737" y="305" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
+</script>
+<script>
+  const viewer = new BpmnJS({ container: '#canvas' });
+  viewer.importXML(document.getElementById('diagrama').textContent)
+    .then(() => viewer.get('canvas').zoom('fit-viewport'))
+    .catch(err => document.getElementById('canvas').innerText = 'Erro: ' + err.message);
+</script>
+</body>
+</html>

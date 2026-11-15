@@ -1,0 +1,39 @@
+# {{ title }}
+
+Produto criado a partir do modelo statera (`statera new-product {{ product }}`)
+{%- if alignment == 'consumer' %}, de **divulgação** (alinhamento `consumo`).
+{%- elif alignment == 'aggregate' %}, **interno agregado**: entidade canônica lida por vários produtos, guardada por corte.
+{%- else %}, **interno de fonte**: extração incremental de um sistema de origem, em lotes imutáveis.
+{%- endif %}
+Começa no **nível 1 de conformidade (catalogado)**. Para subir de nível, ver a especificação
+(`08-niveis-de-conformidade.md`) e `statera conformance`.
+
+| Fase (GSBPM) | O que entra aqui |
+|---|---|
+{%- if alignment == 'consumer' %}
+| `1-specify/` | Descritor ODPS, classificação aprovada, responsáveis, calendário |
+| `2-design/processes/` | Processo to-be em YAML (espelho do BPMN), que também é o plano de execução |
+| `3-build/tests/` | Testes do produto |
+| `5-process/` | Contratos gold, modelos dbt (marts), regras, métricas |
+| `6-analyse/` | Controles (`controls.yaml`, `dbt-tests/`) |
+| `7-disseminate/` | Série de publicação e modelo do sumário |
+| `8-evaluate/` | Indicadores de qualidade e plano de ação |
+| `queries/` | Consultas recorrentes do produto |
+{%- elif alignment == 'aggregate' %}
+| `1-specify/` | Descritor ODPS (com `consumidoresAutorizados`), classificação aprovada, responsáveis |
+| `2-design/processes/` | Processo to-be: espera os cortes das fontes, transforma, valida e libera o corte |
+| `3-build/tests/` | Testes do produto |
+| `5-process/` | Contratos silver com `particionadoPor: data_corte`, modelos intermediate, regras com casos |
+| `6-analyse/` | Verificação dos contratos no corte (sem controle de divulgação: nada é publicado) |
+| `7-disseminate/data/<data>/cut.json` | Manifesto imutável de cada corte liberado (gerado) |
+| `8-evaluate/` | Indicadores de serviço (atraso do corte, completude) |
+{%- else %}
+| `1-specify/` | Descritor ODPS (com `consumidoresAutorizados`), classificação aprovada, responsáveis |
+| `2-design/processes/` | Processo to-be: extrai o incremento, valida a carga e marca o corte |
+| `4-collect/contracts/` | Contratos bronze com `extracao` (origem, coluna de recepção) e retenção |
+| `5-process/models/staging/` | Modelos staging com o filtro `statera.no_corte` |
+| `7-disseminate/data/<data>/cut.json` | Manifesto imutável de cada corte (lotes e hashes; gerado) |
+| `8-evaluate/` | Indicadores de serviço (atraso da extração, completude) |
+{%- endif %}
+
+Atualizar este produto quando o modelo evoluir: `copier update` nesta pasta.

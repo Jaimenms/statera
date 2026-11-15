@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+dist/
+.DS_Store
+
+# logs do dbt (gerados ao abrir o pacote dbt da plataforma no VS Code)
+src/statera/dbt/logs/
+src/statera/dbt/target/

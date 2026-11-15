@@ -1,0 +1,24 @@
+# Série de publicações de bar (schema: statera publication-series.schema.json).
+series: bar
+title: Bar — registros e valor por UF (DADOS SINTÉTICOS)
+product: bar
+frequency: monthly
+start: "2026-01"
+page: https://example.org/foo-bar/bar  # ilustrativo
+license:
+  name: CC-BY-4.0
+  path: https://creativecommons.org/licenses/by/4.0/
+  title: Creative Commons Attribution 4.0 (ilustrativo)
+files_per_edition:
+  tables: "{porta}.csv"
+  spreadsheet: "bar-{competencia}.xlsx"
+  summary: summary.md
+  metadata: [datapackage.json, ckan.json]
+main_resource: por-uf
+coverage: Cada edição republica o ano corrente até a competência da edição, no corte da edição.
+revision_policy: Competências já divulgadas são revistas a cada edição; a edição anterior não é alterada.
+correction_policy: Uma edição publicada não é recalculada; retificar exige `statera run --force`.
+edition_registry:
+  edition: "bar/{competencia}.datapackage.json"
+  index: bar/editions.csv
+  written_by: processo to-be (tarefa Task_Publicar)

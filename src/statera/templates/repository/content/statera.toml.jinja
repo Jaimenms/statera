@@ -1,0 +1,32 @@
+# Repositório de dados no padrão Statera. Lido pela plataforma `statera` (dependência no pyproject.toml).
+
+[project]
+name = "{{ name }}"
+organization = "{{ organization }}"
+acronym = "{{ acronym }}"
+namespace = "{{ namespace }}"
+specification = "0.1"
+repository_root = ".."             # raiz do repositório (onde ficam .github/, publications/, docs/)
+synthetic = false
+
+[engine]
+type = "duckdb"                    # em produção: postgres, trino...
+path = "dbt/data/warehouse.duckdb"
+
+[conventions]
+# Nomes das colunas de convenção nos SEUS dados (os nomes das colunas são do conteúdo, no seu idioma).
+period_column = "period"           # período de referência (ex.: competencia)
+cut_date_column = "cut_date"       # data de corte (ex.: data_corte)
+valid_from_column = "valid_from"   # referências com vigência (ex.: vigencia_inicio)
+valid_to_column = "valid_to"
+
+[dbt]
+folder = "dbt"
+project = "{{ name | replace('-', '_') }}"
+profile = "{{ name | replace('-', '_') }}"
+
+[registry]
+editions = "../publications"       # registro das edições publicadas
+
+[openlineage]
+namespace = "{{ namespace }}"

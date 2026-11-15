@@ -1,0 +1,17 @@
+# ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+# Gerado por `statera dbt generate`. Fontes: products/*/1-specify/product.odps.yaml.
+# Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+version: 2
+groups:
+- name: bar
+  owner:
+    name: Equipe técnica de Bar
+  description: Produto bar (consumer, publicado)
+- name: baz
+  owner:
+    name: Equipe técnica de Bar
+  description: Produto baz (consumer, publicado)
+- name: foo
+  owner:
+    name: Equipe de dados
+  description: Produto foo (source, internal)

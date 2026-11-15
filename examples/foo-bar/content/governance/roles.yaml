@@ -1,0 +1,6 @@
+# Papéis (não pessoas). Unidades e equipes fictícias.
+roles:
+  - {id: equipe-dados, name: Equipe de dados, org_unit: "000001", git_team: "@org-exemplo/equipe-dados"}
+  - {id: equipe-bar, name: Equipe técnica de Bar, org_unit: "000002", git_team: "@org-exemplo/equipe-bar"}
+  - {id: curadoria, name: Curadoria do repositório, org_unit: "000001", git_team: "@org-exemplo/curadoria"}
+  - {id: encarregado-lgpd, name: Encarregado de dados, org_unit: "000003", git_team: "@org-exemplo/encarregado"}

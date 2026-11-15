@@ -1,0 +1,5 @@
+# Arquivos GERADOS pela plataforma Statera: o GitHub os marca e recolhe o diff nos pull requests.
+dbt_project.yml              linguist-generated=true
+dbt/generated/*.yml          linguist-generated=true
+*.bpmn                       linguist-generated=true
+docs/**                      linguist-generated=true

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:classification:0.1",
+  "title": "Aprovação da classificação dos ativos de uma unidade (Decreto nº 10.046/2019, LGPD, LAI)",
+  "description": "Mantida pelo encarregado de dados. Cada ativo repete a classificação do contrato ODCS; o CI exige que coincidam.",
+  "type": "object",
+  "required": [
+    "unit",
+    "reviewed_on",
+    "approved_by",
+    "assets"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "unit": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "reviewed_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "approved_by": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "contract",
+          "sharing",
+          "nature",
+          "secrecy",
+          "legal_basis"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "contract": {
+            "type": "string"
+          },
+          "sharing": {
+            "enum": [
+              "broad",
+              "restricted",
+              "specific"
+            ],
+            "description": "Nível de compartilhamento (Decreto nº 10.046/2019)."
+          },
+          "nature": {
+            "enum": [
+              "aggregated",
+              "deidentified",
+              "personal",
+              "sensitive-personal"
+            ],
+            "description": "Natureza do dado (LGPD)."
+          },
+          "secrecy": {
+            "enum": [
+              "none",
+              "statistical",
+              "tax",
+              "other"
+            ],
+            "description": "Sigilo (legislação específica; LAI)."
+          },
+          "disclosure_control": {
+            "enum": [
+              "cell-suppression",
+              "k-anonymity"
+            ],
+            "description": "Método de controle de divulgação (GSBPM 6.4)."
+          },
+          "legal_basis": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "if": {
+          "properties": {
+            "secrecy": {
+              "const": "statistical"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "disclosure_control"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: bar_uf_mensal
+    description: Registros e valor por UF e competência do fato (RN-BAR-001).
+    columns:
+      - name: competencia
+        data_tests: [not_null]
+      - name: registros
+        data_tests: [not_null]
+
+  - name: bar_variacao_uf_mensal
+    description: Variação de registros por UF sobre o mês anterior (RN-BAR-002), em pandas.
+    columns:
+      - name: competencia
+        data_tests: [not_null]
+
+exposures:
+  - name: bar_divulgacao_mensal
+    label: Bar — divulgação mensal (planilha, CSV, sumário e Data Package)
+    type: analysis
+    maturity: medium
+    description: Pacote publicado a cada edição.
+    depends_on:
+      - ref('bar_uf_mensal')
+      - ref('bar_variacao_uf_mensal')
+    owner:
+      name: Equipe técnica de Bar (papel)
+    meta:
+      product: bar
+      sharing: broad
+      implementation: "py:statera.disseminate.step"

@@ -1,0 +1,24 @@
+# ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+# Gerado por `statera dbt generate`. Fontes: references/*/*.odcs.yaml (contratos das referências).
+# Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+version: 2
+seeds:
+- name: ref_uf
+  description: Unidades da Federação e grandes regiões, com os códigos do IBGE.
+  config:
+    column_types:
+      cod_uf: integer
+      sigla_uf: varchar
+      nome_uf: varchar
+      cod_regiao: integer
+      regiao: varchar
+  meta:
+    layer: ref
+    contract: ref-uf
+    urn: br.gov.foo-bar.uf.ref.ref-uf
+    authority: IBGE
+  columns:
+  - name: cod_uf
+    data_tests:
+    - unique
+    - not_null

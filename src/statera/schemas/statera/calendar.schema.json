@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:calendar:0.1",
+  "title": "Calendário de um produto (divulgação ou interno)",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "product",
+        "frequency",
+        "editions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "product": {
+          "type": "string"
+        },
+        "frequency": {
+          "enum": [
+            "monthly",
+            "quarterly",
+            "semiannual",
+            "annual",
+            "biweekly"
+          ]
+        },
+        "cut_date_rule": {
+          "type": "string"
+        },
+        "release_rule": {
+          "type": "string"
+        },
+        "editions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "period",
+              "cut_date",
+              "release"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "period": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}$"
+              },
+              "cut_date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "release": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              }
+            }
+          }
+        }
+      },
+      "title": "Produto de divulgação: datas de corte e de divulgação de cada edição"
+    },
+    {
+      "title": "Produto interno: cortes pedidos pelos consumidores (GERADO por statera sync)",
+      "type": "object",
+      "required": [
+        "product",
+        "cut_date_rule",
+        "cuts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "product": {
+          "type": "string"
+        },
+        "cut_date_rule": {
+          "type": "string"
+        },
+        "cuts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "cut_date",
+              "requested_by"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "cut_date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "requested_by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "description": "Edições (produto e competência) que pedem o corte, inclusive pelos produtos internos intermediários."
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

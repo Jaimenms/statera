@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:statera:schema:indicators:0.1",
+  "title": "Indicadores de qualidade usados na avaliação de cada edição (GSBPM 8)",
+  "type": "object",
+  "required": [
+    "indicators"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "reference": {
+      "type": "string"
+    },
+    "indicators": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "dimension",
+          "description",
+          "unit",
+          "calculation"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^IQ-[0-9]{2}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dimension": {
+            "enum": [
+              "relevance",
+              "accuracy-and-reliability",
+              "timeliness-and-punctuality",
+              "coherence-and-comparability",
+              "accessibility-and-clarity",
+              "efficiency"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "alert": {
+            "type": "object",
+            "required": [
+              "operator",
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "operator": {
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ]
+              },
+              "value": {
+                "type": "number"
+              }
+            }
+          },
+          "gsbpm": {
+            "type": "string"
+          },
+          "calculation": {
+            "type": "object",
+            "oneOf": [
+              {
+                "required": [
+                  "function"
+                ],
+                "properties": {
+                  "function": {
+                    "type": "string",
+                    "pattern": "^[a-z_]+$"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "sql"
+                ],
+                "properties": {
+                  "sql": {
+                    "type": "string",
+                    "minLength": 10
+                  }
+                },
+                "additionalProperties": false
+              }
+            ],
+            "description": "funcao: função genérica da plataforma (com parâmetros); sql: consulta no motor."
+          }
+        }
+      }
+    },
+    "action_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "source",
+          "owner",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^PA-[0-9]{2}$"
+          },
+          "action": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "in-progress",
+              "done",
+              "dropped"
+            ]
+          },
+          "deadline": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

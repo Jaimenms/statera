@@ -1,0 +1,49 @@
+[project]
+name = "statera"
+version = "0.1.0"
+description = "Plataforma do padrão statera: validação, execução dirigida pelo processo, documentação, linhagem, registro de edições e biblioteca de consulta para produtos estatísticos de governo"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "MIT" }
+dependencies = [
+    "dbt-core>=1.10,<1.13",
+    "dbt-duckdb>=1.10,<1.12",
+    "duckdb>=1.2",
+    "ibis-framework[duckdb]>=10.0",
+    "pandas>=2.2",
+    "numpy>=2.0",
+    "openpyxl>=3.1",
+    "pyyaml>=6.0",
+    "jsonschema>=4.23",
+    "jinja2>=3.1",
+    "copier>=9.4",
+    "pyreadstat>=1.2",
+    "pyreadr>=0.5",
+]
+
+[project.scripts]
+statera = "statera.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3", "hypothesis>=6.120", "ruff>=0.8"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/statera"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]  # processos e casos de teste em YAML embutido
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

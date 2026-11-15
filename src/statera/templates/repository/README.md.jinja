@@ -1,0 +1,63 @@
+# {{ organization }}
+
+Repositório de dados no padrão [Statera](https://github.com/Jaimenms/statera): cada estatística é um
+**produto de dados** com contrato, classificação da informação, regras testadas, processo executável e
+registro de cada edição publicada.
+
+```
+content/        o que a equipe edita: produtos, referências, consultas, receitas, governança
+publications/   registro das edições publicadas (escrito pelo processo, não à mão)
+docs/           estudos, notas técnicas e decisões (texto livre)
+```
+
+## Primeiros passos
+
+Requer [uv](https://docs.astral.sh/uv/) (instala o Python e as dependências) e `make`.
+
+```bash
+make setup       # ambiente + Statera na versão fixada em content/pyproject.toml
+make validate    # validação completa (a mesma do CI)
+make help        # todos os comandos
+```
+
+Abra `{{ name }}.code-workspace` no VS Code e instale as extensões recomendadas: os YAML passam a ser
+validados enquanto você digita.
+
+## O dia a dia
+
+| Quero… | Comando |
+|---|---|
+| criar uma estatística nova | `make new-product NAME=minha-estatistica` |
+| ver o que falta num produto | `make conformance` |
+| regenerar os arquivos gerados depois de editar | `make sync` |
+| conferir tudo antes do pull request | `make validate && make test` |
+| produzir uma edição | `make run PRODUCT=minha-estatistica PERIOD=2026-06` |
+| concluir uma tarefa humana (aprovação) e seguir | `make resume PRODUCT=minha-estatistica PERIOD=2026-06` |
+| documentação e catálogo navegável | `make docs` · `make catalog` |
+
+Os demais comandos da plataforma: `cd content && uv run statera --help`.
+
+## Onde fica cada coisa
+
+```
+content/
+  statera.toml          configuração do repositório (motor, convenções de colunas, registro)
+  products/<produto>/   uma pasta por estatística, organizada pelas fases do GSBPM:
+    1-specify/          contrato ODCS, produto ODPS, classificação, responsáveis, calendário
+    2-design/           processo (YAML espelho do BPMN)
+    4-collect/          extração das fontes
+    5-process/          modelos dbt (SQL ou Python), regras com casos de teste, métricas
+    6-analyse/          controles e controle de divulgação
+    7-disseminate/      séries publicadas
+    8-evaluate/         indicadores de qualidade
+  references/           tabelas de referência compartilhadas (classificações, territórios…)
+  queries/ recipes/     consultas recorrentes e exemplos de uso dos dados
+  governance/           papéis e responsáveis compartilhados (geram o .github/CODEOWNERS)
+```
+
+Arquivos marcados como gerados (aviso `ARQUIVO GERADO` no topo) não se editam: `make sync` os refaz.
+
+## Atualizar a Statera
+
+A versão fica em `content/pyproject.toml` (`tag = "v{{ statera_version }}"`). Para atualizar, troque a
+tag, rode `make setup && make validate` e abra um pull request.

@@ -1,0 +1,14 @@
+rule: RN-BAR-002
+model: bar_variacao_uf_mensal
+cases:
+  - id: variacao_e_primeiro_mes_vazio
+    description: SP passa de 50 para 60 registros (+20%); a primeira competência fica sem variação.
+    inputs:
+      bar_uf_mensal:
+        - {competencia: "2026-01", sigla_uf: SP, data_corte: "2026-03-10", registros: 50}
+        - {competencia: "2026-02", sigla_uf: SP, data_corte: "2026-03-10", registros: 60}
+        - {competencia: "2026-01", sigla_uf: RJ, data_corte: "2026-03-10", registros: 20}
+    expected:
+      - {competencia: "2026-01", sigla_uf: SP, variacao_pct: null}
+      - {competencia: "2026-02", sigla_uf: SP, variacao_pct: 20.0}
+      - {competencia: "2026-01", sigla_uf: RJ, variacao_pct: null}

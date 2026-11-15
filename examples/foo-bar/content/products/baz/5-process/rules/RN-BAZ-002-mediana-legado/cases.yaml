@@ -1,0 +1,20 @@
+rule: RN-BAZ-002
+model: baz_mediana_uf_mensal
+variables: {cut_date: "2026-03-10"}
+requires: [r]
+cases:
+  - id: mediana_impar_e_par
+    description: Três registros de SP (10, 30, 20) dão mediana 20; dois de RJ (5, 8) dão 6,5.
+    inputs:
+      int_baz__registros:
+        - {competencia: "2026-01", cod_uf: 35, valor: 10.0}
+        - {competencia: "2026-01", cod_uf: 35, valor: 30.0}
+        - {competencia: "2026-01", cod_uf: 35, valor: 20.0}
+        - {competencia: "2026-01", cod_uf: 33, valor: 5.0}
+        - {competencia: "2026-01", cod_uf: 33, valor: 8.0}
+      ref_uf:
+        - {cod_uf: 35, sigla_uf: SP}
+        - {cod_uf: 33, sigla_uf: RJ}
+    expected:
+      - {competencia: "2026-01", sigla_uf: SP, valor_mediano: 20.0}
+      - {competencia: "2026-01", sigla_uf: RJ, valor_mediano: 6.5}

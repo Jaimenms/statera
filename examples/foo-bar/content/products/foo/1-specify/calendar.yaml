@@ -1,0 +1,15 @@
+# ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+# Gerado por `statera sync`. Fontes: os calendários (1-specify/calendar.yaml) dos produtos de divulgação que leem este produto.
+# Para mudar: edite as fontes e rode `statera sync`. O CI falha se este arquivo estiver desatualizado.
+# Produto interno: não tem calendário próprio; entrega os cortes que os consumidores pedem.
+product: foo
+cut_date_rule: Cortes pedidos pelos calendários dos produtos que leem este produto
+cuts:
+- cut_date: '2026-02-10'
+  requested_by:
+  - bar 2026-01
+  - baz 2026-01
+- cut_date: '2026-03-10'
+  requested_by:
+  - bar 2026-02
+  - baz 2026-02

@@ -1,0 +1,6 @@
+# Arquivos GERADOS pela plataforma Statera (especificação 01): o GitHub os marca e recolhe o diff.
+dbt_project.yml                            linguist-generated=true
+dbt/generated/*.yml                  linguist-generated=true
+*.bpmn                                     linguist-generated=true
+docs/**                                    linguist-generated=true
+products/foo/1-specify/calendar.yaml linguist-generated=true

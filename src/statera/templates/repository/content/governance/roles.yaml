@@ -1,0 +1,5 @@
+# Papéis (não pessoas): sobrevivem a mudanças de equipe. Ajuste unidades e equipes do seu órgão.
+roles:
+  - {id: data-team, name: Equipe de dados, org_unit: "000000", git_team: "@sua-org/equipe-dados"}
+  - {id: curator, name: Curadoria do repositório, org_unit: "000000", git_team: "@sua-org/curadoria"}
+  - {id: data-protection-officer, name: Encarregado de dados (LGPD), org_unit: "000000", git_team: "@sua-org/encarregado"}

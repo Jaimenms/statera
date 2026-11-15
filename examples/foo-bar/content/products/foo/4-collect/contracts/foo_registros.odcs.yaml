@@ -1,0 +1,46 @@
+# Contrato ODCS v3.1 — bronze do produto de fonte foo. DADOS SINTÉTICOS.
+apiVersion: v3.1.0
+kind: DataContract
+id: bronze-foo-registros
+name: Foo — registros (bronze)
+version: 1.0.0
+status: active
+domain: foo
+dataProduct: foo
+tags: [bronze, foo]
+description:
+  purpose: Registros do Sistema Foo, um por solicitação, guardados uma vez no lote em que foram extraídos.
+  usage: "Lido pelo produto bar num corte. Consumidor autorizado: bar."
+  limitations: Pode haver registros recebidos depois do corte; eles entram no corte seguinte.
+servers:
+  - {server: warehouse-local, type: duckdb, database: dbt/data/warehouse.duckdb, schema: bronze, environment: dev}
+schema:
+  - name: foo_registros
+    physicalName: bronze.foo_registros
+    physicalType: view
+    logicalType: object
+    dataGranularityDescription: Uma linha por registro, guardada uma vez, no lote em que foi extraída
+    properties:
+      - {name: id_registro, logicalType: string, physicalType: VARCHAR, required: true, classification: restricted}
+      - {name: id_pessoa, logicalType: string, physicalType: VARCHAR, required: true, classification: specific, tags: [dado-pessoal]}
+      - {name: cod_uf, logicalType: integer, physicalType: BIGINT, required: true, classification: restricted}
+      - {name: data_fato, logicalType: date, physicalType: DATE, required: true, classification: restricted}
+      - {name: data_recepcao, logicalType: timestamp, physicalType: TIMESTAMP, required: true, classification: restricted}
+      - {name: valor, logicalType: number, physicalType: DOUBLE, required: true, classification: restricted}
+      - {name: batch, logicalType: integer, physicalType: INTEGER, required: true, partitioned: true, partitionKeyPosition: 1, classification: restricted, description: Lote da extração incremental.}
+    quality:
+      - {id: linhas_presentes, type: library, metric: rowCount, mustBeGreaterThan: 0}
+slaProperties:
+  - {property: retention, value: 10, unit: y, description: Lotes e cortes são mantidos.}
+team:
+  name: Equipe de dados
+  members:
+    - {username: "papel:equipe-dados", role: owner}
+customProperties:
+  - {property: layer, value: bronze}
+  - {property: urn, value: br.gov.foo-bar.foo.bronze.foo-registros}
+  - {property: dbtSource, value: foo.foo_registros}
+  - {property: extraction, value: {source: foo_registros.parquet, receivedAtColumn: data_recepcao, sourceSystem: Sistema Foo}}
+  - property: classification
+    value: {sharing: restricted, nature: personal, secrecy: other}
+contractCreatedTs: "2026-11-14T00:00:00Z"

@@ -1,0 +1,9 @@
+scope: product
+unit: baz
+curator: curadoria
+technical_owner: equipe-bar
+required_reviewers: [equipe-bar]
+data_protection_officer: encarregado-lgpd
+paths:
+  - {pattern: /, roles: [equipe-bar]}
+  - {pattern: /1-specify/classification.yaml, roles: [encarregado-lgpd]}

@@ -1,0 +1,8 @@
+# Calendário de divulgação (ilustrativo). A data de corte define o que entra em cada edição.
+product: bar
+frequency: monthly
+cut_date_rule: Dia 10 do mês seguinte à competência
+release_rule: Dia 15 do mês seguinte à competência
+editions:
+  - {period: "2026-01", cut_date: "2026-02-10", release: "2026-02-15"}
+  - {period: "2026-02", cut_date: "2026-03-10", release: "2026-03-15"}

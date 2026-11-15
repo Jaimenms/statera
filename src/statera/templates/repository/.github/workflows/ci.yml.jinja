@@ -1,0 +1,30 @@
+# Integração contínua do repositório de dados: valida e testa a cada pull request.
+# A Statera vem de um repositório git (pyproject.toml). Se ele for privado, crie uma chave de
+# implantação (deploy key) com leitura nele e guarde a chave privada no segredo STATERA_SSH_KEY.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  STATERA_EXIGIR: pspp,r  # exige os casos de regra que usam código legado (SPSS e R)
+
+jobs:
+  validar:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with: {ssh-private-key: "${{ '${{' }} secrets.STATERA_SSH_KEY {{ '}}' }}"}
+      - uses: astral-sh/setup-uv@v6
+      - name: GNU PSPP e R (código legado chamado por modelos Python)
+        run: sudo apt-get update -q && sudo apt-get install -y -q pspp r-base-core
+      - run: make setup
+      - run: make validate
+      - run: make lint
+      - run: make test-all

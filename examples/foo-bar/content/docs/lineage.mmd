@@ -1,0 +1,56 @@
+%% ARQUIVO GERADO pela plataforma Statera. Não edite à mão: a próxima geração desfaz a mudança.
+%% Gerado por `statera docs`. Fontes: metadados do repositório (contratos, produtos, processos, regras, séries).
+%% Para mudar: edite as fontes e rode `statera docs`.
+flowchart LR
+  subgraph source["Sistemas de origem"]
+    n_sistema_sistema_foo["Sistema Foo"]
+  end
+  subgraph bronze["Bronze"]
+    n_source_statera_foo_bar_foo_foo_registros[("bronze.foo_registros<br/><small>restricted · personal</small>")]
+  end
+  subgraph ref["Referências (ref)"]
+    n_seed_statera_foo_bar_ref_uf[("ref_uf<br/><small>broad · aggregated</small>")]
+  end
+  subgraph silver["Silver"]
+    n_model_statera_foo_bar_int_bar__registros["int_bar__registros"]
+    n_model_statera_foo_bar_int_baz__registros["int_baz__registros"]
+    n_model_statera_foo_bar_stg_foo__registros["stg_foo__registros"]
+  end
+  subgraph gold["Gold"]
+    n_model_statera_foo_bar_bar_uf_mensal["bar_uf_mensal<br/><small>broad · aggregated</small>"]
+    n_model_statera_foo_bar_bar_variacao_uf_mensal["bar_variacao_uf_mensal<br/><small>broad · aggregated</small>"]
+    n_model_statera_foo_bar_baz_mediana_uf_mensal["baz_mediana_uf_mensal<br/><small>broad · aggregated</small>"]
+    n_model_statera_foo_bar_baz_uf_mensal["baz_uf_mensal<br/><small>broad · aggregated</small>"]
+  end
+  subgraph consumer["Consumidores"]
+    n_exposure_statera_foo_bar_bar_divulgacao_mensal["Bar — divulgação mensal (planilha, CSV, sumário e Data Package)"]
+    n_analysis_statera_foo_bar_serie_uf["consulta: serie_uf"]
+    n_analysis_statera_foo_bar_valor_medio_uf["consulta: valor_medio_uf"]
+  end
+  n_model_statera_foo_bar_bar_uf_mensal --> n_analysis_statera_foo_bar_serie_uf
+  n_model_statera_foo_bar_bar_uf_mensal --> n_exposure_statera_foo_bar_bar_divulgacao_mensal
+  n_model_statera_foo_bar_bar_uf_mensal --> n_model_statera_foo_bar_bar_variacao_uf_mensal
+  n_model_statera_foo_bar_bar_variacao_uf_mensal --> n_exposure_statera_foo_bar_bar_divulgacao_mensal
+  n_model_statera_foo_bar_baz_uf_mensal --> n_analysis_statera_foo_bar_valor_medio_uf
+  n_model_statera_foo_bar_int_bar__registros --> n_model_statera_foo_bar_bar_uf_mensal
+  n_model_statera_foo_bar_int_baz__registros --> n_model_statera_foo_bar_baz_mediana_uf_mensal
+  n_model_statera_foo_bar_int_baz__registros --> n_model_statera_foo_bar_baz_uf_mensal
+  n_model_statera_foo_bar_stg_foo__registros --> n_model_statera_foo_bar_int_bar__registros
+  n_model_statera_foo_bar_stg_foo__registros --> n_model_statera_foo_bar_int_baz__registros
+  n_seed_statera_foo_bar_ref_uf --> n_model_statera_foo_bar_bar_uf_mensal
+  n_seed_statera_foo_bar_ref_uf --> n_model_statera_foo_bar_baz_mediana_uf_mensal
+  n_seed_statera_foo_bar_ref_uf --> n_model_statera_foo_bar_baz_uf_mensal
+  n_sistema_sistema_foo --> n_source_statera_foo_bar_foo_foo_registros
+  n_source_statera_foo_bar_foo_foo_registros --> n_model_statera_foo_bar_stg_foo__registros
+  classDef source fill:#ECEFF4,stroke:#4C566A,color:#1F1F1F
+  class n_sistema_sistema_foo source
+  classDef bronze fill:#F6E3D3,stroke:#9C5B2E,color:#1F1F1F
+  class n_source_statera_foo_bar_foo_foo_registros bronze
+  classDef ref fill:#E1ECF7,stroke:#2F6497,color:#1F1F1F
+  class n_seed_statera_foo_bar_ref_uf ref
+  classDef silver fill:#EDEDED,stroke:#6B6B6B,color:#1F1F1F
+  class n_model_statera_foo_bar_int_bar__registros,n_model_statera_foo_bar_int_baz__registros,n_model_statera_foo_bar_stg_foo__registros silver
+  classDef gold fill:#FBF0C9,stroke:#9A7B0A,color:#1F1F1F
+  class n_model_statera_foo_bar_bar_variacao_uf_mensal,n_model_statera_foo_bar_baz_uf_mensal,n_model_statera_foo_bar_baz_mediana_uf_mensal,n_model_statera_foo_bar_bar_uf_mensal gold
+  classDef consumer fill:#EAE2F5,stroke:#5E3C99,color:#1F1F1F
+  class n_exposure_statera_foo_bar_bar_divulgacao_mensal,n_analysis_statera_foo_bar_serie_uf,n_analysis_statera_foo_bar_valor_medio_uf consumer

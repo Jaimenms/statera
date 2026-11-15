@@ -1,0 +1,40 @@
+# Descritor do produto de dados (ODPS v1.0). Portas de saída apontam para contratos ODCS do produto.
+{%- if alignment != 'consumer' %}
+# Produto INTERNO ({{ alignment }}): não é divulgado. Libera CORTES (manifestos imutáveis) aos
+# consumidores autorizados; ver a especificação 09 (produtos internos, cortes e referências no tempo).
+{%- endif %}
+apiVersion: v1.0.0
+kind: DataProduct
+id: {{ product }}
+name: {{ title }}
+version: 0.1.0
+status: draft
+domain: a-definir
+description:
+  purpose: A definir.
+  usage: A definir.
+  limitations: A definir.
+customProperties:
+  - {property: alignment, value: {{ alignment }}}
+  - {property: visibility, value: {{ 'public' if alignment == 'consumer' else 'internal' }}}
+{%- if alignment == 'consumer' %}
+  - {property: theme, value: {{ theme }}}
+  - {property: frequency, value: {{ frequency }}}
+  - {property: purpose, value: {{ purpose }}}
+  # Onde o público acessa o produto enquanto ele não tem série (7-disseminate/series.yaml): os arquivos
+  # publicados hoje, no vocabulário do DCAT. Exigido no nível 1. Ex.:
+  # [{title: "Boletim (planilha)", format: xlsx, url: "https://…", updated: anual, ports: [aba-uf]}]
+  - {property: distributions, value: []}
+{%- else %}
+  # Quem pode ler este produto e com que finalidade (LGPD, art. 6º, I). Exigido no nível 1.
+  # Ex.: [{product: novo-caged, purpose: "estatística mensal da movimentação celetista"}]
+  - {property: authorizedConsumers, value: []}
+{%- endif %}
+  - {property: urn, value: {{ namespace }}.{{ product }}}
+  # Nível-alvo de conformidade (especificação 07). 0 = rascunho: `statera validate` aceita o esqueleto e
+  # `statera conformance` mostra o que falta. Suba para 1 quando o produto estiver especificado.
+  - {property: conformanceLevel, value: 0}
+{%- if alignment == 'consumer' %}
+  - {property: legacyParity, value: not-declared}
+{%- endif %}
+outputPorts: []

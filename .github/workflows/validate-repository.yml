@@ -1,0 +1,66 @@
+# Fluxo REUTILIZÁVEL: valida um repositório de dados criado por `statera init` (pastas content/,
+# publications/, docs/). A Statera vem do content/pyproject.toml, na versão fixada pelo repositório.
+#
+#   jobs:
+#     statera:
+#       uses: Jaimenms/statera/.github/workflows/validate-repository.yml@v0.1.0
+#       secrets: {statera-ssh-key: "${{ secrets.STATERA_SSH_KEY }}"}
+#
+# O ci.yml que o `statera init` gera faz o mesmo com `make`; use este fluxo quando preferir que os
+# passos acompanhem a versão da plataforma.
+name: validate-repository
+
+on:
+  workflow_call:
+    inputs:
+      content:
+        description: Pasta do conteúdo (onde fica o statera.toml)
+        type: string
+        default: content
+      level:
+        description: Nível de conformidade exigido de todos os produtos (0 = o alvo declarado por cada um)
+        type: number
+        default: 0
+      demo:
+        description: Roda o processo completo com dados sintéticos e publica a documentação como artefato
+        type: boolean
+        default: false
+    secrets:
+      statera-ssh-key:
+        description: Chave de implantação com leitura no repositório da Statera (se ele for privado)
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  STATERA_EXIGIR: pspp,r  # no CI, os casos de regra com legado (PSPP, R) são exigidos
+
+jobs:
+  validate:
+    name: Arquivos gerados, validação e testes
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ${{ inputs.content }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        if: ${{ env.HAS_KEY == 'true' }}
+        env: {HAS_KEY: "${{ secrets.statera-ssh-key != '' }}"}
+        with: {ssh-private-key: "${{ secrets.statera-ssh-key }}"}
+      - uses: astral-sh/setup-uv@v6
+      - name: GNU PSPP e R (código legado chamado por modelos Python)
+        run: sudo apt-get update -q && sudo apt-get install -y -q pspp r-base-core
+      - run: uv sync --frozen
+      - name: Validação (inclui arquivos gerados em dia) e conformidade
+        run: uv run statera validate ${{ inputs.level > 0 && format('--level {0}', inputs.level) || '' }}
+      - name: Testes
+        run: uv run pytest -q
+      - name: Demonstração e documentação
+        if: ${{ inputs.demo }}
+        env: {STATERA_REGISTRO: "${{ runner.temp }}/registry"}
+        run: uv run statera demo
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.demo }}
+        with: {name: docs, path: "${{ inputs.content }}/docs/"}

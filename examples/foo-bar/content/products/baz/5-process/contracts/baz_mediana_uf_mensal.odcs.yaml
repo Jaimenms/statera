@@ -1,0 +1,40 @@
+# Contrato ODCS v3.1 — gold de baz, calculada pelo script R legado. DADOS SINTÉTICOS.
+apiVersion: v3.1.0
+kind: DataContract
+id: gold-baz-mediana-uf-mensal
+name: Baz — mediana do valor por UF e competência
+version: 0.1.0
+status: active
+domain: foo
+dataProduct: baz
+tags: [gold, baz, divulgacao, legado, r]
+description:
+  purpose: Mediana do valor dos registros por UF e competência (RN-BAZ-002), pelo script R legado.
+  usage: Tabela de divulgação mensal; sempre com a data de corte.
+  limitations: Calculada pelo script R legado, ainda não reescrito. DADOS SINTÉTICOS.
+servers:
+  - {server: warehouse-local, type: duckdb, database: dbt/data/warehouse.duckdb, schema: gold, environment: dev}
+schema:
+  - name: baz_mediana_uf_mensal
+    physicalName: gold.baz_mediana_uf_mensal
+    physicalType: table
+    logicalType: object
+    dataGranularityDescription: Uma linha por competência e UF com registros
+    properties:
+      - {name: competencia, logicalType: string, physicalType: VARCHAR, required: true, primaryKey: true, primaryKeyPosition: 1, classification: broad}
+      - {name: sigla_uf, logicalType: string, physicalType: VARCHAR, required: true, primaryKey: true, primaryKeyPosition: 2, classification: broad}
+      - {name: data_corte, logicalType: date, physicalType: DATE, required: true, classification: broad}
+      - {name: valor_mediano, logicalType: number, physicalType: DOUBLE, classification: broad}
+    quality:
+      - {id: linhas_presentes, type: library, metric: rowCount, mustBeGreaterThan: 0}
+team:
+  name: Equipe técnica de Bar
+  members:
+    - {username: "papel:equipe-bar", role: owner}
+customProperties:
+  - {property: layer, value: gold}
+  - {property: urn, value: br.gov.foo-bar.baz.gold.baz-mediana-uf-mensal}
+  - {property: dbtModel, value: baz_mediana_uf_mensal}
+  - property: classification
+    value: {sharing: broad, nature: aggregated, secrecy: none}
+contractCreatedTs: "2026-11-14T00:00:00Z"

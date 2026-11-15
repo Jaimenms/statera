@@ -1,0 +1,8 @@
+# Perfil local com DuckDB. O caminho do banco vem de statera.toml ([motor]) via STATERA_DUCKDB.
+statera_foo_bar:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('STATERA_DUCKDB', 'dbt/data/warehouse.duckdb') }}"
+      threads: 4

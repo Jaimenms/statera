@@ -1,0 +1,44 @@
+# CI da própria plataforma: lint e testes (sem nenhum órgão) e o exemplo foo-bar de ponta a ponta.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  STATERA_EXIGIR: pspp,r
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {python-version: "${{ matrix.python }}"}
+      - name: GNU PSPP e R (os testes com o legado real só rodam onde eles existem)
+        run: sudo apt-get update -q && sudo apt-get install -y -q pspp r-base-core
+      - run: uv sync
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run pytest -q
+
+  example:
+    name: Exemplo foo-bar de ponta a ponta
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: examples/foo-bar/content
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: sudo apt-get update -q && sudo apt-get install -y -q pspp r-base-core
+      - run: uv sync
+      - run: uv run statera validate
+      - run: uv run statera demo

@@ -1,0 +1,24 @@
+[project]
+name = "{{ name }}-content"
+version = "0.1.0"
+description = "Repositório de dados {{ organization }} no padrão Statera"
+requires-python = ">=3.11,<3.14"
+dependencies = ["statera"]
+
+[tool.uv]
+package = false  # repositório de dados: não é um pacote Python
+
+[tool.uv.sources]
+# A plataforma, na versão fixada. Atualizar a Statera = trocar a tag e rodar `make setup`.
+statera = { git = "{{ statera_git }}", tag = "v{{ statera_version }}" }
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "products"]
+markers = ["lento: testes que executam o processo completo (dbt)"]

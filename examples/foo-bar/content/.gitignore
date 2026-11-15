@@ -1,0 +1,22 @@
+# Dados nunca entram no git (só metadados e código): a pasta data/ de cada fase de cada unidade
+**/data/*
+!**/data/README.md
+
+# Ambiente e artefatos
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+# dbt: projeto na raiz (target/, logs/), pacotes em dbt/dbt_packages/
+/target/
+/logs/
+dbt/dbt_packages/
+.user.yml
+*.duckdb
+*.duckdb.wal
+.DS_Store
+
+packages.yml
+package-lock.yml

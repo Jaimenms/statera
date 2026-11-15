@@ -1,0 +1,17 @@
+# Consulta recorrente (schema: statera query.schema.json). O SQL é uma analysis do dbt.
+id: br.gov.foo-bar.query.serie-uf
+title: Série de registros e valor de uma UF
+description: Série mensal de registros e valor total de uma UF, da tabela de divulgação.
+theme: foo
+product: bar
+bases: [gold.bar_uf_mensal]
+frequency: on-demand
+purpose: on-request
+parameters:
+  - {name: uf, type: uf, required: true, description: Sigla da UF}
+rules: [RN-BAR-001]
+limitations: Números do último corte processado; competências recentes ainda mudam.
+output_classification: {sharing: broad, nature: aggregated, secrecy: none}
+owner: equipe-bar
+status: cataloged
+version: 0.1.0

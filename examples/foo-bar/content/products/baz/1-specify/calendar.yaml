@@ -1,0 +1,8 @@
+# Calendário de divulgação (ilustrativo): os mesmos cortes de bar.
+product: baz
+frequency: monthly
+cut_date_rule: Dia 10 do mês seguinte à competência
+release_rule: Dia 20 do mês seguinte à competência
+editions:
+  - {period: "2026-01", cut_date: "2026-02-10", release: "2026-02-20"}
+  - {period: "2026-02", cut_date: "2026-03-10", release: "2026-03-20"}
