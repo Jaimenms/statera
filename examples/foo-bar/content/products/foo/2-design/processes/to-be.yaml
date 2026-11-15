@@ -1,44 +1,44 @@
-# Processo em YAML, espelho do BPMN 2.0, e plano de execução: `statera run --product foo --cut-date AAAA-MM-DD`.
-id: Processo_Foo_ToBe
-name: Extração do Sistema Foo (TO-BE)
+# Process in YAML, mirror of the BPMN 2.0, and run plan: `statera run --product foo --cut-date YYYY-MM-DD`.
+id: Process_Foo_ToBe
+name: Foo System extraction (TO-BE)
 
 lanes:
-  - {id: Lane_Dados, name: Equipe de dados (statera run), role: equipe-dados}
+  - {id: Lane_Data, name: Data team (statera run), role: data-team}
 
 elements:
-  - {id: Start_Corte, type: startEvent, name: Data de corte pedida pelos consumidores, lane: Lane_Dados, event: timer}
-  - id: Task_Extrair
+  - {id: Start_Cut, type: startEvent, name: Cut-off date requested by consumers, lane: Lane_Data, event: timer}
+  - id: Task_Extract
     type: serviceTask
-    name: Extrair o incremento recebido desde a última carga
-    lane: Lane_Dados
+    name: Extract the increment received since the last load
+    lane: Lane_Data
     outputs: [Store_Bronze]
     statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:statera.collect.step'}
-  - id: Task_Validar
+  - id: Task_Validate
     type: serviceTask
-    name: Verificar o contrato do bronze no corte
-    lane: Lane_Dados
+    name: Check the bronze contract at the cut
+    lane: Lane_Data
     statera: {type: automatic, gsbpm: '4.4', durationMin: 1, implementation: 'py:statera.analyse.step'}
-  - {id: Gateway_Ok, type: exclusiveGateway, name: 'Carga OK?', lane: Lane_Dados}
-  - id: Task_MarcarCorte
+  - {id: Gateway_Ok, type: exclusiveGateway, name: 'Load OK?', lane: Lane_Data}
+  - id: Task_MarkCut
     type: serviceTask
-    name: Marcar o corte e avisar os consumidores
-    lane: Lane_Dados
+    name: Mark the cut and notify consumers
+    lane: Lane_Data
     statera: {type: automatic, gsbpm: '7.3', durationMin: 1, implementation: 'py:statera.disseminate.mark_cut'}
-  - id: Task_Investigar
+  - id: Task_Investigate
     type: userTask
-    name: Investigar a carga com o Sistema Foo
-    lane: Lane_Dados
+    name: Investigate the load with the Foo System
+    lane: Lane_Data
     statera: {type: manual, gsbpm: '4.3', durationMin: 60, exception: true}
-  - {id: End_Corte, type: endEvent, name: Corte disponível, lane: Lane_Dados}
+  - {id: End_Cut, type: endEvent, name: Cut available, lane: Lane_Data}
 
 data:
-  - {id: Store_Bronze, type: dataStoreReference, name: Bronze (lotes imutáveis), asset: bronze-foo-registros}
+  - {id: Store_Bronze, type: dataStoreReference, name: Bronze (immutable batches), asset: bronze-foo-records}
 
 flows:
-  - {id: Flow_1, from: Start_Corte, to: Task_Extrair}
-  - {id: Flow_2, from: Task_Extrair, to: Task_Validar}
-  - {id: Flow_3, from: Task_Validar, to: Gateway_Ok}
-  - {id: Flow_4, from: Gateway_Ok, to: Task_MarcarCorte, name: sim, condition: ok}
-  - {id: Flow_5, from: Gateway_Ok, to: Task_Investigar, name: não, condition: failed}
-  - {id: Flow_6, from: Task_Investigar, to: Task_Extrair}
-  - {id: Flow_7, from: Task_MarcarCorte, to: End_Corte}
+  - {id: Flow_1, from: Start_Cut, to: Task_Extract}
+  - {id: Flow_2, from: Task_Extract, to: Task_Validate}
+  - {id: Flow_3, from: Task_Validate, to: Gateway_Ok}
+  - {id: Flow_4, from: Gateway_Ok, to: Task_MarkCut, name: 'yes', condition: ok}
+  - {id: Flow_5, from: Gateway_Ok, to: Task_Investigate, name: 'no', condition: failed}
+  - {id: Flow_6, from: Task_Investigate, to: Task_Extract}
+  - {id: Flow_7, from: Task_MarkCut, to: End_Cut}

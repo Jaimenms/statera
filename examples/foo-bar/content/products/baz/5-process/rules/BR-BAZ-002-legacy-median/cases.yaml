@@ -1,0 +1,20 @@
+rule: BR-BAZ-002
+model: baz_uf_monthly_median
+variables: {cut_date: "2026-03-10"}
+requires: [r]
+cases:
+  - id: median_odd_and_even
+    description: Three SP records (10, 30, 20) give a median of 20; two RJ records (5, 8) give 6.5.
+    inputs:
+      int_baz__records:
+        - {period: "2026-01", uf_id: 35, value: 10.0}
+        - {period: "2026-01", uf_id: 35, value: 30.0}
+        - {period: "2026-01", uf_id: 35, value: 20.0}
+        - {period: "2026-01", uf_id: 33, value: 5.0}
+        - {period: "2026-01", uf_id: 33, value: 8.0}
+      ref_uf:
+        - {uf_id: 35, uf_abbr: SP}
+        - {uf_id: 33, uf_abbr: RJ}
+    expected:
+      - {period: "2026-01", uf_abbr: SP, median_value: 20.0}
+      - {period: "2026-01", uf_abbr: RJ, median_value: 6.5}

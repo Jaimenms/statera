@@ -1,4 +1,4 @@
-# Repositório de dados no padrão Statera. Lido pela plataforma `statera` (dependência no pyproject.toml).
+# Data repository following the Statera standard. Read by the `statera` framework (dependency in pyproject.toml).
 
 [project]
 name = "{{ name }}"
@@ -6,19 +6,21 @@ organization = "{{ organization }}"
 acronym = "{{ acronym }}"
 namespace = "{{ namespace }}"
 specification = "0.1"
-repository_root = ".."             # raiz do repositório (onde ficam .github/, publications/, docs/)
+required_version = "~={{ statera_version }}"  # Statera versions this repository accepts (see pyproject.toml)
+repository_root = ".."             # repository root (where .github/, publications/, docs/ live)
 synthetic = false
 
 [engine]
-type = "duckdb"                    # em produção: postgres, trino...
+type = "duckdb"                    # in production: postgres, trino...
 path = "dbt/data/warehouse.duckdb"
 
 [conventions]
-# Nomes das colunas de convenção nos SEUS dados (os nomes das colunas são do conteúdo, no seu idioma).
-period_column = "period"           # período de referência (ex.: competencia)
-cut_date_column = "cut_date"       # data de corte (ex.: data_corte)
-valid_from_column = "valid_from"   # referências com vigência (ex.: vigencia_inicio)
-valid_to_column = "valid_to"
+# Names of the convention columns in YOUR data (column names belong to the content). These are the
+# defaults; change them if your tables use other names (e.g. period_column = "reference_month").
+period_column = "period"           # reference period of an edition (e.g. 2026-06)
+cut_date_column = "cut_date"       # cut-off date of the extraction
+valid_from_column = "valid_from"   # start of validity, in reference tables with a validity period
+valid_to_column = "valid_to"       # end of validity (empty = currently valid)
 
 [dbt]
 folder = "dbt"
@@ -26,7 +28,7 @@ project = "{{ name | replace('-', '_') }}"
 profile = "{{ name | replace('-', '_') }}"
 
 [registry]
-editions = "../publications"       # registro das edições publicadas
+editions = "../publications"       # editions register
 
 [openlineage]
 namespace = "{{ namespace }}"

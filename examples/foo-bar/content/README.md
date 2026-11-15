@@ -1,48 +1,51 @@
-# statera-foo-bar — exemplo mínimo de repositório de conteúdo
+# statera-foo-bar — minimal content repository example
 
-> **Exemplo com DADOS SINTÉTICOS e nomes fictícios.** Serve para começar um repositório novo no
-> padrão statera. O exemplo completo é o [`statera-trabalho-content`](../statera-trabalho-content/README.md).
+> **Example with SYNTHETIC DATA and fictitious names.** Use it as a reference when starting a new
+> repository following the statera standard (`statera init`).
 
-O menor repositório que ainda passa por todo o ciclo: extração em lotes, corte, transformação,
-controles, controle de divulgação, publicação e registro de edições. Mostra também as três formas
-de calcular um produto: **SQL** (dbt), **Python** (pandas, modelo Python do dbt) e **código legado**
-(sintaxe SPSS pelo GNU PSPP e script R pelo Rscript, chamados de um modelo Python).
+The smallest repository that still goes through the whole cycle: batch extraction, cut, transformation,
+controls, statistical disclosure control, publication and editions register. It also shows the three ways
+to compute a product: **SQL** (dbt), **Python** (pandas, dbt Python model) and **legacy code**
+(SPSS syntax run by GNU PSPP and an R script run by Rscript, called from a Python model).
 
 ```
-Sistema Foo ──► foo (interno, fonte: lotes e cortes) ──corte──► bar (divulgação; SQL + pandas)   nível 3
-                                                     ref_uf ─┤
-                                                             └─► baz (divulgação; SPSS e R legados) nível 2
+Foo System ──► foo (internal, source: batches and cuts) ──cut──► bar (dissemination; SQL + pandas)   level 3
+                                                    ref_uf ─┤
+                                                            └─► baz (dissemination; legacy SPSS and R) level 2
 ```
 
-| Unidade | Para quê | Arquivos |
+| Unit | Purpose | Files |
 |---|---|---|
-| [products/foo/](products/foo/1-specify/product.odps.yaml) | Extrai o Sistema Foo em lotes imutáveis e libera **cortes** | descritor, classificação, responsáveis, processo, gerador sintético, contrato bronze, staging |
-| [products/bar/](products/bar/1-specify/product.odps.yaml) | Publica registros e valor por UF e mês (SQL) e a variação sobre o mês anterior ([modelo Python](products/bar/5-process/models/marts/bar/bar_variacao_uf_mensal.py), pandas) | descritor, classificação, responsáveis, calendário, processo, 2 contratos gold, 3 modelos, 2 regras com casos, 1 controle, série, sumário, 1 consulta |
-| [products/baz/](products/baz/1-specify/product.odps.yaml) | Valor médio por UF, pelo [script SPSS legado](products/baz/5-process/models/marts/baz/baz_uf_mensal.sps) que o [modelo Python](products/baz/5-process/models/marts/baz/baz_uf_mensal.py) executa no GNU PSPP; e mediana por UF, pelo [script R legado](products/baz/5-process/models/marts/baz/baz_mediana_uf_mensal.R) que o [modelo Python](products/baz/5-process/models/marts/baz/baz_mediana_uf_mensal.py) executa no Rscript | nível 2: ainda sem processo to-be; **exige o PSPP e o R** (`apt install pspp r-base-core`), por isso fica fora da demonstração |
-| [references/uf/](references/uf/ref_uf.odcs.yaml) | UFs (IBGE) | CSV e contrato |
-| [governance/](governance/roles.yaml) | Papéis e responsáveis transversais | 2 arquivos |
-| `statera.toml` | Nome, espaço de nomes `br.gov.foo-bar`, motor, registro, demonstração | 1 arquivo |
+| [products/foo/](products/foo/1-specify/product.odps.yaml) | Extracts the Foo System in immutable batches and releases **cuts** | descriptor, classification, owners, process, synthetic generator, bronze contract, staging |
+| [products/bar/](products/bar/1-specify/product.odps.yaml) | Publishes records and value by UF and month (SQL) and the change over the previous month ([Python model](products/bar/5-process/models/marts/bar/bar_uf_monthly_change.py), pandas) | descriptor, classification, owners, calendar, process, 2 gold contracts, 3 models, 2 rules with cases, 1 control, series, summary, 1 query |
+| [products/baz/](products/baz/1-specify/product.odps.yaml) | Mean value by UF, from the [legacy SPSS script](products/baz/5-process/models/marts/baz/baz_uf_monthly.sps) that the [Python model](products/baz/5-process/models/marts/baz/baz_uf_monthly.py) runs in GNU PSPP; and median by UF, from the [legacy R script](products/baz/5-process/models/marts/baz/baz_uf_monthly_median.R) that the [Python model](products/baz/5-process/models/marts/baz/baz_uf_monthly_median.py) runs in Rscript | level 2: no to-be process yet; **requires PSPP and R** (`apt install pspp r-base-core`), so it is left out of the demo |
+| [references/uf/](references/uf/ref_uf.odcs.yaml) | UFs (IBGE) | CSV and contract |
+| [governance/](governance/roles.yaml) | Roles and shared owners | 2 files |
+| `statera.toml` | Name, namespace `org.example.foo-bar`, engine, register, demo | 1 file |
 
-Gerados (não editar à mão): `dbt_project.yml`, `dbt/generated/`, os `.bpmn`,
-`.github/CODEOWNERS` e `docs/`.
+Generated (do not edit by hand): `dbt_project.yml`, `dbt/generated/`, the `.bpmn` files,
+`.github/CODEOWNERS` and `docs/`.
 
-## Rodar
+## Run
+
+From any folder of `examples/foo-bar/` (with `statera` installed globally, or prefixing `uv run`):
 
 ```bash
-uv sync
-uv run statera demo            # dados sintéticos, 2 edições de bar (cada uma libera antes o corte de foo)
-uv run statera conformance    # nível de cada produto e o que falta para o próximo
-uv run statera rules test   # casos das regras em modelos Python (os do baz exigem o PSPP e o R)
-uv run statera docs --interactive   # catálogo navegável em target/static_index.html
+statera doctor                 # environment, pinned version, legacy tools
+statera check                  # validation, lint and tests (what CI runs)
+statera demo                   # synthetic data, 2 editions of bar (each first releases the foo cut it needs)
+statera conformance            # level of each product and what is missing for the next one
+statera rules test             # rule cases in Python models (the baz ones require PSPP and R)
+statera docs --interactive     # browsable catalog at content/target/static_index.html
 ```
 
-As edições ficam registradas em `../publications`.
+Editions are registered in `../publications`.
 
-## Começar o seu a partir deste
+## Start your own from this one
 
-1. Copie a pasta e troque o `[projeto]` do `statera.toml` (nome, sigla, espaço de nomes).
-2. Troque `foo` pelo seu sistema de origem. O contrato bronze diz de onde extrair
-   (`customProperties.extracao`), e a coluna de recepção define o corte.
-3. Troque `bar` pelo seu produto de divulgação. Para criar outro produto, use
-   `uv run statera new-product <nome>`: ele nasce no nível 1.
-4. Rode `uv run statera sync && uv run statera validate`.
+1. Copy the folder and change the `[project]` table in `statera.toml` (name, acronym, namespace).
+2. Replace `foo` with your source system. The bronze contract says where to extract from
+   (`customProperties.extraction`), and the reception column defines the cut.
+3. Replace `bar` with your dissemination product. To create another product, use
+   `uv run statera new-product <name>`: it starts at level 1.
+4. Run `uv run statera sync && uv run statera validate`.

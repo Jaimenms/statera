@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:controls:0.1",
-  "title": "Controles declarativos da edição (GSBPM 6.2)",
+  "title": "Declarative controls of an edition (GSBPM 6.2)",
   "type": "object",
   "required": [
     "controls"

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:metrics:0.1",
-  "title": "Métricas oficiais de um produto (inspirado na camada semântica do dbt/MetricFlow)",
+  "title": "Official metrics of a product (inspired by the dbt/MetricFlow semantic layer)",
   "type": "object",
   "required": [
     "metrics"
@@ -94,7 +94,7 @@
           },
           "expression": {
             "type": "string",
-            "description": "Coluna ou expressão SQL sobre colunas da fonte, agregada por `agregacao`."
+            "description": "Column or SQL expression over source columns, aggregated by `aggregation`."
           }
         },
         "allOf": [

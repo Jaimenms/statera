@@ -1,0 +1,42 @@
+# ODCS v3.1 contract — bar gold computed by a Python model (pandas). SYNTHETIC DATA.
+apiVersion: v3.1.0
+kind: DataContract
+id: gold-bar-uf-monthly-change
+name: Bar — month-over-month change in records by UF
+version: 1.0.0
+status: active
+domain: foo
+dataProduct: bar
+tags: [gold, bar, dissemination, python]
+description:
+  purpose: Percentage change in records of each UF relative to the previous reference month (BR-BAR-002).
+  usage: Monthly release table; computed in pandas (dbt Python model).
+  limitations: Empty in the first reference month of each UF. SYNTHETIC DATA.
+servers:
+  - {server: warehouse-local, type: duckdb, database: dbt/data/warehouse.duckdb, schema: gold, environment: dev}
+schema:
+  - name: bar_uf_monthly_change
+    physicalName: gold.bar_uf_monthly_change
+    physicalType: table
+    logicalType: object
+    dataGranularityDescription: One row per reference month and UF with records
+    properties:
+      - {name: period, logicalType: string, physicalType: VARCHAR, required: true, primaryKey: true, primaryKeyPosition: 1, classification: broad}
+      - {name: uf_abbr, logicalType: string, physicalType: VARCHAR, required: true, primaryKey: true, primaryKeyPosition: 2, classification: broad}
+      - {name: cut_date, logicalType: date, physicalType: DATE, required: true, classification: broad}
+      - {name: records, logicalType: integer, physicalType: BIGINT, required: true, classification: broad}
+      - {name: previous_month_records, logicalType: number, physicalType: DOUBLE, classification: broad}
+      - {name: change_pct, logicalType: number, physicalType: DOUBLE, classification: broad}
+    quality:
+      - {id: rows_present, type: library, metric: rowCount, mustBeGreaterThan: 0}
+team:
+  name: Bar technical team
+  members:
+    - {username: "role:bar-team", role: owner}
+customProperties:
+  - {property: layer, value: gold}
+  - {property: urn, value: org.example.foo-bar.bar.gold.bar-uf-monthly-change}
+  - {property: dbtModel, value: bar_uf_monthly_change}
+  - property: classification
+    value: {sharing: broad, nature: aggregated, secrecy: none}
+contractCreatedTs: "2026-11-14T00:00:00Z"

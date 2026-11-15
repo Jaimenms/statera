@@ -1,15 +1,15 @@
-# Dados nunca entram no git (só metadados e código): a pasta data/ de cada fase de cada unidade
+# Data never goes into git (only metadata and code): the data/ folder of each phase of each unit
 **/data/*
 !**/data/README.md
 
-# Ambiente e artefatos
+# Environment and artifacts
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
 .hypothesis/
-# dbt: projeto na raiz (target/, logs/), pacotes em dbt/dbt_packages/
+# dbt: project at the root (target/, logs/), packages in dbt/dbt_packages/
 /target/
 /logs/
 dbt/dbt_packages/

@@ -1,7 +1,7 @@
 [project]
 name = "statera"
-version = "0.1.0"
-description = "Plataforma do padrão statera: validação, execução dirigida pelo processo, documentação, linhagem, registro de edições e biblioteca de consulta para produtos estatísticos de governo"
+version = "0.2.0"
+description = "Framework for the statera standard: validation, process-driven execution, documentation, lineage, editions register and query library for statistical products"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
@@ -14,6 +14,7 @@ dependencies = [
     "numpy>=2.0",
     "openpyxl>=3.1",
     "pyyaml>=6.0",
+    "packaging>=24.0",
     "jsonschema>=4.23",
     "jinja2>=3.1",
     "copier>=9.4",
@@ -43,7 +44,7 @@ src = ["src"]
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E501"]  # processos e casos de teste em YAML embutido
+"tests/*" = ["E501"]  # processes and test cases in embedded YAML
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

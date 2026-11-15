@@ -1,74 +1,74 @@
-"""Fase 5 — Processar. Tarefa do processo: `implementacao: dbt:build` (com a lista de `modelos`).
+"""Phase 5 — Process. Process task: `implementation: dbt:build` (with the list of `models`).
 
-`modelos` são seletores do dbt usados como estão:
-  - `+modelo` constrói o modelo e tudo o que vem antes (o produto agregado constrói os staging das
-    fontes e as referências);
-  - `modelo` constrói só o modelo: um produto consumidor NÃO reconstrói o produto interno de que
-    depende, lê o corte já liberado. O executor acrescenta só as referências (seeds) necessárias.
-As variáveis da edição vão ao dbt: data de corte, competência e os lotes do corte de cada fonte.
-Falhas de teste NÃO barram aqui: são resultados de controle, avaliados na tarefa seguinte (GSBPM
-6.2), que decide o caminho no gateway.
+`models` are dbt selectors used as they are:
+  - `+model` builds the model and everything upstream (the aggregate product builds the staging
+    models of the sources and the reference tables);
+  - `model` builds only the model: a consumer-aligned product does NOT rebuild the internal product it
+    depends on, it reads the already released cut. The executor adds only the needed reference tables (seeds).
+The edition variables go to dbt: cut-off date, reference month and the batches of each source's cut.
+Test failures do NOT block here: they are control results, evaluated in the next task (GSBPM
+6.2), which decides the path at the gateway.
 """
 
 from __future__ import annotations
 
-from statera import contratos, openlineage
-from statera.edicao import Edicao
-from statera.process import dbt, regras
+from statera import contracts, openlineage
+from statera.edition import Edition
+from statera.process import dbt, rules
 
 
-def _eventos_por_modelo(ed: Edicao, manifesto: dict, resultados: list[dict]) -> None:
-    """Eventos OpenLineage (START/COMPLETE) por modelo dbt executado, a partir do manifest."""
-    nos = {**manifesto["nodes"], **manifesto["sources"]}
+def _events_by_model(ed: Edition, manifest: dict, results: list[dict]) -> None:
+    """OpenLineage events (START/COMPLETE) per dbt model run, from the manifest."""
+    nodes = {**manifest["nodes"], **manifest["sources"]}
 
-    def nome(uid: str) -> str:
-        no = nos[uid]
-        return f"{no['schema']}.{no.get('alias') or no.get('identifier') or no['name']}"
+    def name(uid: str) -> str:
+        node = nodes[uid]
+        return f"{node['schema']}.{node.get('alias') or node.get('identifier') or node['name']}"
 
-    for r in resultados:
+    for r in results:
         uid = r["unique_id"]
         if not uid.startswith("model.") or r["status"] != "success":
             continue
-        no = manifesto["nodes"][uid]
-        entradas = [openlineage.dataset(nome(d)) for d in no["depends_on"]["nodes"] if d in nos]
-        run_id = openlineage.novo_run_id()
-        for tipo in ("START", "COMPLETE"):
-            ev = openlineage.evento(
-                tipo, f"dbt.{no['name']}", run_id, entradas, [openlineage.dataset(nome(uid))], ed.faceta, ed.pai
+        node = manifest["nodes"][uid]
+        inputs = [openlineage.dataset(name(d)) for d in node["depends_on"]["nodes"] if d in nodes]
+        run_id = openlineage.new_run_id()
+        for kind in ("START", "COMPLETE"):
+            ev = openlineage.event(
+                kind, f"dbt.{node['name']}", run_id, inputs, [openlineage.dataset(name(uid))], ed.facet, ed.parent
             )
-            openlineage.emitir(ev, ed.arquivo_eventos)
+            openlineage.emit(ev, ed.events_file)
 
 
-def etapa_dbt(ed: Edicao, modelos: list[str]) -> str:
-    projeto = ed.projeto
-    pendentes = dbt.desatualizados(projeto)
-    if pendentes or not regras.esta_sincronizado(projeto):
-        ed.falhas.append("Arquivos gerados do dbt desatualizados: rode `statera dbt generate` e `statera rules sync`")
+def dbt_step(ed: Edition, models: list[str]) -> str:
+    project = ed.project
+    pending_items = dbt.outdated(project)
+    if pending_items or not rules.is_synced(project):
+        ed.failures.append("Generated dbt files are outdated: run `statera dbt generate` and `statera rules sync`")
         return "failed"
-    dbt.garantir_pacotes(projeto)
-    from statera.collect import lotes_dos_cortes
+    dbt.ensure_packages(project)
+    from statera.collect import cut_batches
 
-    seletor = []
-    if modelos:
-        sementes = [f"+{m},resource_type:seed" for m in modelos if not m.startswith("+")]
-        seletor = ["--select", *modelos, *sementes]
-    variaveis = {"cut_date": ed.data_corte, "period": ed.competencia, "batches": lotes_dos_cortes(ed.cortes)}
-    processo = dbt.executar(["build", *seletor], variaveis)
-    resultados = dbt.resultados(projeto)
-    if processo.returncode != 0 and not resultados:
-        ed.falhas.append(f"dbt build não executou:\n{processo.stdout[-2000:]}")
+    selector = []
+    if models:
+        seeds = [f"+{m},resource_type:seed" for m in models if not m.startswith("+")]
+        selector = ["--select", *models, *seeds]
+    variables = {"cut_date": ed.cut_date, "period": ed.period, "batches": cut_batches(ed.cuts)}
+    process = dbt.run(["build", *selector], variables)
+    results = dbt.results(project)
+    if process.returncode != 0 and not results:
+        ed.failures.append(f"dbt build did not run:\n{process.stdout[-2000:]}")
         return "failed"
-    total, com_falha = dbt.contagem_testes(resultados)
-    ed.resultados_dbt = {
+    total, failing = dbt.test_count(results)
+    ed.dbt_results = {
         "tests": total,
-        "testes_com_falha": com_falha,
-        "falhas": dbt.falhas(resultados),
-        "nos": [r["unique_id"] for r in resultados],
+        "failed_tests": failing,
+        "failures": dbt.failures(results),
+        "nodes": [r["unique_id"] for r in results],
     }
-    manifesto = dbt.manifesto(gerar=False, projeto=projeto)
-    _eventos_por_modelo(ed, manifesto, resultados)
-    saidas = [c for caminho, c in contratos.todos(projeto).values() if projeto.unidade_de(caminho) == ed.unidade]
-    ed.ctx["outputs"] = [openlineage.dataset(contratos.tabela_fisica(c)) for c in saidas]
-    resumo = processo.stdout.strip().splitlines()[-1].split("Done. ")[-1] if processo.stdout.strip() else ""
-    ed.log(f"  dbt build: {resumo}")
+    manifest = dbt.manifest(generate=False, project=project)
+    _events_by_model(ed, manifest, results)
+    outputs = [c for path, c in contracts.all_(project).values() if project.unit_of(path) == ed.unit]
+    ed.ctx["outputs"] = [openlineage.dataset(contracts.physical_table(c)) for c in outputs]
+    summary = process.stdout.strip().splitlines()[-1].split("Done. ")[-1] if process.stdout.strip() else ""
+    ed.log(f"  dbt build: {summary}")
     return "ok"

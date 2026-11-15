@@ -1,11 +1,11 @@
-# Controles da edição (GSBPM 6.2). Tipo da plataforma; o produto escolhe tabela, colunas e limites.
+# Edition controls (GSBPM 6.2). Framework type; the product chooses table, columns and thresholds.
 controls:
   - id: CK-01
-    name: Revisão de competências já divulgadas
+    name: Revision of already released reference months
     type: revision-between-editions
-    port: por-uf
-    key: [competencia, sigla_uf]
-    measures: [registros]
-    relative_base: registros
+    port: by-uf
+    key: [period, uf_abbr]
+    measures: [records]
+    relative_base: records
     warning_threshold: 0.10
     error_threshold: 0.60

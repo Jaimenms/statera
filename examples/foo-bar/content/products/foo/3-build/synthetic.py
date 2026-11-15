@@ -1,7 +1,7 @@
-"""Gerador de dados SINTÉTICOS do Sistema Foo (gancho [demo] sintetico do statera.toml).
+"""SYNTHETIC data generator for the Foo System (the [demo] synthetic hook in statera.toml).
 
-Escreve a "origem" que a extração lê: um Parquet com um registro por solicitação, com a data do fato
-e a data de recepção (alguns chegam com atraso, para que a mesma competência mude entre cortes).
+Writes the "source" that the extraction reads: a Parquet file with one record per request, with the event date
+and the reception date (some arrive late, so that the same reference month changes between cuts).
 """
 
 from __future__ import annotations
@@ -12,30 +12,30 @@ from datetime import date, datetime, timedelta
 
 import pandas as pd
 
-SEMENTE = 20261114
-UFS_COM_PESO = {"SP": 8, "MG": 4, "RJ": 3, "BA": 2, "RS": 2, "PE": 1, "DF": 1}
+SEED = 20261114
+WEIGHTED_UFS = {"SP": 8, "MG": 4, "RJ": 3, "BA": 2, "RS": 2, "PE": 1, "DF": 1}
 
 
-def gerar(projeto, falha: str | None = None, referencias: bool = False) -> dict[str, int]:
-    rng = random.Random(SEMENTE)
-    ufs = {u["sigla_uf"]: int(u["cod_uf"]) for u in csv.DictReader((projeto.raiz / "references/uf/ref_uf.csv").open())}
-    siglas, pesos = list(UFS_COM_PESO), list(UFS_COM_PESO.values())
-    linhas = []
+def generate(project, failure: str | None = None, references: bool = False) -> dict[str, int]:
+    rng = random.Random(SEED)
+    ufs = {u["uf_abbr"]: int(u["uf_id"]) for u in csv.DictReader((project.root / "references/uf/ref_uf.csv").open())}
+    uf_codes, weights = list(WEIGHTED_UFS), list(WEIGHTED_UFS.values())
+    lines = []
     for i in range(1, 1201):
-        fato = date(2026, 1, 1) + timedelta(days=rng.randrange(0, 59))  # janeiro e fevereiro
-        atraso = rng.choice([1, 2, 3, 5, 8, 15, 40])  # alguns chegam depois do corte
-        sigla = rng.choices(siglas, pesos)[0]
-        linhas.append(
+        fact = date(2026, 1, 1) + timedelta(days=rng.randrange(0, 59))  # January and February
+        delay = rng.choice([1, 2, 3, 5, 8, 15, 40])  # some arrive after the cut
+        acronym = rng.choices(uf_codes, weights)[0]
+        lines.append(
             {
-                "id_registro": f"R{i:05d}",
-                "id_pessoa": f"P{rng.randrange(1, 900):04d}",
-                "cod_uf": ufs[sigla],
-                "data_fato": fato,
-                "data_recepcao": datetime.combine(fato + timedelta(days=atraso), datetime.min.time()),
-                "valor": round(rng.uniform(50, 500), 2),
+                "record_id": f"R{i:05d}",
+                "person_id": f"P{rng.randrange(1, 900):04d}",
+                "uf_id": ufs[acronym],
+                "event_date": fact,
+                "received_at": datetime.combine(fact + timedelta(days=delay), datetime.min.time()),
+                "value": round(rng.uniform(50, 500), 2),
             }
         )
-    destino = projeto.produto("foo").dados(4) / "source"
-    destino.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(linhas).to_parquet(destino / "foo_registros.parquet", index=False)
-    return {"foo_registros": len(linhas)}
+    destination = project.product("foo").data(4) / "source"
+    destination.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(lines).to_parquet(destination / "foo_records.parquet", index=False)
+    return {"foo_records": len(lines)}

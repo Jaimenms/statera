@@ -1,29 +1,29 @@
 {
   "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
   "name": "bar-2026-01",
-  "title": "Bar — registros e valor por UF — janeiro de 2026 (DADOS SINTÉTICOS)",
-  "description": "Número de registros e valor total e médio por UF e competência.",
+  "title": "Bar — records and value by UF — January 2026 (SYNTHETIC DATA)",
+  "description": "Number of records and total and mean value by UF and reference month.",
   "version": "1.0.0",
-  "created": "2026-11-15T01:31:12+00:00",
+  "created": "2026-11-15T09:08:08+00:00",
   "keywords": [
-    "mensal",
-    "divulgacao-oficial"
+    "monthly",
+    "official-release"
   ],
   "licenses": [
     {
       "name": "CC-BY-4.0",
       "path": "https://creativecommons.org/licenses/by/4.0/",
-      "title": "Creative Commons Attribution 4.0 (ilustrativo)"
+      "title": "Creative Commons Attribution 4.0 (illustrative)"
     }
   ],
   "sources": [
     {
-      "title": "Sistema Foo — corte de 2026-02-10"
+      "title": "Foo System — cut of 2026-02-10"
     }
   ],
   "contributors": [
     {
-      "title": "Curadoria do repositório (papel)",
+      "title": "Repository curation (role)",
       "roles": [
         "publisher"
       ]
@@ -31,43 +31,43 @@
   ],
   "resources": [
     {
-      "name": "por-uf",
-      "title": "Registros e valor por UF e competência",
-      "description": "Registros e valor por UF e competência do fato (RN-BAR-001).",
-      "path": "por-uf.csv",
+      "name": "by-uf",
+      "title": "Records and value by UF and reference month",
+      "description": "Records and value by UF and event reference month (BR-BAR-001).",
+      "path": "by-uf.csv",
       "format": "csv",
       "mediatype": "text/csv",
       "encoding": "utf-8",
-      "bytes": 452,
-      "hash": "sha256:36e3d100ae403ac008acbad1a5407e3540f4736a6971b937dcf59c0c4b85c08e",
+      "bytes": 441,
+      "hash": "sha256:8f353fc9ddc16ebf431200c125cce35b08776607d6d5736db3c3b7f390b0654b",
       "schema": {
         "fields": [
           {
-            "name": "competencia",
+            "name": "period",
             "type": "string"
           },
           {
-            "name": "sigla_uf",
+            "name": "uf_abbr",
             "type": "string"
           },
           {
-            "name": "nome_uf",
+            "name": "uf_name",
             "type": "string"
           },
           {
-            "name": "data_corte",
+            "name": "cut_date",
             "type": "date"
           },
           {
-            "name": "registros",
+            "name": "records",
             "type": "integer"
           },
           {
-            "name": "valor_total",
+            "name": "total_value",
             "type": "number"
           },
           {
-            "name": "valor_medio",
+            "name": "mean_value",
             "type": "number"
           }
         ],
@@ -76,47 +76,47 @@
         ]
       },
       "x-statera": {
-        "contract": "gold-bar-uf-mensal",
-        "urn": "br.gov.foo-bar.bar.gold.bar-uf-mensal",
+        "contract": "gold-bar-uf-monthly",
+        "urn": "org.example.foo-bar.bar.gold.bar-uf-monthly",
         "contractVersion": "1.0.0",
         "classification": "broad · aggregated · none",
         "suppressedCells": 0
       }
     },
     {
-      "name": "variacao-uf",
-      "title": "Variação de registros por UF sobre o mês anterior (modelo Python)",
-      "description": "Variação percentual de registros de cada UF em relação à competência anterior (RN-BAR-002).",
-      "path": "variacao-uf.csv",
+      "name": "change-by-uf",
+      "title": "Month-over-month change in records by UF (Python model)",
+      "description": "Percentage change in records of each UF relative to the previous reference month (BR-BAR-002).",
+      "path": "change-by-uf.csv",
       "format": "csv",
       "mediatype": "text/csv",
       "encoding": "utf-8",
-      "bytes": 269,
-      "hash": "sha256:1a8787c0ea8509c8fb72637ae69861a60d52bea3e28e5eba9ce03ea6f7ee289a",
+      "bytes": 257,
+      "hash": "sha256:bddb00d8442d374bf5236af327e0e52fbffe70222715ebf465cffd6b0f14abbb",
       "schema": {
         "fields": [
           {
-            "name": "competencia",
+            "name": "period",
             "type": "string"
           },
           {
-            "name": "sigla_uf",
+            "name": "uf_abbr",
             "type": "string"
           },
           {
-            "name": "data_corte",
+            "name": "cut_date",
             "type": "date"
           },
           {
-            "name": "registros",
+            "name": "records",
             "type": "integer"
           },
           {
-            "name": "registros_mes_anterior",
+            "name": "previous_month_records",
             "type": "number"
           },
           {
-            "name": "variacao_pct",
+            "name": "change_pct",
             "type": "number"
           }
         ],
@@ -125,8 +125,8 @@
         ]
       },
       "x-statera": {
-        "contract": "gold-bar-variacao-uf-mensal",
-        "urn": "br.gov.foo-bar.bar.gold.bar-variacao-uf-mensal",
+        "contract": "gold-bar-uf-monthly-change",
+        "urn": "org.example.foo-bar.bar.gold.bar-uf-monthly-change",
         "contractVersion": "1.0.0",
         "classification": "broad · aggregated · none",
         "suppressedCells": 0
@@ -137,51 +137,51 @@
       "path": "bar-2026-01.xlsx",
       "format": "xlsx",
       "mediatype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "bytes": 7514,
-      "hash": "sha256:3b7bf769182aa9f59fad20b5ccf6376ac3d0ee9a2e2e93b2d4ddab5a3e7d6add"
+      "bytes": 7451,
+      "hash": "sha256:f8c1635e577458b7db77fa67bb5be0c20dd779b4293682be54a7ad21d8336a36"
     },
     {
       "name": "summary",
       "path": "summary.md",
       "format": "md",
       "mediatype": "text/markdown",
-      "bytes": 506,
-      "hash": "sha256:1500bafec46d1ffde30058e3bea3d52f52129b7b5738cb9133f88f143ccd3446"
+      "bytes": 514,
+      "hash": "sha256:cf969053c3237b964ef3a058fdb4e0525995b355d93a5dc7dd6972c4ef140bc8"
     }
   ],
   "x-statera": {
     "product": "bar",
-    "urn": "br.gov.foo-bar.bar",
+    "urn": "org.example.foo-bar.bar",
     "period": "2026-01",
     "cutDate": "2026-02-10",
-    "codeVersion": "sem-git",
-    "run": "550b78e8-7e67-4ccb-a1ea-90949cd37f35",
+    "codeVersion": "429df7c",
+    "run": "4b65678f-3f53-4b84-9dd5-744ea3456197",
     "extractions": [
       {
-        "source": "foo_registros",
-        "sourceSystem": "Sistema Foo",
+        "source": "foo_records",
+        "sourceSystem": "Foo System",
         "cutDate": "2026-02-10",
         "batch": 1,
         "rows": 628,
-        "sha256": "c68558c2b6cfed1d629f31638b9a8a07ae22f87d885436e6584f19033a32037b"
+        "sha256": "df71f18595d2724c161096e7d1469c1b5e4ed3a471cb787db5f284ed40b3b7a3"
       }
     ],
     "cuts": {
       "foo": {
         "cutDate": "2026-02-10",
-        "run": "e344a2a3-8516-4cf5-9810-6076ed992501",
-        "urn": "br.gov.foo-bar.foo"
+        "run": "8d183e7d-9f51-4f99-9d6e-65ba77a43517",
+        "urn": "org.example.foo-bar.foo"
       }
     },
     "references": [
       {
         "reference": "ref_uf",
         "contract": "ref-uf",
-        "urn": "br.gov.foo-bar.uf.ref.ref-uf",
+        "urn": "org.example.foo-bar.uf.ref.ref-uf",
         "version": "1.0.0",
         "temporality": "stable",
         "authority": "IBGE",
-        "sha256": "d06d4fb32c2779e6c23646f89417752743c7d94dc8fb322914fae3aed0c6352a",
+        "sha256": "d41282db8fd6c661740d7f23173f30d57011bd5f14d4612142001bfe66b72867",
         "via": null
       }
     ],

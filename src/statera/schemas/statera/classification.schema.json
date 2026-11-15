@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:classification:0.1",
-  "title": "Aprovação da classificação dos ativos de uma unidade (Decreto nº 10.046/2019, LGPD, LAI)",
-  "description": "Mantida pelo encarregado de dados. Cada ativo repete a classificação do contrato ODCS; o CI exige que coincidam.",
+  "title": "Approval of the classification of a unit's assets (sharing, nature, confidentiality and disclosure control)",
+  "description": "Maintained by the data protection officer. Each asset repeats the classification in its ODCS contract; CI requires them to match.",
   "type": "object",
   "required": [
     "unit",
@@ -46,7 +46,7 @@
               "restricted",
               "specific"
             ],
-            "description": "Nível de compartilhamento (Decreto nº 10.046/2019)."
+            "description": "Sharing level (in Brazil, the levels of Decree No. 10,046/2019)."
           },
           "nature": {
             "enum": [
@@ -55,7 +55,7 @@
               "personal",
               "sensitive-personal"
             ],
-            "description": "Natureza do dado (LGPD)."
+            "description": "Nature of the data under data protection law (e.g. LGPD in Brazil, GDPR in the EU)."
           },
           "secrecy": {
             "enum": [
@@ -64,14 +64,14 @@
               "tax",
               "other"
             ],
-            "description": "Sigilo (legislação específica; LAI)."
+            "description": "Confidentiality under specific legislation (e.g. statistical or tax secrecy; LAI in Brazil)."
           },
           "disclosure_control": {
             "enum": [
               "cell-suppression",
               "k-anonymity"
             ],
-            "description": "Método de controle de divulgação (GSBPM 6.4)."
+            "description": "Statistical disclosure control method (GSBPM 6.4)."
           },
           "legal_basis": {
             "type": "string",

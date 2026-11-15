@@ -1,57 +1,58 @@
-# Produto de DIVULGAÇÃO calculado por código LEGADO: um script SPSS (executado pelo GNU PSPP) e um
-# script R (executado pelo Rscript), ambos chamados de modelos Python do dbt. Nível 2 (reprodutível): o script roda pelo repositório, sobre o corte de foo,
-# mas ainda não foi reescrito nem tem processo to-be. EXEMPLO ILUSTRATIVO, DADOS SINTÉTICOS.
+# DISSEMINATION product computed by LEGACY code: an SPSS script (run by GNU PSPP) and an
+# R script (run by Rscript), both called from dbt Python models. Level 2 (reproducible): the script runs
+# from the repository, on the foo cut, but has not been rewritten yet and has no to-be process.
+# ILLUSTRATIVE EXAMPLE, SYNTHETIC DATA.
 apiVersion: v1.0.0
 kind: DataProduct
 id: baz
-name: Baz — valor médio e mediana por UF (scripts SPSS e R legados)
+name: Baz — mean value and median by UF (legacy SPSS and R scripts)
 version: 0.1.0
 status: active
 domain: foo
-tenant: Foo Bar (exemplo mínimo)
+tenant: Foo Bar (minimal example)
 description:
-  purpose: Valor médio (script SPSS) e mediana (script R) dos registros por UF e competência, pelos scripts que já existiam.
-  usage: Divulgação mensal enquanto o script não é reescrito em SQL ou pandas.
+  purpose: Mean value (SPSS script) and median (R script) of records by UF and reference month, from the pre-existing scripts.
+  usage: Monthly release until the script is rewritten in SQL or pandas.
   limitations: >
-    O valor médio é calculado pelo PSPP, que não é o SPSS: a equivalência precisa ser certificada
-    antes de o resultado substituir o do SPSS. Exige o GNU PSPP e o R instalados. DADOS SINTÉTICOS.
-tags: [mensal, legado, spss, r]
+    The mean value is computed by PSPP, which is not SPSS: equivalence must be certified
+    before the result replaces the SPSS one. Requires GNU PSPP and R installed. SYNTHETIC DATA.
+tags: [monthly, legacy, spss, r]
 customProperties:
   - {property: alignment, value: consumer}
   - {property: visibility, value: public}
   - {property: theme, value: foo}
   - {property: frequency, value: monthly}
   - {property: purpose, value: official-release}
-  - {property: bases, value: [sistema-foo]}
-  - {property: urn, value: br.gov.foo-bar.baz}
+  - {property: bases, value: [foo-system]}
+  - {property: urn, value: org.example.foo-bar.baz}
   - {property: conformanceLevel, value: 2}
   - {property: legacyParity, value: in-progress}
 inputPorts:
-  - {name: registros, version: 1.0.0, contractId: bronze-foo-registros}
+  - {name: records, version: 1.0.0, contractId: bronze-foo-records}
   - {name: ufs, version: 1.0.0, contractId: ref-uf}
 outputPorts:
-  - name: valor-medio-uf
-    description: Valor médio dos registros por UF e competência (script SPSS legado, via PSPP)
+  - name: mean-value-by-uf
+    description: Mean value of records by UF and reference month (legacy SPSS script, via PSPP)
     type: table
     customProperties:
       - {property: spreadsheetTab, value: "UF"}
     version: 0.1.0
-    contractId: gold-baz-uf-mensal
+    contractId: gold-baz-uf-monthly
     inputContracts:
-      - {id: bronze-foo-registros, version: 1.0.0}
+      - {id: bronze-foo-records, version: 1.0.0}
       - {id: ref-uf, version: 1.0.0}
-  - name: mediana-uf
-    description: Mediana do valor por UF e competência (script R legado, via Rscript)
+  - name: median-by-uf
+    description: Median value by UF and reference month (legacy R script, via Rscript)
     type: table
     customProperties:
-      - {property: spreadsheetTab, value: "Mediana"}
+      - {property: spreadsheetTab, value: "Median"}
     version: 0.1.0
-    contractId: gold-baz-mediana-uf-mensal
+    contractId: gold-baz-uf-monthly-median
     inputContracts:
-      - {id: bronze-foo-registros, version: 1.0.0}
+      - {id: bronze-foo-records, version: 1.0.0}
       - {id: ref-uf, version: 1.0.0}
 team:
-  name: Equipe técnica de Bar
+  name: Bar technical team
   members:
-    - {username: "papel:equipe-bar", role: owner}
+    - {username: "role:bar-team", role: owner}
 productCreatedTs: "2026-11-14T00:00:00Z"

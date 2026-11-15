@@ -1,0 +1,25 @@
+[project]
+name = "{{ name }}"
+version = "0.1.0"
+description = "{{ organization }} data repository following the Statera standard"
+requires-python = ">=3.11,<3.14"
+dependencies = ["statera"]
+
+[tool.uv]
+package = false  # data repository: not a Python package
+
+[tool.uv.sources]
+# The framework, at the pinned version. To upgrade Statera: change the tag, update required_version in
+# content/statera.toml and run any `statera` command (uv brings the environment up to date).
+statera = { git = "{{ statera_git }}", tag = "v{{ statera_version }}" }
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["content/tests", "content/products"]
+markers = ["slow: tests that run the full process (dbt)"]

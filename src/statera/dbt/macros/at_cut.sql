@@ -1,8 +1,8 @@
 {#
-    Filtro de leitura de uma fonte bronze NO CORTE da execução (especificação, 09).
-    O bronze é incremental: cada registro está guardado uma vez, no lote em que chegou. Um corte é
-    "recebido até a data de corte" E "presente até o lote registrado no manifesto do corte", para
-    que um lote atrasado não mude um corte já marcado. O executor passa os lotes em var('batches').
+    Read filter for a bronze source AT THE CUT of the run (specification, 09).
+    Bronze is incremental: each record is stored once, in the batch it arrived in. A cut is
+    "received by the cut-off date" AND "present up to the batch recorded in the cut manifest", so
+    that a late batch does not change a cut already marked. The executor passes the batches in var('batches').
 #}
 {% macro at_cut(received_at_column, table) -%}
     cast({{ received_at_column }} as date) <= cast('{{ var("cut_date") }}' as date)

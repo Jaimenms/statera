@@ -1,0 +1,12 @@
+cases:
+  - id: only_requested_uf
+    description: Only the requested UF, in reference-month order.
+    parameters: {uf: RJ}
+    inputs:
+      baz_uf_monthly:
+        - {period: "2026-02", uf_abbr: RJ, records: 4, mean_value: 210.5, cut_date: "2026-03-10"}
+        - {period: "2026-01", uf_abbr: RJ, records: 3, mean_value: 190.0, cut_date: "2026-03-10"}
+        - {period: "2026-01", uf_abbr: SP, records: 9, mean_value: 250.0, cut_date: "2026-03-10"}
+    expected:
+      - {period: "2026-01", uf_abbr: RJ, records: 3}
+      - {period: "2026-02", uf_abbr: RJ, records: 4}

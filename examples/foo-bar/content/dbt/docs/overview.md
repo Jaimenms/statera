@@ -1,6 +1,6 @@
 {% docs __overview__ %}
-# Foo Bar — catálogo (exemplo mínimo, DADOS SINTÉTICOS)
+# Foo Bar — catalog (minimal example, SYNTHETIC DATA)
 
-`foo` extrai registros do Sistema Foo (bronze, interno). `bar` publica registros e valor por UF e mês
-(gold). `ref_uf` é a referência de UFs. Use a busca no alto e o botão de linhagem.
+`foo` extracts records from the Foo System (bronze, internal). `bar` publishes records and value by UF and month
+(gold). `ref_uf` is the UF reference table. Use the search at the top and the lineage button.
 {% enddocs %}

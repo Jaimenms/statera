@@ -1,8 +1,8 @@
 {#
-    Convenção do medalhão: o schema físico é o configurado (bronze, silver, gold, ref), sem o
-    prefixo do target. Assim os nomes físicos coincidem com os dos contratos ODCS.
-    O projeto do órgão chama esta macro a partir do seu generate_schema_name (o dbt só aceita a
-    sobrescrita dessa macro no projeto raiz).
+    Medallion convention: the physical schema is the configured one (bronze, silver, gold, ref), without
+    the target prefix, so physical names match those in the ODCS contracts.
+    The organization's project calls this macro from its own generate_schema_name (dbt only accepts
+    overriding that macro in the root project).
 #}
 {% macro medallion_schema(custom_schema_name, node) -%}
     {%- if custom_schema_name is none -%}

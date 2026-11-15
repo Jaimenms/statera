@@ -1,39 +1,40 @@
 # {{ title }}
 
-Produto criado a partir do modelo statera (`statera new-product {{ product }}`)
-{%- if alignment == 'consumer' %}, de **divulgação** (alinhamento `consumo`).
-{%- elif alignment == 'aggregate' %}, **interno agregado**: entidade canônica lida por vários produtos, guardada por corte.
-{%- else %}, **interno de fonte**: extração incremental de um sistema de origem, em lotes imutáveis.
+Product created from the statera template (`statera new-product {{ product }}`)
+{%- if alignment == 'consumer' %}, a **dissemination** product (alignment `consumer`).
+{%- elif alignment == 'aggregate' %}, an **internal aggregate** product: a canonical entity read by several products, stored by cut.
+{%- else %}, an **internal source** product: incremental extraction from a source system, in immutable batches.
 {%- endif %}
-Começa no **nível 1 de conformidade (catalogado)**. Para subir de nível, ver a especificação
-(`08-niveis-de-conformidade.md`) e `statera conformance`.
+It starts at **conformance level 0 (draft)**: validation accepts the skeleton, and `statera conformance`
+shows what is missing for level 1 (catalogued). To move up a level, see the specification
+(`08-conformance-levels.md`).
 
-| Fase (GSBPM) | O que entra aqui |
+| Phase (GSBPM) | What goes here |
 |---|---|
 {%- if alignment == 'consumer' %}
-| `1-specify/` | Descritor ODPS, classificação aprovada, responsáveis, calendário |
-| `2-design/processes/` | Processo to-be em YAML (espelho do BPMN), que também é o plano de execução |
-| `3-build/tests/` | Testes do produto |
-| `5-process/` | Contratos gold, modelos dbt (marts), regras, métricas |
-| `6-analyse/` | Controles (`controls.yaml`, `dbt-tests/`) |
-| `7-disseminate/` | Série de publicação e modelo do sumário |
-| `8-evaluate/` | Indicadores de qualidade e plano de ação |
-| `queries/` | Consultas recorrentes do produto |
+| `1-specify/` | ODPS descriptor, approved classification, owners, calendar |
+| `2-design/processes/` | To-be process in YAML (mirror of the BPMN), which is also the execution plan |
+| `3-build/tests/` | Product tests |
+| `5-process/` | Gold contracts, dbt models (marts), rules, metrics |
+| `6-analyse/` | Controls (`controls.yaml`, `dbt-tests/`) |
+| `7-disseminate/` | Publication series and summary template |
+| `8-evaluate/` | Quality indicators and action plan |
+| `queries/` | The product's recurring queries |
 {%- elif alignment == 'aggregate' %}
-| `1-specify/` | Descritor ODPS (com `consumidoresAutorizados`), classificação aprovada, responsáveis |
-| `2-design/processes/` | Processo to-be: espera os cortes das fontes, transforma, valida e libera o corte |
-| `3-build/tests/` | Testes do produto |
-| `5-process/` | Contratos silver com `particionadoPor: data_corte`, modelos intermediate, regras com casos |
-| `6-analyse/` | Verificação dos contratos no corte (sem controle de divulgação: nada é publicado) |
-| `7-disseminate/data/<data>/cut.json` | Manifesto imutável de cada corte liberado (gerado) |
-| `8-evaluate/` | Indicadores de serviço (atraso do corte, completude) |
+| `1-specify/` | ODPS descriptor (with `authorizedConsumers`), approved classification, owners |
+| `2-design/processes/` | To-be process: waits for the source cuts, transforms, validates and releases the cut |
+| `3-build/tests/` | Product tests |
+| `5-process/` | Silver contracts with `partitionedBy: cut_date`, intermediate models, rules with cases |
+| `6-analyse/` | Contract checks at the cut (no statistical disclosure control: nothing is published) |
+| `7-disseminate/data/<date>/cut.json` | Immutable manifest of each released cut (generated) |
+| `8-evaluate/` | Service indicators (cut delay, completeness) |
 {%- else %}
-| `1-specify/` | Descritor ODPS (com `consumidoresAutorizados`), classificação aprovada, responsáveis |
-| `2-design/processes/` | Processo to-be: extrai o incremento, valida a carga e marca o corte |
-| `4-collect/contracts/` | Contratos bronze com `extracao` (origem, coluna de recepção) e retenção |
-| `5-process/models/staging/` | Modelos staging com o filtro `statera.no_corte` |
-| `7-disseminate/data/<data>/cut.json` | Manifesto imutável de cada corte (lotes e hashes; gerado) |
-| `8-evaluate/` | Indicadores de serviço (atraso da extração, completude) |
+| `1-specify/` | ODPS descriptor (with `authorizedConsumers`), approved classification, owners |
+| `2-design/processes/` | To-be process: extracts the increment, validates the load and marks the cut |
+| `4-collect/contracts/` | Bronze contracts with `extraction` (source system, received-at column) and retention |
+| `5-process/models/staging/` | Staging models with the `statera.at_cut` filter |
+| `7-disseminate/data/<date>/cut.json` | Immutable manifest of each cut (batches and hashes; generated) |
+| `8-evaluate/` | Service indicators (extraction delay, completeness) |
 {%- endif %}
 
-Atualizar este produto quando o modelo evoluir: `copier update` nesta pasta.
+Update this product when the template evolves: `copier update` in this folder.

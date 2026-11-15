@@ -1,3 +1,3 @@
-# Consultas recorrentes
+# Recurring queries
 
-`queries/<tema>/<slug>/`: `query.yaml`, `<slug>.sql` (analysis do dbt) e `test.yaml`. Rode `make queries`.
+`queries/<theme>/<slug>/`: `query.yaml`, `<slug>.sql` (dbt analysis) and `test.yaml`. Test them with `statera query test`.

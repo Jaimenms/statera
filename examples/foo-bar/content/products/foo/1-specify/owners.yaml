@@ -1,9 +1,9 @@
 scope: product
 unit: foo
-curator: curadoria
-technical_owner: equipe-dados
-required_reviewers: [equipe-dados]
-data_protection_officer: encarregado-lgpd
+curator: curation
+technical_owner: data-team
+required_reviewers: [data-team]
+data_protection_officer: dpo
 paths:
-  - {pattern: /, roles: [equipe-dados]}
-  - {pattern: /1-specify/classification.yaml, roles: [encarregado-lgpd]}
+  - {pattern: /, roles: [data-team]}
+  - {pattern: /1-specify/classification.yaml, roles: [dpo]}

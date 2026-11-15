@@ -1,8 +1,8 @@
 {#
-    Teste genérico: falha se, em algum grupo (ex.: competência), uma única categoria da
-    coluna concentrar mais que `limite` dos registros. Teria barrado o caso real do campo
-    tamestabjan, com 100% dos registros numa só faixa. Em tabelas que guardam vários cortes, use
-    so_corte_atual=true para olhar só a partição da execução.
+    Generic test: fails if, in some group (e.g. reference month), a single category of the
+    column holds more than `threshold` of the records. It would have caught the real case of the
+    tamestabjan field, with 100% of the records in a single band. In tables that keep several cuts, use
+    current_cut_only=true to look only at the run's partition.
 #}
 {% test non_degenerate_distribution(model, column_name, by, threshold=0.9, minimum=50, current_cut_only=false) %}
 

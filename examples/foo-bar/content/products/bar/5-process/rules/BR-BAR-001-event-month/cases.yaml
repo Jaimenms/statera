@@ -1,0 +1,16 @@
+rule: BR-BAR-001
+model: bar_uf_monthly
+variables: {period: "2026-02", cut_date: "2026-03-10"}
+cases:
+  - id: counts_in_event_month
+    description: Two January records (one received in February) and one February record, in SP.
+    inputs:
+      int_bar__records:
+        - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00, cut_date: "2026-03-10"}
+        - {record_id: R2, uf_id: 35, period: "2026-01", value: 300.00, cut_date: "2026-03-10"}
+        - {record_id: R3, uf_id: 35, period: "2026-02", value: 50.00, cut_date: "2026-03-10"}
+      ref_uf:
+        - {uf_id: 35, uf_abbr: SP, uf_name: São Paulo}
+    expected:
+      - {period: "2026-01", uf_abbr: SP, records: 2, total_value: 400.00, mean_value: 200.00}
+      - {period: "2026-02", uf_abbr: SP, records: 1, total_value: 50.00, mean_value: 50.00}

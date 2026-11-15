@@ -1,0 +1,17 @@
+# Recurring query (schema: statera query.schema.json). The SQL is a dbt analysis.
+id: org.example.foo-bar.query.uf-series
+title: Series of records and value for a UF
+description: Monthly series of records and total value for a UF, from the release table.
+theme: foo
+product: bar
+bases: [gold.bar_uf_monthly]
+frequency: on-demand
+purpose: on-request
+parameters:
+  - {name: uf, type: uf, required: true, description: UF abbreviation}
+rules: [BR-BAR-001]
+limitations: Figures from the last processed cut; recent reference months still change.
+output_classification: {sharing: broad, nature: aggregated, secrecy: none}
+owner: bar-team
+status: cataloged
+version: 0.1.0

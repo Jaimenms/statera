@@ -1,5 +1,5 @@
-# Pacote dbt da plataforma Statera: macros e testes genéricos do padrão.
-# Instalado pelo projeto dbt de cada órgão via packages.yml (local na demonstração; git em produção).
+# dbt package of the Statera framework: the standard's macros and generic tests.
+# Installed by each organization's dbt project via packages.yml (local in the demo; git in production).
 name: statera
 version: "0.1.0"
 config-version: 2

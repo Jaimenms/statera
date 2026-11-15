@@ -1,0 +1,17 @@
+# Recurring query (schema: statera query.schema.json). The SQL is a dbt analysis.
+id: org.example.foo-bar.query.mean-value-by-uf
+title: Mean value series for a UF
+description: Monthly mean value series for a UF, from the baz release table.
+theme: foo
+product: baz
+bases: [gold.baz_uf_monthly]
+frequency: on-demand
+purpose: on-request
+parameters:
+  - {name: uf, type: uf, required: true, description: UF abbreviation}
+rules: [BR-BAZ-001]
+limitations: Computed by the legacy SPSS script; recent reference months still change.
+output_classification: {sharing: broad, nature: aggregated, secrecy: none}
+owner: bar-team
+status: cataloged
+version: 0.1.0

@@ -7,6 +7,6 @@ __pycache__/
 dist/
 .DS_Store
 
-# logs do dbt (gerados ao abrir o pacote dbt da plataforma no VS Code)
+# dbt logs (generated when opening the framework's dbt package in VS Code)
 src/statera/dbt/logs/
 src/statera/dbt/target/

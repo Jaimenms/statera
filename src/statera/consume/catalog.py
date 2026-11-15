@@ -1,25 +1,25 @@
-"""Biblioteca de consulta a todas as camadas do medalhão, para quem analisa os dados.
+"""Library for querying all medallion layers, for those who analyze the data.
 
     from statera.consume import catalog
 
     cat = catalog.open()
-    cat.search(theme="emprego-formal", layer="gold")      # descoberta pelos eixos do edital
-    print(cat.describe("gold.caged_saldo_uf_mensal"))     # propósito, colunas, limitações, classificação
+    cat.search(theme="formal-employment", layer="gold")   # discovery along the call's axes
+    print(cat.describe("gold.balance_by_uf_monthly"))     # purpose, columns, limitations, classification
 
-    t = cat.table("gold.caged_saldo_uf_mensal")            # modo VIGENTE: tabela Ibis (preguiçosa)
-    t.filter(t.competencia >= "2026-01").group_by("regiao").agg(saldo=t.saldo.sum()).to_pandas()
+    t = cat.table("gold.balance_by_uf_monthly")           # CURRENT mode: Ibis table (lazy)
+    t.filter(t.period >= "2026-01").group_by("region").agg(balance=t.balance.sum()).to_pandas()
 
-    cat.table("bronze.esocial_eventos", cut_date="2026-07-20")     # modo DATA DE CORTE
-    ed = cat.edition("novo-caged", "2026-06")                       # modo EDIÇÃO PUBLICADA
-    ed.table("saldo-uf"); ed.provenance                          # hash conferido
+    cat.table("bronze.source_events", cut_date="2026-07-20")   # CUT-OFF DATE mode
+    ed = cat.edition("employment", "2026-06")                    # PUBLISHED EDITION mode
+    ed.table("balance-by-uf"); ed.provenance                     # hash checked
 
-    cat.metric("saldo", by=["regiao"], period="2026-06")
-    cat.query("serie-saldo-uf", uf="SP", competencia_inicio="2026-01", competencia_fim="2026-06")
+    cat.metric("balance", by=["region"], period="2026-06")
+    cat.query("balance-series-by-uf", uf="SP", period_start="2026-01", period_end="2026-06")
 
-Ibis traduz o mesmo código para o SQL de outros motores (PostgreSQL, Trino, Spark): a análise
-escrita no notebook com DuckDB roda no servidor sem reescrita. A classificação do contrato é
-MOSTRADA e gera aviso, mas a proteção de verdade é do motor (permissões geradas dos contratos):
-a biblioteca é conveniência, não fronteira de segurança.
+Ibis translates the same code into the SQL of other engines (PostgreSQL, Trino, Spark): the analysis
+written in the notebook with DuckDB runs on the server without rewriting. The contract's classification is
+SHOWN and raises a warning, but the real protection belongs to the engine (permissions generated from the
+contracts): the library is a convenience, not a security boundary.
 """
 
 from __future__ import annotations
@@ -33,22 +33,22 @@ from pathlib import Path
 import ibis
 import pandas as pd
 
-from statera import classificacao, contratos
+from statera import classification, contracts
 from statera.consume import metrics, queries
-from statera.disseminate import registro
-from statera.projeto import Projeto, atual
+from statera.disseminate import registry
+from statera.project import Project, current
 
 
 class ClassificationWarning(UserWarning):
-    """A tabela lida não é de compartilhamento amplo: cuidado com o que sai do órgão."""
+    """The table read is not for broad sharing: be careful with what leaves the organization."""
 
 
 class AccessDenied(PermissionError):
-    """O papel informado não tem autorização vigente para ler o produto interno."""
+    """The given role has no authorization within its validity period to read the internal product."""
 
 
 class CutNotAvailable(LookupError):
-    """O motor não guarda a tabela nessa data de corte."""
+    """The engine does not keep the table at that cut-off date."""
 
 
 @dataclass
@@ -64,29 +64,29 @@ class Description:
     columns: list[dict] = field(default_factory=list)
 
     def __str__(self) -> str:
-        linhas = [
+        lines = [
             f"{self.table}  ({self.urn})",
-            f"  unidade: {self.unit} · camada: {self.layer} · classificação: {self.classification}",
-            f"  propósito: {self.purpose}",
-            f"  uso: {self.usage}",
-            f"  limitações: {self.limitations}",
-            "  colunas:",
+            f"  unit: {self.unit} · layer: {self.layer} · classification: {self.classification}",
+            f"  purpose: {self.purpose}",
+            f"  usage: {self.usage}",
+            f"  limitations: {self.limitations}",
+            "  columns:",
         ]
-        linhas += [
-            f"    - {c['name']:<28} {c['type']:<10} {c['sharing']:<11}{' pessoal' if c['personal'] else ''}"
+        lines += [
+            f"    - {c['name']:<28} {c['type']:<10} {c['sharing']:<11}{' personal' if c['personal'] else ''}"
             f"  {c['description']}"
             for c in self.columns
         ]
-        return "\n".join(linhas)
+        return "\n".join(lines)
 
 
 @dataclass
 class PublishedEdition:
-    produto: str
-    competencia: str
+    product: str
+    period: str
     datapackage: dict
-    pasta: Path
-    coluna_periodo: str = "period"
+    folder: Path
+    period_column: str = "period"
 
     @property
     def provenance(self) -> dict:
@@ -99,235 +99,233 @@ class PublishedEdition:
             "run": x.get("run"),
             "code_version": x.get("codeVersion"),
             "corrects": (x.get("corrects") or {}).get("version"),
-            # corte de cada produto interno lido: {produto: execução que liberou o corte}
-            "cuts": {nome: c["run"] for nome, c in (x.get("cuts") or {}).items()},
+            # cut of each internal product read: {product: run that released the cut}
+            "cuts": {name: c["run"] for name, c in (x.get("cuts") or {}).items()},
         }
 
     def ports(self) -> list[str]:
         return [r["name"] for r in self.datapackage["resources"] if r["format"] == "csv"]
 
     def table(self, port: str) -> ibis.Table:
-        """O arquivo exatamente como foi publicado; o hash do Data Package é conferido."""
-        porta = port
-        recurso = next((r for r in self.datapackage["resources"] if r["name"] == porta), None)
-        if recurso is None:
-            raise KeyError(f"porta '{porta}' não está na edição; disponíveis: {self.ports()}")
-        arquivo = self.pasta / recurso["path"]
-        obtido = "sha256:" + hashlib.sha256(arquivo.read_bytes()).hexdigest()
-        if obtido != recurso["hash"]:
+        """The file exactly as it was published; the Data Package hash is checked."""
+        resource = next((r for r in self.datapackage["resources"] if r["name"] == port), None)
+        if resource is None:
+            raise KeyError(f"port '{port}' is not in the edition; available: {self.ports()}")
+        file = self.folder / resource["path"]
+        actual = "sha256:" + hashlib.sha256(file.read_bytes()).hexdigest()
+        if actual != resource["hash"]:
             raise ValueError(
-                f"{arquivo}: hash diverge do registrado ({recurso['hash']}); arquivo alterado após a publicação"
+                f"{file}: hash differs from the recorded one ({resource['hash']}); file changed after publication"
             )
-        return ibis.memtable(pd.read_csv(arquivo, dtype={self.coluna_periodo: str}))
+        return ibis.memtable(pd.read_csv(file, dtype={self.period_column: str}))
 
 
 class Catalog:
-    def __init__(self, projeto: Projeto, papel: str | None = None):
-        self.projeto = projeto
-        self.papel = papel
-        self._contratos = {contratos.tabela_fisica(c): (caminho, c) for caminho, c in contratos.todos(projeto).values()}
+    def __init__(self, project: Project, role: str | None = None):
+        self.project = project
+        self.role = role
+        self._contracts = {contracts.physical_table(c): (path, c) for path, c in contracts.all_(project).values()}
         self._con = None
 
     @property
-    def _coluna_corte(self) -> str:
-        return self.projeto.convencoes["cut_date_column"]
+    def _cut_column(self) -> str:
+        return self.project.conventions["cut_date_column"]
 
     @property
     def con(self):
         if self._con is None:
-            self._con = ibis.duckdb.connect(str(self.projeto.warehouse), read_only=True)
+            self._con = ibis.duckdb.connect(str(self.project.warehouse), read_only=True)
         return self._con
 
-    # --- descoberta ---------------------------------------------------------------------------
+    # --- discovery ----------------------------------------------------------------------------
     def search(
         self, theme: str | None = None, layer: str | None = None, product: str | None = None, text: str | None = None
     ) -> pd.DataFrame:
-        """Tabelas do catálogo, filtradas por tema, camada, produto ou texto (no nome e no propósito)."""
-        tema, camada, produto, texto = theme, layer, product, text
-        temas = {p.nome: (p.ler("1-specify/product.odps.yaml") or {}) for p in self.projeto.produtos()}
-        temas = {
-            n: {c["property"]: c["value"] for c in o.get("customProperties", [])}.get("theme") for n, o in temas.items()
+        """Catalog tables, filtered by theme, layer, product or text (in the name and in the purpose)."""
+        themes = {p.name: (p.read("1-specify/product.odps.yaml") or {}) for p in self.project.products()}
+        themes = {
+            n: {c["property"]: c["value"] for c in o.get("customProperties", [])}.get("theme")
+            for n, o in themes.items()
         }
-        linhas = []
-        for tabela, (caminho, c) in sorted(self._contratos.items()):
-            unidade = self.projeto.unidade_de(caminho)
-            linha = {
-                "table": tabela,
-                "layer": contratos.camada(c),
-                "unit": unidade.nome if unidade else "",
-                "theme": temas.get(unidade.nome) if unidade else None,
-                "classification": classificacao.resumo(classificacao.da_tabela(c)),
-                "proposito": " ".join(c["description"]["purpose"].split()),
+        lines = []
+        for table, (path, c) in sorted(self._contracts.items()):
+            unit = self.project.unit_of(path)
+            line = {
+                "table": table,
+                "layer": contracts.layer(c),
+                "unit": unit.name if unit else "",
+                "theme": themes.get(unit.name) if unit else None,
+                "classification": classification.summary(classification.of_table(c)),
+                "purpose": " ".join(c["description"]["purpose"].split()),
             }
-            if camada and linha["layer"] != camada:
+            if layer and line["layer"] != layer:
                 continue
-            if produto and linha["unit"] != produto:
+            if product and line["unit"] != product:
                 continue
-            if tema and linha["theme"] != tema:
+            if theme and line["theme"] != theme:
                 continue
-            if texto and texto.lower() not in (tabela + linha["proposito"]).lower():
+            if text and text.lower() not in (table + line["purpose"]).lower():
                 continue
-            linhas.append(linha)
-        return pd.DataFrame(linhas)
+            lines.append(line)
+        return pd.DataFrame(lines)
 
-    def _contrato(self, tabela: str) -> dict:
-        if tabela not in self._contratos:
-            raise KeyError(f"'{tabela}' não tem contrato no catálogo; tabelas: {sorted(self._contratos)}")
-        return self._contratos[tabela][1]
+    def _contract(self, table: str) -> dict:
+        if table not in self._contracts:
+            raise KeyError(f"'{table}' has no contract in the catalog; tables: {sorted(self._contracts)}")
+        return self._contracts[table][1]
 
     def describe(self, name: str) -> Description:
-        tabela = name
-        c = self._contrato(tabela)
-        unidade = self.projeto.unidade_de(self._contratos[tabela][0])
-        colunas = [
+        table = name
+        c = self._contract(table)
+        unit = self.project.unit_of(self._contracts[table][0])
+        columns = [
             {
                 "name": p["name"],
                 "type": p.get("logicalType", ""),
                 "sharing": p.get("classification", ""),
-                "personal": bool(classificacao.coluna_pessoal(p)),
+                "personal": bool(classification.personal_column(p)),
                 "description": p.get("description", ""),
             }
             for p in c["schema"][0]["properties"]
         ]
         return Description(
-            table=tabela,
-            urn=contratos.propriedade_custom(c, "urn") or "",
-            unit=unidade.nome if unidade else "",
-            layer=contratos.camada(c) or "",
+            table=table,
+            urn=contracts.custom_property_of(c, "urn") or "",
+            unit=unit.name if unit else "",
+            layer=contracts.layer(c) or "",
             purpose=" ".join(c["description"]["purpose"].split()),
             usage=" ".join(c["description"].get("usage", "").split()),
             limitations=" ".join(c["description"].get("limitations", "").split()),
-            classification=classificacao.resumo(classificacao.da_tabela(c)),
-            columns=colunas,
+            classification=classification.summary(classification.of_table(c)),
+            columns=columns,
         )
 
-    # --- leitura --------------------------------------------------------------------------------
-    def _avisar(self, tabela: str, c: dict) -> None:
-        dims = classificacao.da_tabela(c)
+    # --- reading --------------------------------------------------------------------------------
+    def _warn(self, table: str, c: dict) -> None:
+        dims = classification.of_table(c)
         if dims.get("sharing") != "broad" or dims.get("nature") in ("personal", "sensitive-personal"):
             warnings.warn(
-                f"{tabela} é {classificacao.resumo(dims)}: uso interno, sob as regras do contrato; "
-                "agregue e aplique o controle de divulgação antes de compartilhar qualquer resultado.",
+                f"{table} is {classification.summary(dims)}: internal use, under the contract's rules; "
+                "aggregate and apply disclosure control before sharing any result.",
                 ClassificationWarning,
                 stacklevel=3,
             )
 
-    def _autorizar(self, tabela: str) -> None:
-        """Com um papel (quem não é da equipe dona), ler um produto interno exige autorização vigente."""
-        if not self.papel:
+    def _authorize(self, table: str) -> None:
+        """With a role (someone outside the owner team), reading an internal product requires a valid authorization."""
+        if not self.role:
             return
-        from statera import portas
+        from statera import ports
 
-        dono = self.projeto.unidade_de(self._contratos[tabela][0])
-        if dono is None or not dono.interno:
+        owner = self.project.unit_of(self._contracts[table][0])
+        if owner is None or not owner.internal:
             return
-        if not portas.autorizacao_vigente(dono, self.papel):
+        if not ports.current_authorization(owner, self.role):
             raise AccessDenied(
-                f"o papel '{self.papel}' não tem autorização vigente para ler {tabela} (produto interno "
-                f"{dono.nome}). Use uma consulta catalogada ou peça a autorização, com finalidade e prazo, "
-                "em authorizedConsumers do produto."
+                f"role '{self.role}' has no valid authorization to read {table} (internal product "
+                f"{owner.name}). Use a cataloged query or request authorization, with purpose and term, "
+                "in the product's authorizedConsumers."
             )
 
     def cuts(self, name: str) -> list[str]:
-        """Cortes LIBERADOS da tabela (manifestos do produto interno dono), do mais antigo ao mais novo."""
-        tabela = name
-        from statera.collect import cortes_liberados
+        """RELEASED cuts of the table (manifests of the owner internal product), from oldest to newest."""
+        table = name
+        from statera.collect import released_cuts
 
-        dono = self.projeto.unidade_de(self._contratos[tabela][0])
-        return cortes_liberados(dono) if dono and dono.interno else []
+        owner = self.project.unit_of(self._contracts[table][0])
+        return released_cuts(owner) if owner and owner.internal else []
 
     def table(self, name: str, cut_date: str | None = None) -> ibis.Table:
-        """Tabela Ibis. Sem cut_date: o dado vigente (numa tabela por corte, o último corte LIBERADO).
-        Com cut_date: o bronze reconstruído naquele corte, ou a partição daquele corte."""
-        tabela, data_corte = name, cut_date
-        c = self._contrato(tabela)
-        self._autorizar(tabela)
-        self._avisar(tabela, c)
-        esquema, nome = tabela.split(".")
-        if data_corte and contratos.camada(c) == "bronze":
-            return self._bronze(tabela, c, nome, data_corte)
-        t = self.con.table(nome, database=esquema)
-        particao = contratos.propriedade_custom(c, "partitionedBy")
-        if particao and not data_corte:
-            liberados = self.cuts(tabela)
-            if not liberados:
-                raise CutNotAvailable(f"{tabela}: nenhum corte liberado ainda")
-            data_corte = liberados[-1]
-        if data_corte:
-            if self._coluna_corte not in t.columns:
-                raise CutNotAvailable(f"{tabela} não registra data de corte")
-            liberados = self.cuts(tabela)
-            if particao and liberados and data_corte not in liberados:
-                # partição calculada mas não liberada (ex.: barrada na validação): não se lê
-                raise CutNotAvailable(f"{tabela}: corte {data_corte} não foi liberado (liberados: {liberados})")
-            filtrada = t.filter(t[self._coluna_corte] == ibis.literal(data_corte).cast("date"))
-            if filtrada.count().execute() == 0:
-                disponiveis = self.cuts(tabela) or _datas_de_corte(t, self._coluna_corte)
+        """Ibis table. Without cut_date: the current data (in a per-cut table, the last RELEASED cut).
+        With cut_date: bronze rebuilt at that cut, or that cut's partition."""
+        table = name
+        c = self._contract(table)
+        self._authorize(table)
+        self._warn(table, c)
+        schema, name = table.split(".")
+        if cut_date and contracts.layer(c) == "bronze":
+            return self._bronze(table, c, name, cut_date)
+        t = self.con.table(name, database=schema)
+        partition = contracts.custom_property_of(c, "partitionedBy")
+        if partition and not cut_date:
+            released = self.cuts(table)
+            if not released:
+                raise CutNotAvailable(f"{table}: no cut released yet")
+            cut_date = released[-1]
+        if cut_date:
+            if self._cut_column not in t.columns:
+                raise CutNotAvailable(f"{table} does not record a cut-off date")
+            released = self.cuts(table)
+            if partition and released and cut_date not in released:
+                # partition computed but not released (e.g. blocked in validation): not read
+                raise CutNotAvailable(f"{table}: cut {cut_date} was not released (released: {released})")
+            filtered = t.filter(t[self._cut_column] == ibis.literal(cut_date).cast("date"))
+            if filtered.count().execute() == 0:
+                available = self.cuts(table) or _cut_dates(t, self._cut_column)
                 raise CutNotAvailable(
-                    f"{tabela} no corte {data_corte} não está disponível (cortes: {disponiveis}). Tabelas de "
-                    "divulgação guardam só o último processamento; para o número publicado, use cat.edition(...)."
+                    f"{table} at cut {cut_date} is not available (cuts: {available}). Dissemination "
+                    "tables keep only the latest processing; for the published figure, use cat.edition(...)."
                 )
-            return filtrada
+            return filtered
         return t
 
-    def _bronze(self, tabela: str, contrato: dict, nome: str, data_corte: str) -> ibis.Table:
-        """Bronze no corte: lotes até o do manifesto e recepção até a data. Sem manifesto, reconstrói
-        pela data de recepção (com aviso: um lote atrasado poderia mudar o resultado)."""
-        from statera.collect import extracao, ler_corte
+    def _bronze(self, table: str, contract: dict, name: str, cut_date: str) -> ibis.Table:
+        """Bronze at the cut: batches up to the manifest's and reception up to the date. Without a manifest,
+        rebuilds by reception date (with a warning: a late batch could change the result)."""
+        from statera.collect import extraction, read_cut
 
-        fonte = next(f for f in extracao.fontes(self.projeto) if f.tabela == nome)
-        manifesto = ler_corte(fonte.produto, data_corte)
-        lote_max = ((manifesto or {}).get("sources") or {}).get(nome, {}).get("batch")
-        if lote_max is None:
-            warnings.warn(f"{tabela}: corte {data_corte} não foi marcado; reconstruído só pela data de recepção",
+        source = next(f for f in extraction.sources(self.project) if f.table == name)
+        manifest = read_cut(source.product, cut_date)
+        max_batch = ((manifest or {}).get("sources") or {}).get(name, {}).get("batch")
+        if max_batch is None:
+            warnings.warn(f"{table}: cut {cut_date} was not marked; rebuilt by reception date only",
                           ClassificationWarning, stacklevel=3)  # fmt: skip
-        arquivos = [
-            str(fonte.arquivo_lote(m["batch"])) for m in fonte.lotes() if lote_max is None or m["batch"] <= lote_max
+        files = [
+            str(source.batch_file(m["batch"])) for m in source.batches() if max_batch is None or m["batch"] <= max_batch
         ]
-        if not arquivos:
-            raise CutNotAvailable(f"{tabela}: nenhum lote extraído até {data_corte}")
-        t = self.con.read_parquet(arquivos, table_name=f"{nome}_{data_corte.replace('-', '')}", hive_partitioning=False)
-        return t.filter(t[fonte.coluna_recepcao].cast("date") <= ibis.literal(data_corte).cast("date"))
+        if not files:
+            raise CutNotAvailable(f"{table}: no batch extracted up to {cut_date}")
+        t = self.con.read_parquet(files, table_name=f"{name}_{cut_date.replace('-', '')}", hive_partitioning=False)
+        return t.filter(t[source.received_at_column].cast("date") <= ibis.literal(cut_date).cast("date"))
 
     def provenance(self, name: str) -> dict:
-        tabela = name
-        c = self._contrato(tabela)
-        t = self.con.table(tabela.split(".")[1], database=tabela.split(".")[0])
-        col = self._coluna_corte
-        cortes = self.cuts(tabela) or (_datas_de_corte(t, col) if col in t.columns else [])
+        table = name
+        c = self._contract(table)
+        t = self.con.table(table.split(".")[1], database=table.split(".")[0])
+        col = self._cut_column
+        cuts = self.cuts(table) or (_cut_dates(t, col) if col in t.columns else [])
         return {
-            "table": tabela,
-            "urn": contratos.propriedade_custom(c, "urn"),
+            "table": table,
+            "urn": contracts.custom_property_of(c, "urn"),
             "contract": c["id"],
             "contract_version": c["version"],
-            "cut_dates": cortes,
-            "engine": self.projeto.namespace_dados,
+            "cut_dates": cuts,
+            "engine": self.project.data_namespace,
         }
 
     def edition(self, product: str, period: str) -> PublishedEdition:
-        produto, competencia = product, period
-        unidade = self.projeto.produto(produto)
-        caminho = registro.caminho_edicao(unidade, competencia)
-        if not caminho.exists():
-            raise LookupError(f"{produto} {competencia} não foi publicada (sem registro em {caminho})")
+        unit = self.project.product(product)
+        path = registry.edition_path(unit, period)
+        if not path.exists():
+            raise LookupError(f"{product} {period} was not published (no record at {path})")
         return PublishedEdition(
-            produto,
-            competencia,
-            json.loads(caminho.read_text(encoding="utf-8")),
-            unidade.dados(7) / competencia,
-            self.projeto.convencoes["period_column"],
+            product,
+            period,
+            json.loads(path.read_text(encoding="utf-8")),
+            unit.data(7) / period,
+            self.project.conventions["period_column"],
         )
 
     def editions(self, product: str) -> pd.DataFrame:
-        caminho = registro.caminho_indice(self.projeto.produto(product))
-        return pd.read_csv(caminho, dtype=str) if caminho.exists() else pd.DataFrame()
+        path = registry.index_path(self.project.product(product))
+        return pd.read_csv(path, dtype=str) if path.exists() else pd.DataFrame()
 
-    # --- métricas, consultas e SQL ---------------------------------------------------------------
+    # --- metrics, queries and SQL ----------------------------------------------------------------
     def metrics(self) -> pd.DataFrame:
         return pd.DataFrame(
             [
-                {"metrica": n, "label": m["label"], "type": m["type"], "description": m["description"]}
-                for n, m in metrics.definitions(self.projeto).items()
+                {"metric": n, "label": m["label"], "type": m["type"], "description": m["description"]}
+                for n, m in metrics.definitions(self.project).items()
             ]
         )
 
@@ -339,8 +337,8 @@ class Catalog:
         periods: tuple[str, str] | None = None,
         filters: dict | None = None,
     ) -> pd.DataFrame:
-        """Métrica oficial (metrics.yaml): agrupada por `by`, num período ou num intervalo (`periods`)."""
-        return metrics.compute(name, by, period, periods, filters, self.projeto)
+        """Official metric (metrics.yaml): grouped by `by`, for one period or a range (`periods`)."""
+        return metrics.compute(name, by, period, periods, filters, self.project)
 
     def queries(self) -> pd.DataFrame:
         return pd.DataFrame(
@@ -350,17 +348,17 @@ class Catalog:
                     "title": c.title,
                     **{e: c.meta.get(e) for e in ("theme", "product", "frequency", "purpose", "status")},
                 }
-                for c in queries.load(self.projeto)
+                for c in queries.load(self.project)
             ]
         )
 
     def query(self, query_id: str, **params) -> pd.DataFrame:
-        """Executa uma consulta catalogada; os parâmetros são os declarados no query.yaml dela."""
-        return queries.run(query_id, params, projeto=self.projeto)
+        """Runs a cataloged query; the parameters are those declared in its query.yaml."""
+        return queries.run(query_id, params, project=self.project)
 
-    def sql(self, texto: str) -> pd.DataFrame:
-        """SQL direto no motor (somente leitura)."""
-        return self.con.sql(texto).to_pandas()
+    def sql(self, text: str) -> pd.DataFrame:
+        """Raw SQL on the engine (read-only)."""
+        return self.con.sql(text).to_pandas()
 
     def close(self) -> None:
         if self._con is not None:
@@ -368,14 +366,14 @@ class Catalog:
             self._con = None
 
 
-def _datas_de_corte(t: ibis.Table, coluna: str) -> list[str]:
-    return sorted(t.select(d=t[coluna].cast("string")).distinct().to_pandas()["d"].tolist())
+def _cut_dates(t: ibis.Table, column: str) -> list[str]:
+    return sorted(t.select(d=t[column].cast("string")).distinct().to_pandas()["d"].tolist())
 
 
-def open(project: Projeto | None = None, role: str | None = None) -> Catalog:
-    """Abre o catálogo. `role` (ou STATERA_PAPEL) identifica quem não é da equipe dona dos produtos
-    internos: a leitura deles passa a exigir autorização vigente. Em produção, quem lê é identificado
-    pelo login no motor, e as permissões do motor (grants gerados) são a fronteira de verdade."""
+def open(project: Project | None = None, role: str | None = None) -> Catalog:
+    """Opens the catalog. `role` (or STATERA_ROLE) identifies someone outside the team that owns the
+    internal products: reading them then requires a valid authorization. In production, the reader is
+    identified by their engine login, and the engine's permissions (generated grants) are the real boundary."""
     import os
 
-    return Catalog(project or atual(), role or os.environ.get("STATERA_PAPEL") or None)
+    return Catalog(project or current(), role or os.environ.get("STATERA_ROLE") or None)

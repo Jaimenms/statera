@@ -1,6 +1,6 @@
-# Papéis (não pessoas). Unidades e equipes fictícias.
+# Roles (not people). Fictitious organizational units and teams.
 roles:
-  - {id: equipe-dados, name: Equipe de dados, org_unit: "000001", git_team: "@org-exemplo/equipe-dados"}
-  - {id: equipe-bar, name: Equipe técnica de Bar, org_unit: "000002", git_team: "@org-exemplo/equipe-bar"}
-  - {id: curadoria, name: Curadoria do repositório, org_unit: "000001", git_team: "@org-exemplo/curadoria"}
-  - {id: encarregado-lgpd, name: Encarregado de dados, org_unit: "000003", git_team: "@org-exemplo/encarregado"}
+  - {id: data-team, name: Data team, org_unit: "000001", git_team: "@org-example/data-team"}
+  - {id: bar-team, name: Bar technical team, org_unit: "000002", git_team: "@org-example/bar-team"}
+  - {id: curation, name: Repository curation, org_unit: "000001", git_team: "@org-example/curation"}
+  - {id: dpo, name: Data protection officer, org_unit: "000003", git_team: "@org-example/dpo"}

@@ -1,7 +1,7 @@
-# Aprovação da classificação (encarregado de dados). Valores ILUSTRATIVOS.
+# Classification approval (data protection officer). ILLUSTRATIVE values.
 unit: bar
 reviewed_on: "2026-11-14"
-approved_by: encarregado-lgpd
+approved_by: dpo
 assets:
-  - {contract: gold-bar-uf-mensal, sharing: broad, nature: aggregated, secrecy: none, legal_basis: "LAI: informação estatística agregada"}
-  - {contract: gold-bar-variacao-uf-mensal, sharing: broad, nature: aggregated, secrecy: none, legal_basis: "LAI: informação estatística agregada"}
+  - {contract: gold-bar-uf-monthly, sharing: broad, nature: aggregated, secrecy: none, legal_basis: "LAI: aggregated statistical information"}
+  - {contract: gold-bar-uf-monthly-change, sharing: broad, nature: aggregated, secrecy: none, legal_basis: "LAI: aggregated statistical information"}

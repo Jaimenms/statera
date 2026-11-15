@@ -1,9 +1,9 @@
 scope: product
 unit: bar
-curator: curadoria
-technical_owner: equipe-bar
-required_reviewers: [equipe-bar]
-data_protection_officer: encarregado-lgpd
+curator: curation
+technical_owner: bar-team
+required_reviewers: [bar-team]
+data_protection_officer: dpo
 paths:
-  - {pattern: /, roles: [equipe-bar]}
-  - {pattern: /1-specify/classification.yaml, roles: [encarregado-lgpd]}
+  - {pattern: /, roles: [bar-team]}
+  - {pattern: /1-specify/classification.yaml, roles: [dpo]}

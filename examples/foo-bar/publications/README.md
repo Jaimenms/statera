@@ -1,18 +1,18 @@
-# Registro das edições publicadas — Foo Bar (exemplo mínimo)
+# Register of published editions — Foo Bar (minimal example)
 
-Este repositório é escrito **pelo processo de produção** (tarefa de publicação do processo to-be,
-executada por `statera`), por commit automático, a cada edição publicada. Não se edita à mão. O
-código, os contratos e o desenho das séries ficam no repositório de conteúdo (`content`);
-aqui fica só o histórico de edições:
+This repository is written **by the production process** (publication task of the to-be process,
+run by `statera`), by automatic commit, for each published edition. Do not edit it by hand. The
+code, the contracts and the design of the series live in the content repository (`content`);
+only the history of editions lives here:
 
-| Arquivo | Conteúdo |
+| File | Content |
 |---|---|
-| `<serie>/<competência>.datapackage.json` | Data Package da edição: arquivos, hashes, data de corte |
-| `<serie>/editions.csv` | Índice da série: uma linha por edição (e por retificação) |
-| `<serie>/evaluations/<competência>.json` e `.md` | Indicadores de qualidade da edição (GSBPM 8) |
-| `<serie>/README.md` | Página gerada: edições, revisões, linhagem por versão, duração |
+| `<series>/<period>.datapackage.json` | Data Package of the edition: files, hashes, cut-off date |
+| `<series>/editions.csv` | Series index: one row per edition (and per correction) |
+| `<series>/evaluations/<period>.json` and `.md` | Quality indicators of the edition (GSBPM 8) |
+| `<series>/README.md` | Generated page: editions, revisions, lineage per version, duration |
 
-Os arquivos de dados publicados ficam no armazenamento de publicação (portal, dados.gov.br); aqui
-ficam os metadados e os hashes que provam o que foi publicado.
+The published data files live in the publication storage (open data portal); this repository
+holds the metadata and the hashes that prove what was published.
 
-> Demonstração com DADOS SINTÉTICOS.
+> Demonstration with SYNTHETIC DATA.

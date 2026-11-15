@@ -1,171 +1,171 @@
-"""Testes da plataforma: sem depender de nenhum repositório de conteúdo real.
+"""Framework tests: independent of any real content repository.
 
-O projeto mínimo abaixo tem um produto com um processo to-be que exercita o executor:
-tarefa automática, gateway com condições, caminho de exceção, tarefa humana, reprovação e
-tarefa semiautomática. E uma pequena malha de produtos: o produto interno de fonte `dados-base`
-libera cortes, e o produto de divulgação `consumidor` espera o corte num evento intermediário.
+The minimal project below has a product with a to-be process that exercises the executor:
+automatic task, gateway with conditions, exception path, human task, rejection and
+semi-automatic task. And a small mesh of products: the internal source product `base-data`
+releases cuts, and the dissemination product `consumer` waits for the cut in an intermediate event.
 """
 
 import textwrap
 
 import pytest
 
-PROCESSO = """
-id: Processo_Teste
-name: Processo de teste
+PROCESS = """
+id: Sample_Process
+name: Sample process
 lanes:
-  - {id: L1, name: Pipeline, role: equipe-x}
-  - {id: L2, name: Equipe, role: equipe-x}
+  - {id: L1, name: Pipeline, role: team-x}
+  - {id: L2, name: Team, role: team-x}
 elements:
-  - {id: Inicio, type: startEvent, name: Início, lane: L1}
-  - {id: T_A, type: serviceTask, name: A, lane: L1, statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:etapas_de_teste.registrar'}}
-  - {id: T_B, type: serviceTask, name: B, lane: L1, statera: {type: automatic, gsbpm: '6.2', durationMin: 1, implementation: 'py:etapas_de_teste.decidir'}}
+  - {id: Start, type: startEvent, name: Start, lane: L1}
+  - {id: T_A, type: serviceTask, name: A, lane: L1, statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:testing_steps.record'}}
+  - {id: T_B, type: serviceTask, name: B, lane: L1, statera: {type: automatic, gsbpm: '6.2', durationMin: 1, implementation: 'py:testing_steps.decide'}}
   - {id: G, type: exclusiveGateway, name: 'OK?', lane: L1}
-  - {id: T_X, type: userTask, name: Investigar, lane: L2, statera: {type: manual, gsbpm: '5.3', durationMin: 60, exception: true}}
-  - {id: T_H, type: userTask, name: Aprovar, lane: L2, statera: {type: manual, gsbpm: '6.5', durationMin: 30}}
-  - {id: G2, type: exclusiveGateway, name: 'Aprovado?', lane: L2}
-  - {id: T_P, type: userTask, name: Publicar, lane: L2, statera: {type: semi-automatic, gsbpm: '7.3', durationMin: 10, implementation: 'py:etapas_de_teste.publicar'}}
-  - {id: Fim, type: endEvent, name: Fim, lane: L2}
+  - {id: T_X, type: userTask, name: Investigate, lane: L2, statera: {type: manual, gsbpm: '5.3', durationMin: 60, exception: true}}
+  - {id: T_H, type: userTask, name: Approve, lane: L2, statera: {type: manual, gsbpm: '6.5', durationMin: 30}}
+  - {id: G2, type: exclusiveGateway, name: 'Approved?', lane: L2}
+  - {id: T_P, type: userTask, name: Publish, lane: L2, statera: {type: semi-automatic, gsbpm: '7.3', durationMin: 10, implementation: 'py:testing_steps.publish'}}
+  - {id: End, type: endEvent, name: End, lane: L2}
 flows:
-  - {id: F1, from: Inicio, to: T_A}
+  - {id: F1, from: Start, to: T_A}
   - {id: F2, from: T_A, to: T_B}
   - {id: F3, from: T_B, to: G}
-  - {id: F4, from: G, to: T_H, name: sim, condition: ok}
-  - {id: F5, from: G, to: T_X, name: não, condition: failed}
+  - {id: F4, from: G, to: T_H, name: 'yes', condition: ok}
+  - {id: F5, from: G, to: T_X, name: 'no', condition: failed}
   - {id: F6, from: T_X, to: T_B}
   - {id: F7, from: T_H, to: G2}
-  - {id: F8, from: G2, to: T_P, name: sim, condition: approved}
-  - {id: F9, from: G2, to: T_H, name: não, condition: rejected}
-  - {id: F10, from: T_P, to: Fim}
+  - {id: F8, from: G2, to: T_P, name: 'yes', condition: approved}
+  - {id: F9, from: G2, to: T_H, name: 'no', condition: rejected}
+  - {id: F10, from: T_P, to: End}
 """
 
-# Produto interno de fonte: extrai (falso) e marca o corte (falso: só grava o manifesto).
-PROCESSO_FONTE = """
-id: Processo_Fonte
-name: Corte dos dados base
+# Internal source product: extracts (fake) and marks the cut (fake: only writes the manifest).
+SOURCE_PROCESS = """
+id: Source_Process
+name: Base data cut
 lanes:
-  - {id: L1, name: Pipeline, role: equipe-x}
+  - {id: L1, name: Pipeline, role: team-x}
 elements:
-  - {id: Inicio, type: startEvent, name: Data de corte, lane: L1, event: timer}
-  - {id: T_Extrair, type: serviceTask, name: Extrair, lane: L1, statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:etapas_de_teste.extrair'}}
-  - {id: T_Marcar, type: serviceTask, name: Marcar o corte, lane: L1, statera: {type: automatic, gsbpm: '7.3', durationMin: 1, implementation: 'py:etapas_de_teste.marcar_corte'}}
-  - {id: Fim, type: endEvent, name: Corte disponível, lane: L1}
+  - {id: Start, type: startEvent, name: Cut-off date, lane: L1, event: timer}
+  - {id: T_Extract, type: serviceTask, name: Extract, lane: L1, statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:testing_steps.extract'}}
+  - {id: T_Mark, type: serviceTask, name: Mark the cut, lane: L1, statera: {type: automatic, gsbpm: '7.3', durationMin: 1, implementation: 'py:testing_steps.mark_cut'}}
+  - {id: End, type: endEvent, name: Cut available, lane: L1}
 flows:
-  - {id: F1, from: Inicio, to: T_Extrair}
-  - {id: F2, from: T_Extrair, to: T_Marcar}
-  - {id: F3, from: T_Marcar, to: Fim}
+  - {id: F1, from: Start, to: T_Extract}
+  - {id: F2, from: T_Extract, to: T_Mark}
+  - {id: F3, from: T_Mark, to: End}
 """
 
-# Consumidor: espera o corte do produto interno (evento de mensagem) e calcula.
-PROCESSO_CONSUMIDOR = """
-id: Processo_Consumidor
-name: Edição do consumidor
+# Consumer: waits for the internal product's cut (message event) and computes.
+CONSUMER_PROCESS = """
+id: Consumer_Process
+name: Consumer edition
 lanes:
-  - {id: L1, name: Pipeline, role: equipe-x}
+  - {id: L1, name: Pipeline, role: team-x}
 elements:
-  - {id: Inicio, type: startEvent, name: Início, lane: L1}
-  - {id: Ev_Corte, type: intermediateCatchEvent, name: Corte disponível, lane: L1, event: message, statera: {awaits: 'py:statera.collect.pin_cut'}}
-  - {id: T_Calcular, type: serviceTask, name: Calcular, lane: L1, statera: {type: automatic, gsbpm: '5.1', durationMin: 1, implementation: 'py:etapas_de_teste.registrar'}}
-  - {id: Fim, type: endEvent, name: Fim, lane: L1}
+  - {id: Start, type: startEvent, name: Start, lane: L1}
+  - {id: Ev_Cut, type: intermediateCatchEvent, name: Cut available, lane: L1, event: message, statera: {awaits: 'py:statera.collect.pin_cut'}}
+  - {id: T_Compute, type: serviceTask, name: Compute, lane: L1, statera: {type: automatic, gsbpm: '5.1', durationMin: 1, implementation: 'py:testing_steps.record'}}
+  - {id: End, type: endEvent, name: End, lane: L1}
 flows:
-  - {id: F1, from: Inicio, to: Ev_Corte}
-  - {id: F2, from: Ev_Corte, to: T_Calcular}
-  - {id: F3, from: T_Calcular, to: Fim}
+  - {id: F1, from: Start, to: Ev_Cut}
+  - {id: F2, from: Ev_Cut, to: T_Compute}
+  - {id: F3, from: T_Compute, to: End}
 """
 
 
 @pytest.fixture
-def projeto_minimo(tmp_path, monkeypatch):
-    raiz = tmp_path / "organization"
-    arquivos = {
+def minimal_project(tmp_path, monkeypatch):
+    root = tmp_path / "organization"
+    files = {
         "statera.toml": """
             [project]
-            name = "orgao-exemplo"
-            organization = "Órgão de exemplo"
+            name = "example-org"
+            organization = "Example organization"
             acronym = "ex"
-            namespace = "br.gov.exemplo"
+            namespace = "org.example"
         """,
         "governance/roles.yaml": """
             roles:
-              - {id: equipe-x, name: Equipe X, org_unit: "000001", git_team: "@org/equipe-x"}
+              - {id: team-x, name: Team X, org_unit: "000001", git_team: "@org/team-x"}
         """,
-        "products/teste/1-specify/product.odps.yaml": """
+        "products/sample/1-specify/product.odps.yaml": """
             apiVersion: v1.0.0
             kind: DataProduct
-            id: teste
-            name: Produto de teste
+            id: sample
+            name: Sample product
             status: active
             customProperties:
-              - {property: urn, value: br.gov.exemplo.teste}
+              - {property: urn, value: org.example.sample}
         """,
-        "products/teste/1-specify/calendar.yaml": """
-            product: teste
+        "products/sample/1-specify/calendar.yaml": """
+            product: sample
             frequency: monthly
             editions:
               - {period: "2026-01", cut_date: "2026-02-20", release: "2026-02-27"}
         """,
-        "products/dados-base/1-specify/product.odps.yaml": """
+        "products/base-data/1-specify/product.odps.yaml": """
             apiVersion: v1.0.0
             kind: DataProduct
-            id: dados-base
-            name: Dados base (produto interno de fonte)
+            id: base-data
+            name: Base data (internal source product)
             status: active
             customProperties:
-              - {property: urn, value: br.gov.exemplo.dados-base}
+              - {property: urn, value: org.example.base-data}
               - {property: alignment, value: source}
               - {property: visibility, value: internal}
               - property: authorizedConsumers
                 value:
-                  - {product: consumidor, purpose: teste}
-                  - {role: equipe-x, purpose: study, until: "2099-12-31", act: Despacho 1}
+                  - {product: consumer, purpose: test}
+                  - {role: team-x, purpose: study, until: "2099-12-31", act: Ordinance 1}
             outputPorts:
-              - {name: registros, version: 1.0.0, contractId: bronze-registros}
+              - {name: records, version: 1.0.0, contractId: bronze-records}
         """,
-        "products/dados-base/4-collect/contracts/registros.odcs.yaml": """
+        "products/base-data/4-collect/contracts/records.odcs.yaml": """
             apiVersion: v3.1.0
             kind: DataContract
-            id: bronze-registros
-            name: Registros (bronze)
+            id: bronze-records
+            name: Records (bronze)
             version: 1.0.0
             status: active
             customProperties:
               - {property: layer, value: bronze}
             schema:
-              - name: registros
-                physicalName: bronze.registros
+              - name: records
+                physicalName: bronze.records
                 properties:
                   - {name: id, logicalType: string}
         """,
-        "products/dados-base/2-design/processes/to-be.yaml": PROCESSO_FONTE,
-        "products/consumidor/1-specify/product.odps.yaml": """
+        "products/base-data/2-design/processes/to-be.yaml": SOURCE_PROCESS,
+        "products/consumer/1-specify/product.odps.yaml": """
             apiVersion: v1.0.0
             kind: DataProduct
-            id: consumidor
-            name: Consumidor dos dados base
+            id: consumer
+            name: Consumer of the base data
             status: active
             customProperties:
-              - {property: urn, value: br.gov.exemplo.consumidor}
+              - {property: urn, value: org.example.consumer}
             inputPorts:
-              - {name: registros, version: 1.0.0, contractId: bronze-registros}
+              - {name: records, version: 1.0.0, contractId: bronze-records}
         """,
-        "products/consumidor/1-specify/calendar.yaml": """
-            product: consumidor
+        "products/consumer/1-specify/calendar.yaml": """
+            product: consumer
             frequency: monthly
             editions:
               - {period: "2026-01", cut_date: "2026-02-20", release: "2026-02-27"}
               - {period: "2026-02", cut_date: "2026-02-20", release: "2026-03-27"}
         """,
-        "products/consumidor/2-design/processes/to-be.yaml": PROCESSO_CONSUMIDOR,
-        "products/teste/2-design/processes/to-be.yaml": PROCESSO,
+        "products/consumer/2-design/processes/to-be.yaml": CONSUMER_PROCESS,
+        "products/sample/2-design/processes/to-be.yaml": PROCESS,
     }
-    for rel, texto in arquivos.items():
-        caminho = raiz / rel
-        caminho.parent.mkdir(parents=True, exist_ok=True)
-        caminho.write_text(textwrap.dedent(texto).lstrip(), encoding="utf-8")
-    monkeypatch.setenv("STATERA_PROJETO", str(raiz))
-    monkeypatch.delenv("STATERA_DADOS", raising=False)
-    monkeypatch.delenv("STATERA_REGISTRO", raising=False)
-    monkeypatch.chdir(raiz)
-    from statera import projeto
+    for rel, text in files.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(textwrap.dedent(text).lstrip(), encoding="utf-8")
+    monkeypatch.setenv("STATERA_PROJECT", str(root))
+    monkeypatch.delenv("STATERA_DATA", raising=False)
+    monkeypatch.delenv("STATERA_REGISTRY", raising=False)
+    monkeypatch.chdir(root)
+    from statera import project
 
-    return projeto.atual()
+    return project.current()

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:roles:0.1",
-  "title": "Catálogo de papéis",
+  "title": "Role catalog",
   "type": "object",
   "required": [
     "roles"
@@ -31,7 +31,7 @@
           "org_unit": {
             "type": "string",
             "pattern": "^[0-9]{6}$",
-            "description": "Código da unidade no SIORG."
+            "description": "Code of the organizational unit in the organization's registry of units (e.g. SIORG in the Brazilian federal government)."
           },
           "git_team": {
             "type": "string",

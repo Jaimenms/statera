@@ -1,95 +1,93 @@
-"""Fase 6 — Analisar. Tarefa do processo: `implementacao: py:statera.analyse.step`.
+"""Phase 6 — Analyse. Process task: `implementation: py:statera.analyse.step`.
 
-Reúne TODOS os resultados de controle da edição e decide a situação que o gateway usa:
-  - testes do dbt (dados, controles SQL CK-*, unit tests das regras), rodados na tarefa anterior;
-  - verificação dos contratos ODCS das tabelas construídas (e do bronze de entrada);
-  - controles declarados em `6-analyse/controls.yaml` (comparação com a edição anterior).
-Os resultados vão para `<produto>/6-analyse/data/<competência>/`.
+Gathers ALL control results of the edition and decides the status the gateway uses:
+  - dbt tests (data, CK-* SQL controls, business rule unit tests), run in the previous task;
+  - checks of the ODCS contracts of the built tables (and of the input bronze);
+  - controls declared in `6-analyse/controls.yaml` (comparison with the previous edition).
+Results go to `<product>/6-analyse/data/<period>/`.
 """
 
 from __future__ import annotations
 
 import json
 
-from statera import contratos, openlineage, portas
-from statera.analyse import controles, verificacao
-from statera.disseminate import registro
-from statera.edicao import Edicao, agora
+from statera import contracts, openlineage, ports
+from statera.analyse import controls, verification
+from statera.disseminate import registry
+from statera.edition import Edition, now
 
 
-def contratos_em_escopo(ed: Edicao) -> set[str]:
-    """Contratos verificados na edição: as saídas do próprio produto e os ativos construídos nesta
-    execução (staging e referências incluídos). As entradas de produtos internos não são
-    reverificadas: o produtor as verificou ao liberar o corte."""
-    projeto = ed.projeto
-    nos = set(ed.resultados_dbt.get("nos", []))
-    escopo = set()
-    for cid, (caminho, contrato) in contratos.todos(projeto).items():
-        if projeto.unidade_de(caminho) == ed.unidade:
-            escopo.add(cid)
+def contracts_in_scope(ed: Edition) -> set[str]:
+    """Contracts checked in the edition: the product's own outputs and the assets built in this
+    run (staging and reference tables included). Inputs from internal products are not
+    re-checked: the producer checked them when releasing the cut."""
+    project = ed.project
+    nodes = set(ed.dbt_results.get("nodes", []))
+    scope = set()
+    for cid, (path, contract) in contracts.all_(project).items():
+        if project.unit_of(path) == ed.unit:
+            scope.add(cid)
             continue
-        no = contratos.no_dbt(contrato)
-        if no and no[0] in ("model", "seed") and f"{no[0]}.{projeto.dbt_nome}.{no[1]}" in nos:
-            escopo.add(cid)
-    return escopo
+        node = contracts.dbt_node(contract)
+        if node and node[0] in ("model", "seed") and f"{node[0]}.{project.dbt_name}.{node[1]}" in nodes:
+            scope.add(cid)
+    return scope
 
 
-def _gravar(ed: Edicao, nome: str, linhas: list[dict]) -> None:
-    pasta = ed.pasta_dados(6)
-    pasta.mkdir(parents=True, exist_ok=True)
-    conteudo = {**ed.faceta, "registered_at": agora(), "resultados": linhas}
-    (pasta / f"{nome}.json").write_text(
-        json.dumps(conteudo, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
+def _save(ed: Edition, name: str, lines: list[dict]) -> None:
+    folder = ed.data_folder(6)
+    folder.mkdir(parents=True, exist_ok=True)
+    content = {**ed.facet, "registered_at": now(), "results": lines}
+    (folder / f"{name}.json").write_text(
+        json.dumps(content, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
     )
 
 
-def _linhas(resultados: list[verificacao.Resultado]) -> list[dict]:
+def _rows(results: list[verification.Result]) -> list[dict]:
     return [
         {
-            "contract": r.contrato,
-            "verificacao": r.verificacao,
+            "contract": r.contract,
+            "verification": r.verification,
             "ok": bool(r.ok),
-            "detalhe": r.detalhe,
-            "severity": r.severidade,
+            "detail": r.detail,
+            "severity": r.severity,
         }
-        for r in resultados
+        for r in results
     ]
 
 
-def step(ed: Edicao) -> str:
-    """GSBPM 6.2 — validar resultados. Devolve 'failed' se algum controle bloqueante falhou."""
-    escopo = contratos_em_escopo(ed)
-    proprios = [
-        c for caminho, c in contratos.todos(ed.projeto).values() if ed.projeto.unidade_de(caminho) == ed.unidade
-    ]
-    ed.ctx["inputs"] = [openlineage.dataset(contratos.tabela_fisica(c)) for c in proprios]
+def step(ed: Edition) -> str:
+    """GSBPM 6.2 — validate outputs. Returns 'failed' if any blocking control failed."""
+    scope = contracts_in_scope(ed)
+    own_contracts = [c for path, c in contracts.all_(ed.project).values() if ed.project.unit_of(path) == ed.unit]
+    ed.ctx["inputs"] = [openlineage.dataset(contracts.physical_table(c)) for c in own_contracts]
 
-    verificacoes = verificacao.verificar_todos(escopo, ed.projeto, ed.data_corte)
-    _gravar(ed, "contracts", _linhas(verificacoes))
-    definicoes = (ed.unidade.ler("6-analyse/controls.yaml") or {}).get("controls", [])
-    insumos = controles.Insumos(
-        ed.competencia,
-        atual=lambda porta: portas.ler_porta(ed.unidade, porta),
-        anterior=lambda porta: registro.tabela_anterior(ed.unidade, ed.competencia, porta),
-        coluna_periodo=ed.projeto.convencoes["period_column"],
+    checks = verification.check_all(scope, ed.project, ed.cut_date)
+    _save(ed, "contracts", _rows(checks))
+    definitions = (ed.unit.read("6-analyse/controls.yaml") or {}).get("controls", [])
+    control_inputs = controls.Inputs(
+        ed.period,
+        current=lambda port: ports.read_port(ed.unit, port),
+        previous=lambda port: registry.previous_table(ed.unit, ed.period, port),
+        period_column=ed.project.conventions["period_column"],
     )
-    resultados_ctrl, tabelas = controles.executar(definicoes, insumos)
-    _gravar(ed, "controls", _linhas(resultados_ctrl))
-    falhas_dbt = ed.resultados_dbt.get("falhas", [])
-    _gravar(ed, "dbt-tests", [{"failed": f} for f in falhas_dbt])
+    control_results, tables = controls.run(definitions, control_inputs)
+    _save(ed, "controls", _rows(control_results))
+    dbt_failures = ed.dbt_results.get("failures", [])
+    _save(ed, "dbt-tests", [{"failed": f} for f in dbt_failures])
 
-    ed.revisoes = tabelas or None
-    ed.verificacoes = len(verificacoes)
-    ed.falhas_nao_bloqueantes = sum(not r.ok and not r.bloqueia for r in verificacoes)
-    ed.log(f"  contratos ODCS: {len(verificacoes)} verificações em {len(escopo)} contratos, no corte {ed.data_corte}")
-    for r in resultados_ctrl:
-        marca = "ok " if r.ok else ("ERRO" if r.bloqueia else "aviso")
-        ed.log(f"  [{marca}] {r.verificacao}: {r.detalhe}")
-    bloqueios = [f"dbt: {f}" for f in falhas_dbt]
-    bloqueios += [f"{r.contrato} {r.verificacao}: {r.detalhe}" for r in [*verificacoes, *resultados_ctrl] if r.bloqueia]
-    if bloqueios:
-        ed.falhas += bloqueios
-        for b in bloqueios[:10]:
-            ed.log(f"  FALHA {b}")
+    ed.revisions = tables or None
+    ed.checks = len(checks)
+    ed.non_blocking_failures = sum(not r.ok and not r.blocking for r in checks)
+    ed.log(f"  ODCS contracts: {len(checks)} checks on {len(scope)} contracts, at cut {ed.cut_date}")
+    for r in control_results:
+        mark = "ok" if r.ok else ("ERROR" if r.blocking else "warning")
+        ed.log(f"  [{mark}] {r.verification}: {r.detail}")
+    blockers = [f"dbt: {f}" for f in dbt_failures]
+    blockers += [f"{r.contract} {r.verification}: {r.detail}" for r in [*checks, *control_results] if r.blocking]
+    if blockers:
+        ed.failures += blockers
+        for b in blockers[:10]:
+            ed.log(f"  FAIL {b}")
         return "failed"
     return "ok"

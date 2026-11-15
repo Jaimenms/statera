@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:query-test:0.1",
-  "title": "Casos de teste de uma consulta (dados sintéticos de entrada e saída esperada)",
+  "title": "Test cases of a query (synthetic input data and expected output)",
   "type": "object",
   "required": [
     "cases"

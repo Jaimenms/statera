@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:publication-series:0.1",
-  "title": "Catálogo de uma série de publicações",
-  "description": "Descreve a série (estável). Cada edição é registrada fora do repositório de código, em registro_de_edicoes.",
+  "title": "Catalog entry of a publication series",
+  "description": "Describes the series (stable). Each edition is recorded outside the code repository, in the editions register (`edition_registry`).",
   "type": "object",
   "required": [
     "series",
@@ -28,7 +28,7 @@
     "product": {
       "type": "string",
       "pattern": "^[a-z0-9-]+$",
-      "description": "Pasta em products/ (tabelas = portas de saída do ODPS)."
+      "description": "Folder in products/ (tables = ODPS output ports)."
     },
     "frequency": {
       "enum": [
@@ -60,12 +60,12 @@
           "type": "string"
         }
       },
-      "description": "No formato de licenses do Frictionless Data Package."
+      "description": "In the format of Frictionless Data Package licenses."
     },
     "page": {
       "type": "string",
       "format": "uri",
-      "description": "Página da série no portal, onde o público baixa as edições (dcat:landingPage)."
+      "description": "Series page on the portal, where the public downloads the editions (dcat:landingPage)."
     },
     "open_data_portal": {
       "type": "object",
@@ -92,11 +92,11 @@
       "properties": {
         "tables": {
           "type": "string",
-          "pattern": "\\{porta\\}"
+          "pattern": "\\{port\\}"
         },
         "spreadsheet": {
           "type": "string",
-          "pattern": "\\{competencia\\}"
+          "pattern": "\\{period\\}"
         },
         "summary": {
           "type": "string"
@@ -128,7 +128,7 @@
       "properties": {
         "edition": {
           "type": "string",
-          "pattern": "\\{competencia\\}"
+          "pattern": "\\{period\\}"
         },
         "index": {
           "type": "string"
@@ -141,7 +141,7 @@
     "main_resource": {
       "type": "string",
       "pattern": "^[a-z0-9-]+$",
-      "description": "Porta de saída que resume a edição."
+      "description": "Output port that summarizes the edition."
     }
   }
 }

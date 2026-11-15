@@ -1,92 +1,111 @@
+<p align="center">
+  <img src="assets/statera-logo.jpg" alt="Statera logo: a Roman steelyard balance. Standard and framework for data product repositories." width="560">
+</p>
+
 # Statera
 
-**Statera** é uma plataforma para repositórios de produtos estatísticos de governo: dados, regras,
-processos e publicações organizados como produtos de dados, com contratos, classificação da
-informação, processo executável, controle de divulgação e registro de cada edição publicada.
+**Statera** is a standard and a framework for data product repositories, designed for statistical
+products: data, rules, processes and publications organized as data products, with contracts,
+information classification, an executable process, statistical disclosure control and a register of
+every published edition.
 
-> *Statera* é a balança romana de braço: um instrumento de medida com peso aferido e público.
+> *Statera* is the Roman steelyard: a measuring instrument with a calibrated, public weight.
 
-A plataforma é **genérica**: não conhece nenhum produto. Tudo o que é de um órgão (produtos,
-referências, consultas, receitas, governança) fica num **repositório de dados** do órgão, que declara
-a Statera como dependência. Uma melhoria na plataforma chega a todos por atualização de versão.
+The framework is **generic**: it knows no product. Everything that belongs to an organization (products,
+reference tables, queries, recipes, governance) lives in the organization's **data repository**, which
+declares Statera as a dependency. An improvement to the framework reaches everyone through a version
+upgrade.
 
 ```
-ESPECIFICAÇÃO   specification/               formatos, perfis, espaço de nomes, classificação, níveis, cortes
-     │ implementada por
-PLATAFORMA      src/statera/                 pacote Python + CLI · pacote dbt · fluxo de CI · modelos (Copier)
-     │ usada por
-REPOSITÓRIO     <órgão>/content/             produtos · referências · consultas · receitas · governança
-DE DADOS        <órgão>/publications/        registro das edições publicadas
+SPECIFICATION   specification/               formats, profiles, namespace, classification, levels, cuts
+     │ implemented by
+FRAMEWORK       src/statera/                 Python package + CLI · dbt package · CI workflow · templates (Copier)
+     │ used by
+DATA            <org>/content/               products · references · queries · recipes · governance
+REPOSITORY      <org>/publications/          register of published editions
 ```
 
-## Começar um repositório de dados
+## Installing
 
-Requer [uv](https://docs.astral.sh/uv/) e acesso a este repositório.
+Requires [uv](https://docs.astral.sh/uv/) and read access to this repository. Works the same on Windows,
+Linux and Mac.
 
 ```bash
-uvx --from "git+ssh://git@github.com/Jaimenms/statera.git@v0.1.0" statera init meu-orgao \
-    --name estat-exemplo --namespace br.gov.exemplo --organization "Estatísticas do exemplo"
-cd meu-orgao
-make setup          # instala o ambiente (a Statera vem pelo pyproject.toml, na versão fixada)
-make validate       # o repositório nasce válido
+uv tool install git+ssh://git@github.com/Jaimenms/statera.git   # once per computer
+uv tool upgrade statera                                         # later, rarely needed
 ```
 
-Depois, crie os produtos com `make new-product NAME=<nome>` (ou `statera new-product`). O README
-gerado no repositório explica o fluxo do dia a dia.
+The global `statera` command does almost nothing by itself: inside a data repository it finds the
+repository root and hands the command off to the Statera version that repository pins
+(`uv run --project <root> statera …`; uv updates the environment when needed). Every repository keeps
+its own version, and a computer never runs old rules by accident. Outside a repository (`statera init`)
+it runs itself. `uv run statera …` works too, with nothing installed globally; CI uses that form.
 
-## Exemplo
-
-[`examples/foo-bar/`](examples/foo-bar/content/README.md) é o menor repositório de dados que passa por
-todo o ciclo: um produto de fonte (`foo`), um de divulgação em SQL e pandas (`bar`) e um calculado por
-código legado SPSS e R (`baz`).
+## Starting a data repository
 
 ```bash
-cd examples/foo-bar/content
-uv sync && uv run statera demo
+statera init my-org --name example-stats --namespace org.example --organization "Example statistics"
+cd my-org
+statera doctor      # checks the computer and the repository, and says how to fix each problem
+statera check       # validation, lint and fast tests: the repository starts out valid
 ```
 
-## O que a plataforma faz
+Then create the products with `statera new-product <name>`. The README generated in the repository
+explains the day-to-day workflow; in VS Code the same commands are available as tasks.
 
-| Fase GSBPM | Módulo | O quê |
+## Example
+
+[`examples/foo-bar/`](examples/foo-bar/content/README.md) is the smallest data repository that goes
+through the whole cycle: a source-aligned product (`foo`), a dissemination product in SQL and pandas
+(`bar`) and one computed by legacy SPSS and R code (`baz`).
+
+```bash
+cd examples/foo-bar
+uv run statera demo
+```
+
+## What the framework does
+
+| GSBPM phase | Module | What |
 |---|---|---|
-| 1 | `projeto`, `contratos`, `classificacao`, `governanca` | Lê `statera.toml`, descobre os produtos; contratos ODCS; classificação; CODEOWNERS gerado |
-| 2 | `design` | Processo em YAML espelho do BPMN 2.0; `.bpmn`, SVG e visualizador gerados |
-| 4 | `collect` | Extração incremental em lotes; cortes imutáveis com manifesto |
-| 5 | `process` | Projeto dbt gerado dos produtos; regras com casos (SQL e Python); código legado (SPSS pelo PSPP, R) |
-| 6 | `analyse` | Contratos contra o motor; controles; controle de divulgação (supressão de células, k-anonimato) |
-| 7 | `disseminate` | Pacote da edição (CSV, xlsx, sumário, Data Package, CKAN) e registro de edições |
-| 8 | `evaluate` | Indicadores de qualidade e plano de ação |
-| — | `consume` | Biblioteca (Ibis): catálogo, edições publicadas, cortes, métricas, consultas, receitas |
+| 1 | `project`, `contracts`, `classification`, `governance` | Reads `statera.toml`, discovers the products; ODCS contracts; classification; generated CODEOWNERS |
+| 2 | `design` | Process in YAML mirroring BPMN 2.0; generated `.bpmn`, SVG and viewer |
+| 4 | `collect` | Incremental extraction in batches; immutable cuts with a manifest |
+| 5 | `process` | dbt project generated from the products; rules with cases (SQL and Python); legacy code (SPSS via PSPP, R) |
+| 6 | `analyse` | Contracts checked against the engine; controls; statistical disclosure control (cell suppression, k-anonymity) |
+| 7 | `disseminate` | Edition package (CSV, xlsx, summary, Data Package, CKAN) and editions register |
+| 8 | `evaluate` | Quality indicators and action plan |
+| — | `consume` | Library (Ibis): catalog, published editions, cuts, metrics, queries, recipes |
 
-## Linha de comando
+## Command line
 
-`statera init | new-product | sync | validate | conformance | run | resume | status | cuts | demo |
-query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] | clean`.
-Ver `statera --help`.
+`statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
+cuts | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
+clean`. See `statera --help`. Commands work from any folder of a data repository.
 
-## Biblioteca
+## Library
 
 ```python
 from statera.consume import catalog
 
 cat = catalog.open()
-cat.search(theme="emprego-formal", layer="gold")
-t = cat.table("gold.caged_saldo_uf_mensal")  # tabela Ibis (vigente)
-ed = cat.edition("novo-caged", "2026-06")  # o que foi publicado, hash conferido
-ed.table("saldo-uf")
+cat.search(theme="formal-employment", layer="gold")
+t = cat.table("gold.employment_flows_uf_monthly")  # Ibis table (current)
+ed = cat.edition("employment-flows", "2026-06")  # what was published, hash verified
+ed.table("net-change-by-uf")
 ed.provenance
 ```
 
-## Desenvolvimento
+## Development
 
 ```bash
 uv sync && uv run pytest -q && uv run ruff check .
 ```
 
-Os testes da plataforma não dependem de nenhum órgão. O CI também roda o exemplo `foo-bar` de ponta a
-ponta e, onde houver, a sintaxe SPSS (GNU PSPP) e os scripts R.
+The framework tests depend on no organization. CI also runs the `foo-bar` example end to end and, where
+available, the SPSS syntax (GNU PSPP) and the R scripts.
 
-## Especificação
+## Specification
 
-[specification/](specification/README.md): formatos de arquivo, perfis ODCS e ODPS, espaço de nomes,
-classificação, processos, controles, consumo, níveis de conformidade e produtos internos.
+[specification/](specification/README.md): file formats, ODCS and ODPS profiles, namespace,
+classification, processes, controls, consumption, conformance levels and internal products.

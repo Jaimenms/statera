@@ -1,5 +1,5 @@
-# Papéis (não pessoas): sobrevivem a mudanças de equipe. Ajuste unidades e equipes do seu órgão.
+# Roles (not people): they survive team changes. Adjust the units and teams to your organization.
 roles:
-  - {id: data-team, name: Equipe de dados, org_unit: "000000", git_team: "@sua-org/equipe-dados"}
-  - {id: curator, name: Curadoria do repositório, org_unit: "000000", git_team: "@sua-org/curadoria"}
-  - {id: data-protection-officer, name: Encarregado de dados (LGPD), org_unit: "000000", git_team: "@sua-org/encarregado"}
+  - {id: data-team, name: Data team, org_unit: "000000", git_team: "@your-org/data-team"}
+  - {id: curator, name: Repository curation, org_unit: "000000", git_team: "@your-org/curation"}
+  - {id: data-protection-officer, name: Data protection officer, org_unit: "000000", git_team: "@your-org/data-protection-officer"}

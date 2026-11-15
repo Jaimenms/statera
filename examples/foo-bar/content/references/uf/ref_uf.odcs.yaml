@@ -1,17 +1,17 @@
-# Contrato ODCS v3.1 — referência oficial (IBGE), consumida por versão.
-# Cópia local nesta demonstração: em produção, a autoridade publica e os órgãos consomem por versão.
+# ODCS v3.1 contract — official reference table (IBGE), consumed by version.
+# Local copy in this demo: in production, the authority publishes it and organizations consume it by version.
 apiVersion: v3.1.0
 kind: DataContract
 id: ref-uf
-name: Unidades da Federação
+name: Federative Units
 version: 1.0.0
 status: active
-domain: referencias
+domain: references
 tags: [ref]
 description:
-  purpose: "Unidades da Federação e grandes regiões, com os códigos do IBGE."
-  usage: "Agregação geográfica de todos os produtos."
-  limitations: "Cópia local; a fonte oficial é o IBGE."
+  purpose: "Federative Units (UFs) and major regions, with IBGE codes."
+  usage: "Geographic aggregation for all products."
+  limitations: "Local copy; the official source is IBGE."
 servers:
   - {server: warehouse-local, type: duckdb, database: dbt/data/warehouse.duckdb, schema: ref, environment: dev}
 schema:
@@ -20,20 +20,20 @@ schema:
     physicalType: table
     logicalType: object
     properties:
-      - {name: cod_uf, logicalType: integer, physicalType: "INTEGER", required: true, primaryKey: true, primaryKeyPosition: 1, classification: broad}
-      - {name: sigla_uf, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
-      - {name: nome_uf, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
-      - {name: cod_regiao, logicalType: integer, physicalType: "INTEGER", required: true, classification: broad}
-      - {name: regiao, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
+      - {name: uf_id, logicalType: integer, physicalType: "INTEGER", required: true, primaryKey: true, primaryKeyPosition: 1, classification: broad}
+      - {name: uf_abbr, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
+      - {name: uf_name, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
+      - {name: region_id, logicalType: integer, physicalType: "INTEGER", required: true, classification: broad}
+      - {name: region, logicalType: string, physicalType: "VARCHAR", required: true, classification: broad}
     quality:
-      - {id: linhas_presentes, type: library, metric: rowCount, mustBe: 27}
+      - {id: rows_present, type: library, metric: rowCount, mustBe: 27}
 team:
-  name: Curadoria
+  name: Curation
   members:
-    - {username: "papel:curadoria", role: owner}
+    - {username: "role:curation", role: owner}
 customProperties:
   - {property: layer, value: ref}
-  - {property: urn, value: br.gov.foo-bar.uf.ref.ref-uf}
+  - {property: urn, value: org.example.foo-bar.uf.ref.ref-uf}
   - {property: dbtSeed, value: ref_uf}
   - {property: authority, value: "IBGE"}
   - {property: temporality, value: stable}

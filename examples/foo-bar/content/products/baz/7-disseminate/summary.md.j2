@@ -1,10 +1,10 @@
-{% set linhas = tables['valor-medio-uf'] | in_period %}
+{% set rows = tables['mean-value-by-uf'] | in_period %}
 # {{ product.name }} — {{ edition.period_long }}
 
-> **DADOS SINTÉTICOS — EXEMPLO.** Calculado pelo script SPSS legado (GNU PSPP). Data de corte: **{{ edition.cut_date }}**.
+> **SYNTHETIC DATA — EXAMPLE.** Computed by the legacy SPSS script (GNU PSPP). Cut-off date: **{{ edition.cut_date }}**.
 
-| UF | Registros | Valor médio (R$) |
+| UF | Records | Mean value |
 |---|---:|---:|
-{% for u in maiores(linhas, 'registros', 7) -%}
-| {{ u.sigla_uf }} | {{ u.registros | milhar }} | {{ u.valor_medio | reais }} |
+{% for u in top(rows, 'records', 7) -%}
+| {{ u.uf_abbr }} | {{ u.records | thousands }} | {{ u.mean_value | brl }} |
 {% endfor %}

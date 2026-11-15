@@ -1,26 +1,26 @@
-"""Sintaxe SPSS legada executada pelo GNU PSPP, chamada de um modelo Python do dbt.
+"""Legacy SPSS syntax run by GNU PSPP, called from a dbt Python model.
 
-Para que um script `.sps` legado rode dentro do processo sem ser reescrito:
+So that a legacy `.sps` script runs inside the process without being rewritten:
 
-    # products/<p>/5-process/models/marts/<p>/<modelo>.py
+    # products/<p>/5-process/models/marts/<p>/<model>.py
     from pathlib import Path
     from statera.legacy import pspp
 
-    SINTAXE = Path(__file__).with_name("<modelo>.sps")
+    SYNTAX = Path(__file__).with_name("<model>.sps")
 
-    def transform(inputs, variaveis):
-        return pspp.run(SINTAXE, {"registros": entradas["int_x__registros"]}, saida="resultado")
+    def transform(inputs, variables):
+        return pspp.run(SYNTAX, {"records": inputs["int_x__records"]}, output="result")
 
     def model(dbt, session):
-        return transform({"int_x__registros": dbt.ref("int_x__registros").df()}, {})
+        return transform({"int_x__records": dbt.ref("int_x__records").df()}, {})
 
-A única adaptação do script legado é trocar os caminhos de arquivo por FILE HANDLEs, que a
-plataforma define: cada entrada vira um arquivo `.sav` com o nome dela (`GET FILE=registros.`) e
-o resultado é lido do handle de saída (`SAVE OUTFILE=resultado.`). O resto da sintaxe não muda.
+The only adaptation of the legacy script is replacing file paths with FILE HANDLEs, which the
+framework defines: each input becomes a `.sav` file named after it (`GET FILE=records.`) and
+the result is read from the output handle (`SAVE OUTFILE=result.`). The rest of the syntax is unchanged.
 
-O PSPP não é o SPSS: cada script precisa de evidência de que o PSPP o executa como o SPSS antes de
-servir de referência (certificação contra o SPSS ou contra edições publicadas; fundamentos, §PSPP).
-O comando é `pspp`, ou o que a variável STATERA_PSPP disser (ex.: um contêiner).
+PSPP is not SPSS: each script needs evidence that PSPP runs it as SPSS does before it can serve
+as a reference (certification against SPSS or against published editions; foundations, §PSPP).
+The command is `pspp`, or whatever the STATERA_PSPP variable says (e.g. a container).
 """
 
 from __future__ import annotations
@@ -35,66 +35,64 @@ from pathlib import Path
 
 import pandas as pd
 
-NOME_HANDLE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
-ERRO = re.compile(r"\berror:", re.IGNORECASE)
+HANDLE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
+ERROR = re.compile(r"\berror:", re.IGNORECASE)
 
 
 class PSPPError(RuntimeError):
-    """O PSPP não está disponível ou a sintaxe terminou com erro."""
+    """PSPP is not available or the syntax ended with an error."""
 
 
-def comando() -> list[str]:
+def command() -> list[str]:
     return shlex.split(os.environ.get("STATERA_PSPP", "pspp"))
 
 
 def available() -> bool:
-    return shutil.which(comando()[0]) is not None
+    return shutil.which(command()[0]) is not None
 
 
 def version() -> str:
     if not available():
-        return "indisponível"
-    processo = subprocess.run([*comando(), "--version"], capture_output=True, text=True, timeout=60)
-    return (processo.stdout or processo.stderr).splitlines()[0].strip() if processo.returncode == 0 else "?"
+        return "unavailable"
+    process = subprocess.run([*command(), "--version"], capture_output=True, text=True, timeout=60)
+    return (process.stdout or process.stderr).splitlines()[0].strip() if process.returncode == 0 else "?"
 
 
-def _aspas(caminho: Path) -> str:
-    return "'" + str(caminho).replace("'", "''") + "'"
+def _quote(path: Path) -> str:
+    return "'" + str(path).replace("'", "''") + "'"
 
 
-def run(sintaxe: Path, entradas: dict[str, pd.DataFrame], saida: str = "resultado", timeout: int = 900):
-    """Roda a sintaxe no PSPP com as entradas (DataFrames) e devolve o dataset salvo em `saida`."""
+def run(syntax: Path, inputs: dict[str, pd.DataFrame], output: str = "result", timeout: int = 900):
+    """Runs the syntax in PSPP with the inputs (DataFrames) and returns the dataset saved to `output`."""
     import pyreadstat
 
-    for nome in [*entradas, saida]:
-        if not NOME_HANDLE.match(nome):
-            raise PSPPError(f"nome de handle inválido para o SPSS: {nome!r}")
+    for name in [*inputs, output]:
+        if not HANDLE_NAME.match(name):
+            raise PSPPError(f"invalid SPSS handle name: {name!r}")
     if not available():
         raise PSPPError(
-            f"PSPP não encontrado ({comando()[0]}). Instale o GNU PSPP (apt install pspp) ou aponte "
-            "STATERA_PSPP para o comando."
+            f"PSPP not found ({command()[0]}). Install GNU PSPP (apt install pspp) or point "
+            "STATERA_PSPP to the command."
         )
-    with tempfile.TemporaryDirectory(prefix="statera-pspp-") as pasta:
-        pasta = Path(pasta)
-        for nome, df in entradas.items():
-            pyreadstat.write_sav(df, str(pasta / f"{nome}.sav"))
-        handles = [f"FILE HANDLE {nome} /NAME={_aspas(pasta / f'{nome}.sav')}." for nome in [*entradas, saida]]
-        script = pasta / "executar.sps"
-        script.write_text("\n".join(handles) + "\n" + Path(sintaxe).read_text(encoding="utf-8"), encoding="utf-8")
-        listagem = pasta / "listagem.txt"
+    with tempfile.TemporaryDirectory(prefix="statera-pspp-") as folder:
+        folder = Path(folder)
+        for name, df in inputs.items():
+            pyreadstat.write_sav(df, str(folder / f"{name}.sav"))
+        handles = [f"FILE HANDLE {name} /NAME={_quote(folder / f'{name}.sav')}." for name in [*inputs, output]]
+        script = folder / "run.sps"
+        script.write_text("\n".join(handles) + "\n" + Path(syntax).read_text(encoding="utf-8"), encoding="utf-8")
+        listing = folder / "listing.txt"
         try:
-            processo = subprocess.run(
-                [*comando(), "-o", str(listagem), str(script)], capture_output=True, text=True, timeout=timeout
+            process = subprocess.run(
+                [*command(), "-o", str(listing), str(script)], capture_output=True, text=True, timeout=timeout
             )
-        except subprocess.TimeoutExpired as erro:
-            raise PSPPError(f"{Path(sintaxe).name}: PSPP excedeu {timeout} s") from erro
-        texto = processo.stdout + processo.stderr + (listagem.read_text(errors="replace") if listagem.exists() else "")
-        erros = [linha.strip() for linha in texto.splitlines() if ERRO.search(linha)]
-        arquivo_saida = pasta / f"{saida}.sav"
-        if processo.returncode != 0 or erros or not arquivo_saida.exists():
-            detalhe = "\n  ".join(erros[:10]) or texto[-1500:]
-            raise PSPPError(
-                f"{Path(sintaxe).name}: PSPP terminou com erro (código {processo.returncode}):\n  {detalhe}"
-            )
-        dados, _ = pyreadstat.read_sav(str(arquivo_saida))
-        return dados
+        except subprocess.TimeoutExpired as error:
+            raise PSPPError(f"{Path(syntax).name}: PSPP exceeded {timeout} s") from error
+        text = process.stdout + process.stderr + (listing.read_text(errors="replace") if listing.exists() else "")
+        errors = [line.strip() for line in text.splitlines() if ERROR.search(line)]
+        output_file = folder / f"{output}.sav"
+        if process.returncode != 0 or errors or not output_file.exists():
+            detail = "\n  ".join(errors[:10]) or text[-1500:]
+            raise PSPPError(f"{Path(syntax).name}: PSPP ended with an error (code {process.returncode}):\n  {detail}")
+        data, _ = pyreadstat.read_sav(str(output_file))
+        return data

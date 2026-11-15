@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:owners:0.1",
-  "title": "Responsáveis por uma unidade (produto ou domínio) ou por um escopo transversal",
-  "description": "Formaliza curador, dono técnico e revisores. Fonte para gerar o CODEOWNERS.",
+  "title": "Owners of a unit (product or reference table) or of a shared scope",
+  "description": "Formalizes curator, technical owner and reviewers. Source for generating CODEOWNERS.",
   "type": "object",
   "required": [
     "scope",
@@ -21,26 +21,26 @@
       ]
     },
     "curator": {
-      "$ref": "#/$defs/papel"
+      "$ref": "#/$defs/role"
     },
     "technical_owner": {
-      "$ref": "#/$defs/papel"
+      "$ref": "#/$defs/role"
     },
     "deputies": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/papel"
+        "$ref": "#/$defs/role"
       }
     },
     "required_reviewers": {
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "#/$defs/papel"
+        "$ref": "#/$defs/role"
       }
     },
     "data_protection_officer": {
-      "$ref": "#/$defs/papel"
+      "$ref": "#/$defs/role"
     },
     "paths": {
       "type": "array",
@@ -61,7 +61,7 @@
             "type": "array",
             "minItems": 1,
             "items": {
-              "$ref": "#/$defs/papel"
+              "$ref": "#/$defs/role"
             }
           }
         }
@@ -87,7 +87,7 @@
     ]
   },
   "$defs": {
-    "papel": {
+    "role": {
       "type": "string",
       "pattern": "^[a-z0-9-]+$"
     }

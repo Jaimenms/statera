@@ -1,5 +1,4 @@
-# Produtos
+# Products
 
-Uma pasta por estatística. Crie com `make new-product NAME=<nome>` (na raiz) ou
-`uv run statera new-product <nome>` (aqui). Produtos internos (fonte ou entidade canônica compartilhada):
-`--alignment source` ou `--alignment aggregate`.
+One folder per statistic. Create one with `statera new-product <name>`. Internal products (source, or shared canonical entity):
+`--alignment source` or `--alignment aggregate`.

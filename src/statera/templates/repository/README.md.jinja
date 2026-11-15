@@ -1,63 +1,76 @@
 # {{ organization }}
 
-Repositório de dados no padrão [Statera](https://github.com/Jaimenms/statera): cada estatística é um
-**produto de dados** com contrato, classificação da informação, regras testadas, processo executável e
-registro de cada edição publicada.
+Data repository following the [Statera](https://github.com/Jaimenms/statera) standard: each statistic is a
+**data product** with a contract, information classification, tested rules, an executable process and a
+record of each published edition.
 
 ```
-content/        o que a equipe edita: produtos, referências, consultas, receitas, governança
-publications/   registro das edições publicadas (escrito pelo processo, não à mão)
-docs/           estudos, notas técnicas e decisões (texto livre)
+content/        what the team edits: products, reference tables, queries, recipes, governance
+publications/   editions register (written by the process, not by hand)
+docs/           studies, technical notes and decisions (free text)
+pyproject.toml  the pinned Statera version (uv.lock fixes it exactly)
 ```
 
-## Primeiros passos
+## Getting started
 
-Requer [uv](https://docs.astral.sh/uv/) (instala o Python e as dependências) e `make`.
+Requires [uv](https://docs.astral.sh/uv/), which installs Python, Statera and the other dependencies. It
+works the same on Windows, Linux and Mac.
 
 ```bash
-make setup       # ambiente + Statera na versão fixada em content/pyproject.toml
-make validate    # validação completa (a mesma do CI)
-make help        # todos os comandos
+# once per computer
+uv tool install git+{{ statera_git }}   # the `statera` command; later: uv tool upgrade statera
+
+# in this repository, from any folder
+statera doctor    # checks the computer and the repository, and says how to fix each problem
+statera check     # what CI runs: validation, lint and fast tests
 ```
 
-Abra `{{ name }}.code-workspace` no VS Code e instale as extensões recomendadas: os YAML passam a ser
-validados enquanto você digita.
+`statera` always runs the version this repository pins: the global command finds the repository root and
+hands off to it (`uv run statera …`), updating the environment when needed. `uv run statera …` works too,
+with nothing installed globally.
 
-## O dia a dia
+In VS Code, open this folder and install the recommended extensions: YAML files are then validated as you
+type, and the commands below are available as tasks (Terminal › Run Task…; Ctrl/Cmd+Shift+B runs
+`statera check`).
 
-| Quero… | Comando |
+## Day to day
+
+| I want to… | Command |
 |---|---|
-| criar uma estatística nova | `make new-product NAME=minha-estatistica` |
-| ver o que falta num produto | `make conformance` |
-| regenerar os arquivos gerados depois de editar | `make sync` |
-| conferir tudo antes do pull request | `make validate && make test` |
-| produzir uma edição | `make run PRODUCT=minha-estatistica PERIOD=2026-06` |
-| concluir uma tarefa humana (aprovação) e seguir | `make resume PRODUCT=minha-estatistica PERIOD=2026-06` |
-| documentação e catálogo navegável | `make docs` · `make catalog` |
+| check my environment | `statera doctor` |
+| create a new statistic | `statera new-product my-statistic` |
+| see what a product is missing | `statera conformance` |
+| regenerate the generated files after editing | `statera sync` |
+| check everything before the pull request | `statera check` (`--all` also runs the slow tests) |
+| produce an edition | `statera run --product my-statistic --period 2026-06 --with-dependencies` |
+| complete a human task (approval) and continue | `statera resume --product my-statistic --period 2026-06` |
+| documentation and browsable catalog | `statera docs` · `statera docs --interactive` |
 
-Os demais comandos da plataforma: `cd content && uv run statera --help`.
+All commands: `statera --help`.
 
-## Onde fica cada coisa
+## Where everything lives
 
 ```
 content/
-  statera.toml          configuração do repositório (motor, convenções de colunas, registro)
-  products/<produto>/   uma pasta por estatística, organizada pelas fases do GSBPM:
-    1-specify/          contrato ODCS, produto ODPS, classificação, responsáveis, calendário
-    2-design/           processo (YAML espelho do BPMN)
-    4-collect/          extração das fontes
-    5-process/          modelos dbt (SQL ou Python), regras com casos de teste, métricas
-    6-analyse/          controles e controle de divulgação
-    7-disseminate/      séries publicadas
-    8-evaluate/         indicadores de qualidade
-  references/           tabelas de referência compartilhadas (classificações, territórios…)
-  queries/ recipes/     consultas recorrentes e exemplos de uso dos dados
-  governance/           papéis e responsáveis compartilhados (geram o .github/CODEOWNERS)
+  statera.toml          repository configuration (engine, column conventions, register, required version)
+  products/<product>/   one folder per statistic, organized by GSBPM phase:
+    1-specify/          ODCS contract, ODPS product, classification, owners, calendar
+    2-design/           process (YAML mirror of the BPMN)
+    4-collect/          extraction from the sources
+    5-process/          dbt models (SQL or Python), rules with test cases, metrics
+    6-analyse/          controls and statistical disclosure control
+    7-disseminate/      published series
+    8-evaluate/         quality indicators
+  references/           shared reference tables (classifications, territories…)
+  queries/ recipes/     recurring queries and examples of data use
+  governance/           roles and shared owners (they generate .github/CODEOWNERS)
 ```
 
-Arquivos marcados como gerados (aviso `ARQUIVO GERADO` no topo) não se editam: `make sync` os refaz.
+Files marked as generated (`GENERATED FILE` notice at the top) are not edited by hand: `statera sync`
+rebuilds them.
 
-## Atualizar a Statera
+## Updating Statera
 
-A versão fica em `content/pyproject.toml` (`tag = "v{{ statera_version }}"`). Para atualizar, troque a
-tag, rode `make setup && make validate` e abra um pull request.
+The version is in `pyproject.toml` (`tag = "v{{ statera_version }}"`) and the accepted range in
+`content/statera.toml` (`required_version`). To update, change both, run `statera check` (uv updates the
+environment and uv.lock) and open a pull request.

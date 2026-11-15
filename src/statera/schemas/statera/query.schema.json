@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:query:0.1",
-  "title": "Consulta recorrente catalogada (edital, item 13: tema, produto, base, periodicidade e finalidade)",
+  "title": "Cataloged recurring query (five catalog axes: theme, product, datasets, frequency and purpose)",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -125,7 +125,7 @@
             "restricted",
             "specific"
           ],
-          "description": "Nível de compartilhamento (Decreto nº 10.046/2019)."
+          "description": "Sharing level (in Brazil, the levels of Decree No. 10,046/2019)."
         },
         "nature": {
           "enum": [
@@ -134,7 +134,7 @@
             "personal",
             "sensitive-personal"
           ],
-          "description": "Natureza do dado (LGPD)."
+          "description": "Nature of the data under data protection law (e.g. LGPD in Brazil, GDPR in the EU)."
         },
         "secrecy": {
           "enum": [
@@ -143,7 +143,7 @@
             "tax",
             "other"
           ],
-          "description": "Sigilo (legislação específica; LAI)."
+          "description": "Confidentiality under specific legislation (e.g. statistical or tax secrecy; LAI in Brazil)."
         },
         "disclosureControl": {
           "oneOf": [
@@ -156,7 +156,7 @@
                 "suppressedColumns"
               ],
               "additionalProperties": false,
-              "description": "Supressão de células de tabelas agregadas: suprime as medidas onde a contagem fica abaixo do mínimo.",
+              "description": "Cell suppression for aggregate tables: suppresses the measures where the count falls below the minimum.",
               "properties": {
                 "method": {
                   "const": "cell-suppression"
@@ -192,7 +192,7 @@
                 "suppressibleColumns"
               ],
               "additionalProperties": false,
-              "description": "k-anonimato com supressão local, para microdados desidentificados: toda combinação de quase-identificadores aparece em pelo menos k registros. Onde não aparece, apaga os valores das colunas suprimíveis, na ordem; o que ainda ficar abaixo de k é removido.",
+              "description": "k-anonymity with local suppression, for de-identified microdata: every combination of quasi-identifiers appears in at least k records. Where it does not, blanks the values of the suppressible columns, in order; whatever is still below k is removed.",
               "properties": {
                 "method": {
                   "const": "k-anonymity"
@@ -207,7 +207,7 @@
                     "type": "string"
                   },
                   "minItems": 1,
-                  "description": "Colunas que, combinadas, poderiam identificar uma pessoa (município, ocupação, idade, sexo…)."
+                  "description": "Columns that, combined, could identify a person (municipality, occupation, age, sex…)."
                 },
                 "suppressibleColumns": {
                   "type": "array",
@@ -215,7 +215,7 @@
                     "type": "string"
                   },
                   "minItems": 1,
-                  "description": "Quase-identificadores que podem ser apagados, do mais específico para o menos."
+                  "description": "Quasi-identifiers that may be blanked, from most to least specific."
                 },
                 "unpublishedColumns": {
                   "type": "array",
@@ -235,7 +235,7 @@
     },
     "authors": {
       "type": "array",
-      "description": "Quem produziu a consulta (crédito a pessoas), além do papel responsável. Inclusive quem não é da equipe de dados.",
+      "description": "Who produced the query (credit to people), besides the owner role. Includes people outside the data team.",
       "items": {
         "type": "object",
         "required": [

@@ -1,12 +1,12 @@
-{% set linhas = tables['por-uf'] | in_period %}
+{% set rows = tables['by-uf'] | in_period %}
 # {{ product.name }} — {{ edition.period_long }}
 
-> **DADOS SINTÉTICOS — EXEMPLO MÍNIMO.** Data de corte: **{{ edition.cut_date }}**.
+> **SYNTHETIC DATA — MINIMAL EXAMPLE.** Cut-off date: **{{ edition.cut_date }}**.
 
-| UF | Registros | Valor total (R$) |
+| UF | Records | Total value |
 |---|---:|---:|
-{% for u in maiores(linhas, 'registros', 7) -%}
-| {{ u.nome_uf }} | {{ u.registros | milhar }} | {{ u.valor_total | reais }} |
+{% for u in top(rows, 'records', 7) -%}
+| {{ u.uf_name }} | {{ u.records | thousands }} | {{ u.total_value | brl }} |
 {% endfor %}
 
-Metadados, hashes e origem de cada arquivo: `datapackage.json` desta edição.
+Metadata, hashes and provenance of each file: this edition's `datapackage.json`.

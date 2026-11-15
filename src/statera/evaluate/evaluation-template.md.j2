@@ -1,0 +1,28 @@
+# Evaluation of edition {{ period }} — {{ product }}
+
+> Generated automatically at the end of the edition (GSBPM 8.1 and 8.2).{% if synthetic %} **SYNTHETIC DATA.**{% endif +%}
+> Cut-off date: {{ cut_date }} · package version: {{ version }} · run: `{{ run }}`.
+
+**Summary:** {{ alerts | length }} of {{ indicators | length }} indicator(s) in alert.
+
+| Indicator | Dimension | Value | Alert | Status |
+|---|---|---:|---|---|
+{% for i in indicators %}
+| {{ i.id }} {{ i.name }} | {{ i.dimension }} | {{ i.formatted_value }} | {{ i.alert_text }} | {{ "⚠ alert" if i.in_alert else "ok" }} |
+{% endfor %}
+
+{% if alerts %}
+## What to look at
+
+{% for i in alerts %}
+- **{{ i.id }} {{ i.name }}**: {{ i.description }} Value {{ i.formatted_value }} (alert {{ i.alert_text }}).
+{% endfor %}
+{% endif %}
+
+## Open action plan (GSBPM 8.3)
+
+| Action | Source | Owner | Status |
+|---|---|---|---|
+{% for a in actions %}
+| {{ a.id }} {{ a.action }} | {{ a.source }} | {{ a.owner }} | {{ a.status }} |
+{% endfor %}

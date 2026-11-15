@@ -1,29 +1,29 @@
-# Modelo de produto do padrão statera (Copier). Diferente do Cookiecutter, o Copier ATUALIZA
-# produtos já criados quando o modelo evolui: `copier update` dentro da pasta do produto.
+# Product template of the statera standard (Copier). Unlike Cookiecutter, Copier UPDATES
+# products already created when the template evolves: `copier update` inside the product folder.
 _min_copier_version: "9.4"
 _answers_file: .copier-answers.yml
 _templates_suffix: .jinja
 
 product:
   type: str
-  help: Identificador do produto (minúsculas e hífens), ex. rais-mensalizada
-  validator: "{% if not (product | regex_search('^[a-z0-9-]+$')) %}Use minúsculas, números e hífens{% endif %}"
+  help: Product identifier (lowercase and hyphens), e.g. monthly-earnings
+  validator: "{% if not (product | regex_search('^[a-z0-9-]+$')) %}Use lowercase letters, digits and hyphens{% endif %}"
 title:
   type: str
-  help: Nome do produto
+  help: Product name
 namespace:
   type: str
-  help: Espaço de nomes do órgão (statera.toml), ex. br.gov.estat-trabalho
+  help: Organization namespace (statera.toml), e.g. org.example.labor-stats
 alignment:
   type: str
   help: >-
-    Papel na malha de produtos (especificação 09): consumer = divulgação (público); aggregate =
-    entidade canônica interna lida por vários produtos; source = extração interna de um sistema
+    Role in the product mesh (specification 09): consumer = dissemination (public); aggregate =
+    internal canonical entity read by several products; source = internal extraction from a system
   default: consumer
   choices: [consumer, aggregate, source]
 theme:
   type: str
-  default: a-definir
+  default: tbd
   when: "{{ alignment == 'consumer' }}"
 frequency:
   type: str
@@ -36,11 +36,11 @@ purpose:
   when: "{{ alignment == 'consumer' }}"
 curator:
   type: str
-  help: Papel curador (de governance/roles.yaml); o `statera new-product` usa o de shared-owners.yaml
+  help: Curator role (from governance/roles.yaml); `statera new-product` uses the one in shared-owners.yaml
   default: curator
 technical_owner:
   type: str
-  help: Papel dono técnico (de governance/roles.yaml)
+  help: Technical owner role (from governance/roles.yaml)
   default: data-team
 data_protection_officer:
   type: str

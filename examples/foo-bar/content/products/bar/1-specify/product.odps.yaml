@@ -1,53 +1,53 @@
-# Produto de DIVULGAÇÃO (ODPS v1.0): registros e valor por UF e mês, a partir do corte de foo.
+# DISSEMINATION product (ODPS v1.0): records and value by UF and month, from the foo cut.
 apiVersion: v1.0.0
 kind: DataProduct
 id: bar
-name: Bar — registros e valor por UF
+name: Bar — records and value by UF
 version: 1.0.0
 status: active
 domain: foo
-tenant: Foo Bar (exemplo mínimo)
+tenant: Foo Bar (minimal example)
 description:
-  purpose: Número de registros e valor total e médio por UF e competência.
-  usage: Divulgação mensal, sempre com a data de corte.
-  limitations: Competências recentes mudam entre edições (registros chegam com atraso). DADOS SINTÉTICOS.
-tags: [mensal, divulgacao-oficial]
+  purpose: Number of records and total and mean value by UF and reference month.
+  usage: Monthly release, always with the cut-off date.
+  limitations: Recent reference months change between editions (records arrive late). SYNTHETIC DATA.
+tags: [monthly, official-release]
 customProperties:
   - {property: alignment, value: consumer}
   - {property: visibility, value: public}
   - {property: theme, value: foo}
   - {property: frequency, value: monthly}
   - {property: purpose, value: official-release}
-  - {property: bases, value: [sistema-foo]}
-  - {property: urn, value: br.gov.foo-bar.bar}
+  - {property: bases, value: [foo-system]}
+  - {property: urn, value: org.example.foo-bar.bar}
   - {property: process, value: 2-design/processes/to-be.yaml}
   - {property: conformanceLevel, value: 3}
   - {property: legacyParity, value: not-applicable}
 inputPorts:
-  - {name: registros, version: 1.0.0, contractId: bronze-foo-registros}
+  - {name: records, version: 1.0.0, contractId: bronze-foo-records}
   - {name: ufs, version: 1.0.0, contractId: ref-uf}
 outputPorts:
-  - name: por-uf
-    description: Registros e valor por UF e competência
+  - name: by-uf
+    description: Records and value by UF and reference month
     type: table
     customProperties:
       - {property: spreadsheetTab, value: "UF"}
     version: 1.0.0
-    contractId: gold-bar-uf-mensal
+    contractId: gold-bar-uf-monthly
     inputContracts:
-      - {id: bronze-foo-registros, version: 1.0.0}
+      - {id: bronze-foo-records, version: 1.0.0}
       - {id: ref-uf, version: 1.0.0}
-  - name: variacao-uf
-    description: Variação de registros por UF sobre o mês anterior (modelo Python)
+  - name: change-by-uf
+    description: Month-over-month change in records by UF (Python model)
     type: table
     customProperties:
-      - {property: spreadsheetTab, value: "Variação"}
+      - {property: spreadsheetTab, value: "Change"}
     version: 1.0.0
-    contractId: gold-bar-variacao-uf-mensal
+    contractId: gold-bar-uf-monthly-change
     inputContracts:
-      - {id: bronze-foo-registros, version: 1.0.0}
+      - {id: bronze-foo-records, version: 1.0.0}
 team:
-  name: Equipe técnica de Bar
+  name: Bar technical team
   members:
-    - {username: "papel:equipe-bar", role: owner}
+    - {username: "role:bar-team", role: owner}
 productCreatedTs: "2026-11-14T00:00:00Z"

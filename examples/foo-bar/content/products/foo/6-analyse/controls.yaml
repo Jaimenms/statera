@@ -1,3 +1,3 @@
-# Esqueleto do produto (especificação 01): este arquivo existe em todo produto, com conteúdo ou
-# com `not_applicable: <motivo>`.
-not_applicable: "a qualidade da carga está nas regras de qualidade do contrato do bronze, verificadas antes de liberar cada corte"
+# Product skeleton (specification 01): this file exists in every product, with content or
+# with `not_applicable: <reason>`.
+not_applicable: "load quality is covered by the quality rules in the bronze contract, checked before each cut is released"

@@ -2,12 +2,12 @@ version: 2
 
 sources:
   - name: foo
-    description: Registros do Sistema Foo, extraídos em lotes (bronze). DADOS SINTÉTICOS.
+    description: Foo System records, extracted in batches (bronze). SYNTHETIC DATA.
     schema: bronze
     meta: {layer: bronze, product: foo, gsbpm: "4.3"}
     tables:
-      - name: foo_registros
-        meta: {contract: bronze-foo-registros}
+      - name: foo_records
+        meta: {contract: bronze-foo-records}
         columns:
-          - name: id_registro
+          - name: record_id
             data_tests: [not_null]

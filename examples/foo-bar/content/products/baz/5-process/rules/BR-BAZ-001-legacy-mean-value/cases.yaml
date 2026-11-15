@@ -1,0 +1,18 @@
+rule: BR-BAZ-001
+model: baz_uf_monthly
+variables: {cut_date: "2026-03-10"}
+requires: [pspp]
+cases:
+  - id: mean_by_uf_and_month
+    description: Two SP records in January (10 and 30) give a mean of 20; one RJ record (5) gives 5.
+    inputs:
+      int_baz__records:
+        - {period: "2026-01", uf_id: 35, value: 10.0}
+        - {period: "2026-01", uf_id: 35, value: 30.0}
+        - {period: "2026-01", uf_id: 33, value: 5.0}
+      ref_uf:
+        - {uf_id: 35, uf_abbr: SP}
+        - {uf_id: 33, uf_abbr: RJ}
+    expected:
+      - {period: "2026-01", uf_abbr: SP, records: 2, mean_value: 20.0}
+      - {period: "2026-01", uf_abbr: RJ, records: 1, mean_value: 5.0}

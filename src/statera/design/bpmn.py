@@ -1,27 +1,27 @@
-"""Leitura, validação e visualização dos processos BPMN 2.0.
+"""Reading, validation and visualization of BPMN 2.0 processes.
 
-Os arquivos .bpmn em <unidade>/2-design/processes/ são gerados dos YAML de processo
-(processos.py) e abrem em qualquer ferramenta BPMN (Camunda Modeler, bpmn.io).
-Atributos no namespace `statera` ligam cada tarefa ao repositório e à execução:
+The .bpmn files in <unit>/2-design/processes/ are generated from the process YAML files
+(processes.py) and open in any BPMN tool (Camunda Modeler, bpmn.io).
+Attributes in the `statera` namespace link each task to the repository and to the run:
 
     statera:type            automatic | semi-automatic | manual
-    statera:gsbpm           subprocesso GSBPM (ex.: 5.7, 6.4;7.2, 5.1-5.7)
-    statera:duracaoMin      duração esperada por edição, em minutos
-    statera:implementacao   py:<modulo>.<funcao> | dbt:build
-    statera:modelos         modelos dbt a construir (com tudo o que vem antes) em dbt:build
-    statera:excecao         "true" para tarefas fora do caminho normal (não entram no esforço)
-    statera:aguarda         (em evento intermediário) função que diz se a espera terminou
-    statera:papel           (na raia) papel de governance/roles.yaml
+    statera:gsbpm           GSBPM sub-process (e.g. 5.7, 6.4;7.2, 5.1-5.7)
+    statera:durationMin     expected duration per edition, in minutes
+    statera:implementation  py:<module>.<function> | dbt:build
+    statera:models          dbt models to build (with everything upstream) in dbt:build
+    statera:exception       "true" for tasks off the normal path (not counted in the effort)
+    statera:awaits          (on an intermediate event) function that says whether the wait is over
+    statera:role            (on the lane) role from governance/roles.yaml
 
-Nos fluxos que saem de gateways, `conditionExpression` (${situacao == 'ok'}) diz qual caminho o
-executor segue (statera.execucao).
+On flows leaving gateways, `conditionExpression` (${status == 'ok'}) tells which path the
+executor follows (statera.execution).
 
-Este módulo:
-  - renderiza SVG a partir do DI do próprio arquivo (sem Node nem navegador), para ser exibido
-    no GitHub e no preview de Markdown do VS Code;
-  - gera um visualizador HTML interativo com bpmn-js;
-  - resume tarefas, tempos e tipos (base da comparação as-is x to-be);
-  - valida as ligações entre o diagrama e o repositório.
+This module:
+  - renders SVG from the file's own DI (no Node or browser), to be displayed
+    on GitHub and in the VS Code Markdown preview;
+  - generates an interactive HTML viewer with bpmn-js;
+  - summarizes tasks, times and types (basis of the as-is vs. to-be comparison);
+  - validates the links between the diagram and the repository.
 """
 
 from __future__ import annotations
@@ -34,8 +34,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from statera import gerado
-from statera.projeto import atual
+from statera import generated
+from statera.project import current
 
 NS = {
     "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
@@ -46,7 +46,7 @@ NS = {
     "xsi": "http://www.w3.org/2001/XMLSchema-instance",
 }
 EXT = f"{{{NS['statera']}}}"
-TAREFAS = {
+TASKS = {
     "task",
     "userTask",
     "serviceTask",
@@ -58,57 +58,57 @@ TAREFAS = {
     "callActivity",
     "subProcess",
 }
-EVENTOS = {"startEvent", "endEvent", "intermediateCatchEvent", "intermediateThrowEvent", "boundaryEvent"}
+EVENTS = {"startEvent", "endEvent", "intermediateCatchEvent", "intermediateThrowEvent", "boundaryEvent"}
 GATEWAYS = {"exclusiveGateway", "parallelGateway", "inclusiveGateway", "eventBasedGateway"}
-CORES_TIPO = {
+TYPE_COLORS = {
     "automatic": ("#E3F4E8", "#2E7D4F"),
     "semi-automatic": ("#FFF4D6", "#A6750A"),
     "manual": ("#FDE4E1", "#B03A2E"),
     None: ("#FFFFFF", "#404040"),
 }
-FONTE = 'font-family="Helvetica, Arial, sans-serif"'
-BPMN_JS_VERSAO = "18.30.1"
-Caixa = tuple[float, float, float, float]
+FONT = 'font-family="Helvetica, Arial, sans-serif"'
+BPMN_JS_VERSION = "18.30.1"
+Box = tuple[float, float, float, float]
 
 
 @dataclass
-class Elemento:
+class Element:
     id: str
     tag: str
-    nome: str
+    name: str
     attrs: dict[str, str] = field(default_factory=dict)
     lane: str | None = None
     timer: bool = False
-    documentacao: str = ""
-    mensagem: bool = False
+    documentation: str = ""
+    message: bool = False
 
     @property
-    def tipo(self) -> str | None:
+    def kind(self) -> str | None:
         return self.attrs.get("type")
 
     @property
-    def duracao(self) -> float:
+    def duration(self) -> float:
         return float(self.attrs.get("durationMin", 0) or 0)
 
 
 @dataclass
-class Processo:
-    caminho: Path
-    nome: str
-    elementos: dict[str, Elemento]
+class Process:
+    path: Path
+    name: str
+    elements: dict[str, Element]
     lanes: dict[str, dict]
-    formas: dict[str, Caixa]
-    rotulos: dict[str, Caixa]
-    arestas: dict[str, list[tuple[float, float]]]
-    fluxos: dict[str, dict]
+    shapes: dict[str, Box]
+    labels: dict[str, Box]
+    edges: dict[str, list[tuple[float, float]]]
+    flows: dict[str, dict]
 
     @property
-    def tarefas(self) -> list[Elemento]:
-        return [e for e in self.elementos.values() if e.tag in TAREFAS]
+    def tasks(self) -> list[Element]:
+        return [e for e in self.elements.values() if e.tag in TASKS]
 
 
 # ---------------------------------------------------------------------------
-# Leitura
+# Reading
 # ---------------------------------------------------------------------------
 
 
@@ -116,111 +116,111 @@ def _local(tag: str) -> str:
     return tag.split("}", 1)[-1]
 
 
-def _caixa(no: ET.Element | None) -> Caixa | None:
-    if no is None:
+def _box(node: ET.Element | None) -> Box | None:
+    if node is None:
         return None
-    return tuple(float(no.get(k)) for k in ("x", "y", "width", "height"))  # type: ignore[return-value]
+    return tuple(float(node.get(k)) for k in ("x", "y", "width", "height"))  # type: ignore[return-value]
 
 
-CONDICAO = re.compile(r"situacao\s*==\s*'([\w-]+)'")
+CONDITION = re.compile(r"status\s*==\s*'([\w-]+)'")
 
 
-def _condicao(fluxo: ET.Element) -> str:
-    """Condição do fluxo, a partir de <conditionExpression>${situacao == 'ok'}</conditionExpression>."""
-    expressao = fluxo.find("bpmn:conditionExpression", NS)
-    achado = CONDICAO.search(expressao.text or "") if expressao is not None else None
-    return achado.group(1) if achado else ""
+def _condition(flow: ET.Element) -> str:
+    """Flow condition, from <conditionExpression>${status == 'ok'}</conditionExpression>."""
+    expression = flow.find("bpmn:conditionExpression", NS)
+    finding = CONDITION.search(expression.text or "") if expression is not None else None
+    return finding.group(1) if finding else ""
 
 
-def _ler_lanes(processo: ET.Element) -> dict[str, dict]:
+def _read_lanes(process: ET.Element) -> dict[str, dict]:
     lanes = {}
-    for lane in processo.iter(f"{{{NS['bpmn']}}}lane"):
+    for lane in process.iter(f"{{{NS['bpmn']}}}lane"):
         lanes[lane.get("id")] = {
             "name": lane.get("name", ""),
-            "role": lane.get(f"{EXT}papel"),
-            "nos": [r.text for r in lane.findall("bpmn:flowNodeRef", NS)],
+            "role": lane.get(f"{EXT}role"),
+            "nodes": [r.text for r in lane.findall("bpmn:flowNodeRef", NS)],
         }
     return lanes
 
 
-def _ler_associacoes(no: ET.Element, fluxos: dict[str, dict]) -> None:
-    for assoc in no.findall("bpmn:dataInputAssociation", NS):
-        origem = assoc.find("bpmn:sourceRef", NS).text
-        fluxos[assoc.get("id")] = {"tag": "dataInput", "from": origem, "to": no.get("id"), "name": ""}
-    for assoc in no.findall("bpmn:dataOutputAssociation", NS):
-        destino = assoc.find("bpmn:targetRef", NS).text
-        fluxos[assoc.get("id")] = {"tag": "dataOutput", "from": no.get("id"), "to": destino, "name": ""}
+def _read_associations(node: ET.Element, flows: dict[str, dict]) -> None:
+    for assoc in node.findall("bpmn:dataInputAssociation", NS):
+        origin = assoc.find("bpmn:sourceRef", NS).text
+        flows[assoc.get("id")] = {"tag": "dataInput", "from": origin, "to": node.get("id"), "name": ""}
+    for assoc in node.findall("bpmn:dataOutputAssociation", NS):
+        destination = assoc.find("bpmn:targetRef", NS).text
+        flows[assoc.get("id")] = {"tag": "dataOutput", "from": node.get("id"), "to": destination, "name": ""}
 
 
-def _ler_elementos(processo: ET.Element, elementos: dict, fluxos: dict) -> None:
-    for filho in processo:
-        tag = _local(filho.tag)
+def _read_elements(process: ET.Element, elements: dict, flows: dict) -> None:
+    for child in process:
+        tag = _local(child.tag)
         if tag in ("laneSet", "dataObject"):
             continue
         if tag in ("sequenceFlow", "association"):
-            fluxos[filho.get("id")] = {
+            flows[child.get("id")] = {
                 "tag": tag,
-                "from": filho.get("sourceRef"),
-                "to": filho.get("targetRef"),
-                "name": filho.get("name", ""),
-                "condition": _condicao(filho),
+                "from": child.get("sourceRef"),
+                "to": child.get("targetRef"),
+                "name": child.get("name", ""),
+                "condition": _condition(child),
             }
             continue
-        doc = filho.find("bpmn:documentation", NS)
-        elementos[filho.get("id")] = Elemento(
-            id=filho.get("id"),
+        doc = child.find("bpmn:documentation", NS)
+        elements[child.get("id")] = Element(
+            id=child.get("id"),
             tag=tag,
-            nome=filho.get("name", ""),
-            attrs={k[len(EXT) :]: v for k, v in filho.attrib.items() if k.startswith(EXT)},
-            timer=filho.find("bpmn:timerEventDefinition", NS) is not None,
-            mensagem=filho.find("bpmn:messageEventDefinition", NS) is not None,
-            documentacao=(doc.text or "").strip() if doc is not None else "",
+            name=child.get("name", ""),
+            attrs={k[len(EXT) :]: v for k, v in child.attrib.items() if k.startswith(EXT)},
+            timer=child.find("bpmn:timerEventDefinition", NS) is not None,
+            message=child.find("bpmn:messageEventDefinition", NS) is not None,
+            documentation=(doc.text or "").strip() if doc is not None else "",
         )
-        _ler_associacoes(filho, fluxos)
+        _read_associations(child, flows)
 
 
-def ler(caminho: Path) -> Processo:
-    raiz = ET.parse(caminho).getroot()
-    participante = raiz.find(".//bpmn:participant", NS)
-    nome = participante.get("name") if participante is not None and participante.get("name") else caminho.stem
-    elementos: dict[str, Elemento] = {}
+def read(path: Path) -> Process:
+    root = ET.parse(path).getroot()
+    participant = root.find(".//bpmn:participant", NS)
+    name = participant.get("name") if participant is not None and participant.get("name") else path.stem
+    elements: dict[str, Element] = {}
     lanes: dict[str, dict] = {}
-    fluxos: dict[str, dict] = {}
-    for processo in raiz.findall("bpmn:process", NS):
-        lanes |= _ler_lanes(processo)
-        _ler_elementos(processo, elementos, fluxos)
+    flows: dict[str, dict] = {}
+    for process in root.findall("bpmn:process", NS):
+        lanes |= _read_lanes(process)
+        _read_elements(process, elements, flows)
     for lid, lane in lanes.items():
-        for ref in lane["nos"]:
-            if ref in elementos:
-                elementos[ref].lane = lid
+        for ref in lane["nodes"]:
+            if ref in elements:
+                elements[ref].lane = lid
 
-    formas, rotulos, arestas = {}, {}, {}
-    for forma in raiz.iter(f"{{{NS['bpmndi']}}}BPMNShape"):
-        formas[forma.get("bpmnElement")] = _caixa(forma.find("dc:Bounds", NS))
-        if rot := _caixa(forma.find("bpmndi:BPMNLabel/dc:Bounds", NS)):
-            rotulos[forma.get("bpmnElement")] = rot
-    for aresta in raiz.iter(f"{{{NS['bpmndi']}}}BPMNEdge"):
-        pontos = [(float(w.get("x")), float(w.get("y"))) for w in aresta.findall("di:waypoint", NS)]
-        arestas[aresta.get("bpmnElement")] = pontos
-        if rot := _caixa(aresta.find("bpmndi:BPMNLabel/dc:Bounds", NS)):
-            rotulos[aresta.get("bpmnElement")] = rot
-    return Processo(caminho, nome, elementos, lanes, formas, rotulos, arestas, fluxos)
-
-
-def todos() -> list[Processo]:
-    return [ler(c.with_suffix(".bpmn")) for c in atual().processos() if c.with_suffix(".bpmn").exists()]
+    shapes, labels, edges = {}, {}, {}
+    for shape in root.iter(f"{{{NS['bpmndi']}}}BPMNShape"):
+        shapes[shape.get("bpmnElement")] = _box(shape.find("dc:Bounds", NS))
+        if label_box := _box(shape.find("bpmndi:BPMNLabel/dc:Bounds", NS)):
+            labels[shape.get("bpmnElement")] = label_box
+    for edge in root.iter(f"{{{NS['bpmndi']}}}BPMNEdge"):
+        points = [(float(w.get("x")), float(w.get("y"))) for w in edge.findall("di:waypoint", NS)]
+        edges[edge.get("bpmnElement")] = points
+        if label_box := _box(edge.find("bpmndi:BPMNLabel/dc:Bounds", NS)):
+            labels[edge.get("bpmnElement")] = label_box
+    return Process(path, name, elements, lanes, shapes, labels, edges, flows)
 
 
-def resumo(p: Processo) -> dict:
-    """Horas por edição no caminho normal (tarefas com statera:excecao="true" ficam de fora)."""
-    horas = {"manual": 0.0, "semi-automatic": 0.0, "automatic": 0.0}
-    for t in p.tarefas:
-        if t.tipo in horas and t.attrs.get("exception") != "true":
-            horas[t.tipo] += t.duracao / 60
+def all_() -> list[Process]:
+    return [read(c.with_suffix(".bpmn")) for c in current().processes() if c.with_suffix(".bpmn").exists()]
+
+
+def summary(p: Process) -> dict:
+    """Hours per edition on the normal path (tasks with statera:exception="true" are left out)."""
+    hours = {"manual": 0.0, "semi-automatic": 0.0, "automatic": 0.0}
+    for t in p.tasks:
+        if t.kind in hours and t.attrs.get("exception") != "true":
+            hours[t.kind] += t.duration / 60
     return {
-        "tarefas": len(p.tarefas),
-        **{f"{k}_h": v for k, v in horas.items()},
-        "total_h": sum(horas.values()),
+        "tasks": len(p.tasks),
+        **{f"{k}_h": v for k, v in hours.items()},
+        "total_h": sum(hours.values()),
     }
 
 
@@ -229,63 +229,63 @@ def resumo(p: Processo) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _texto(
+def _text(
     x: float,
     y: float,
-    conteudo: str,
-    largura_chars: int,
-    tamanho: float = 11,
-    ancora: str = "middle",
-    peso: str = "normal",
-    cor: str = "#1F1F1F",
+    content: str,
+    width_chars: int,
+    size: float = 11,
+    anchor: str = "middle",
+    weight: str = "normal",
+    color: str = "#1F1F1F",
     vertical: str = "center",
 ) -> str:
-    linhas = textwrap.wrap(conteudo, largura_chars) or [""]
-    altura = tamanho * 1.2
-    y0 = y - (len(linhas) - 1) * altura / 2 if vertical == "center" else y
+    lines = textwrap.wrap(content, width_chars) or [""]
+    height = size * 1.2
+    y0 = y - (len(lines) - 1) * height / 2 if vertical == "center" else y
     spans = "".join(
-        f'<tspan x="{x:.1f}" y="{y0 + i * altura:.1f}">{html.escape(t)}</tspan>' for i, t in enumerate(linhas)
+        f'<tspan x="{x:.1f}" y="{y0 + i * height:.1f}">{html.escape(t)}</tspan>' for i, t in enumerate(lines)
     )
     return (
-        f'<text {FONTE} font-size="{tamanho}" font-weight="{peso}" fill="{cor}" '
-        f'text-anchor="{ancora}" dominant-baseline="middle">{spans}</text>'
+        f'<text {FONT} font-size="{size}" font-weight="{weight}" fill="{color}" '
+        f'text-anchor="{anchor}" dominant-baseline="middle">{spans}</text>'
     )
 
 
-def _texto_vertical(x: float, y: float, conteudo: str, max_chars: int, tamanho: float, peso: str) -> list[str]:
-    linhas = textwrap.wrap(conteudo, max(8, max_chars))[:2]
-    saida = []
-    for i, linha in enumerate(linhas):
-        dx = 15 + (i - (len(linhas) - 1) / 2) * (tamanho + 2)
-        saida.append(
+def _vertical_text(x: float, y: float, content: str, max_chars: int, size: float, weight: str) -> list[str]:
+    lines = textwrap.wrap(content, max(8, max_chars))[:2]
+    output = []
+    for i, line in enumerate(lines):
+        dx = 15 + (i - (len(lines) - 1) / 2) * (size + 2)
+        output.append(
             f'<text transform="translate({x + dx + 3},{y}) rotate(-90)" text-anchor="middle" '
-            f'dominant-baseline="middle" font-weight="{peso}" {FONTE} font-size="{tamanho}">'
-            f"{html.escape(linha)}</text>"
+            f'dominant-baseline="middle" font-weight="{weight}" {FONT} font-size="{size}">'
+            f"{html.escape(line)}</text>"
         )
-    return saida
+    return output
 
 
-def _seta(pontos: list[tuple[float, float]], de_dados: bool) -> str:
-    d = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in pontos)
-    if de_dados:
-        estilo = 'stroke="#666" stroke-dasharray="4 3" marker-end="url(#seta-dado)"'
+def _arrow(points: list[tuple[float, float]], is_data: bool) -> str:
+    d = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points)
+    if is_data:
+        style = 'stroke="#666" stroke-dasharray="4 3" marker-end="url(#arrow-data)"'
     else:
-        estilo = 'stroke="#333" marker-end="url(#seta)"'
-    return f'<path d="{d}" fill="none" stroke-width="1.4" {estilo}/>'
+        style = 'stroke="#333" marker-end="url(#arrow)"'
+    return f'<path d="{d}" fill="none" stroke-width="1.4" {style}/>'
 
 
-def _icone_tarefa(tag: str, x: float, y: float) -> str:
-    if tag == "serviceTask":  # engrenagem simplificada
+def _task_icon(tag: str, x: float, y: float) -> str:
+    if tag == "serviceTask":  # simplified gear
         return (
             f'<circle cx="{x + 12}" cy="{y + 12}" r="6" fill="none" stroke="#2E7D4F" stroke-width="2" '
             f'stroke-dasharray="3 1.6"/><circle cx="{x + 12}" cy="{y + 12}" r="2" fill="#2E7D4F"/>'
         )
-    if tag == "userTask":  # pessoa
+    if tag == "userTask":  # person
         return (
             f'<circle cx="{x + 12}" cy="{y + 9}" r="3.5" fill="none" stroke="#444" stroke-width="1.5"/>'
             f'<path d="M{x + 5},{y + 19} q7,-9 14,0" fill="none" stroke="#444" stroke-width="1.5"/>'
         )
-    if tag == "manualTask":  # mão (simplificada)
+    if tag == "manualTask":  # hand (simplified)
         return (
             f'<path d="M{x + 5},{y + 16} h8 v-8 M{x + 9},{y + 16} v-9 M{x + 13},{y + 16} v-8" '
             f'fill="none" stroke="#B03A2E" stroke-width="1.5"/>'
@@ -293,277 +293,278 @@ def _icone_tarefa(tag: str, x: float, y: float) -> str:
     return ""
 
 
-def _desenhar_tarefa(el: Elemento, caixa: Caixa) -> list[str]:
-    x, y, w, h = caixa
-    fundo, borda = CORES_TIPO.get(el.tipo, CORES_TIPO[None])
-    partes = [
-        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fundo}" stroke="{borda}" stroke-width="1.6"/>',
-        _icone_tarefa(el.tag, x, y),
-        _texto(x + w / 2, y + h / 2 + 2, el.nome, 22, 10.5),
+def _draw_task(el: Element, box: Box) -> list[str]:
+    x, y, w, h = box
+    background, border = TYPE_COLORS.get(el.kind, TYPE_COLORS[None])
+    parts = [
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{background}" '
+        f'stroke="{border}" stroke-width="1.6"/>',
+        _task_icon(el.tag, x, y),
+        _text(x + w / 2, y + h / 2 + 2, el.name, 22, 10.5),
     ]
     if el.attrs.get("gsbpm"):
-        partes.append(_texto(x + w - 5, y + 10, f"GSBPM {el.attrs['gsbpm']}", 20, 8.5, "end", cor="#555"))
-    if el.duracao:
-        dur = f"{el.duracao / 60:.1f} h" if el.duracao >= 60 else f"{el.duracao:.0f} min"
-        partes.append(_texto(x + w - 5, y + h - 8, f"~{dur}", 12, 8.5, "end", "bold", borda))
-    return partes
+        parts.append(_text(x + w - 5, y + 10, f"GSBPM {el.attrs['gsbpm']}", 20, 8.5, "end", color="#555"))
+    if el.duration:
+        dur = f"{el.duration / 60:.1f} h" if el.duration >= 60 else f"{el.duration:.0f} min"
+        parts.append(_text(x + w - 5, y + h - 8, f"~{dur}", 12, 8.5, "end", "bold", border))
+    return parts
 
 
-def _desenhar_evento(el: Elemento, caixa: Caixa) -> list[str]:
-    x, y, w, h = caixa
+def _draw_event(el: Element, box: Box) -> list[str]:
+    x, y, w, h = box
     cx, cy, r = x + w / 2, y + h / 2, w / 2
-    espessura = 3.5 if el.tag == "endEvent" else 1.6
-    partes = [f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#FFF" stroke="#333" stroke-width="{espessura}"/>']
+    stroke_width = 3.5 if el.tag == "endEvent" else 1.6
+    parts = [f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="#FFF" stroke="#333" stroke-width="{stroke_width}"/>']
     if el.tag.startswith("intermediate"):
-        partes.append(f'<circle cx="{cx}" cy="{cy}" r="{r - 3}" fill="none" stroke="#333" stroke-width="1.2"/>')
+        parts.append(f'<circle cx="{cx}" cy="{cy}" r="{r - 3}" fill="none" stroke="#333" stroke-width="1.2"/>')
     if el.timer:
-        partes.append(
+        parts.append(
             f'<circle cx="{cx}" cy="{cy}" r="{r - 6}" fill="none" stroke="#333"/>'
             f'<path d="M{cx},{cy - r + 9} L{cx},{cy} L{cx + 6},{cy}" stroke="#333" fill="none"/>'
         )
-    if el.mensagem:  # envelope
-        partes.append(
+    if el.message:  # envelope
+        parts.append(
             f'<rect x="{cx - 8}" y="{cy - 5.5}" width="16" height="11" fill="none" stroke="#333"/>'
             f'<path d="M{cx - 8},{cy - 5.5} L{cx},{cy + 1} L{cx + 8},{cy - 5.5}" fill="none" stroke="#333"/>'
         )
-    return partes
+    return parts
 
 
-def _desenhar_gateway(el: Elemento, caixa: Caixa) -> list[str]:
-    x, y, w, h = caixa
+def _draw_gateway(el: Element, box: Box) -> list[str]:
+    x, y, w, h = box
     cx, cy = x + w / 2, y + h / 2
-    pontos = f"{cx},{y} {x + w},{cy} {cx},{y + h} {x},{cy}"
-    partes = [f'<polygon points="{pontos}" fill="#FFF" stroke="#333" stroke-width="1.6"/>']
+    points = f"{cx},{y} {x + w},{cy} {cx},{y + h} {x},{cy}"
+    parts = [f'<polygon points="{points}" fill="#FFF" stroke="#333" stroke-width="1.6"/>']
     if el.tag == "exclusiveGateway":
-        marca = f"M{cx - 8},{cy - 8} L{cx + 8},{cy + 8} M{cx + 8},{cy - 8} L{cx - 8},{cy + 8}"
-        partes.append(f'<path d="{marca}" stroke="#333" stroke-width="3"/>')
+        mark = f"M{cx - 8},{cy - 8} L{cx + 8},{cy + 8} M{cx + 8},{cy - 8} L{cx - 8},{cy + 8}"
+        parts.append(f'<path d="{mark}" stroke="#333" stroke-width="3"/>')
     elif el.tag == "parallelGateway":
-        marca = f"M{cx},{cy - 11} V{cy + 11} M{cx - 11},{cy} H{cx + 11}"
-        partes.append(f'<path d="{marca}" stroke="#333" stroke-width="3"/>')
-    return partes
+        mark = f"M{cx},{cy - 11} V{cy + 11} M{cx - 11},{cy} H{cx + 11}"
+        parts.append(f'<path d="{mark}" stroke="#333" stroke-width="3"/>')
+    return parts
 
 
-def _desenhar_dado(el: Elemento, caixa: Caixa) -> list[str]:
-    x, y, w, h = caixa
-    estilo = 'fill="#F3F6FB" stroke="#4A6FA5" stroke-width="1.4"'
+def _draw_data(el: Element, box: Box) -> list[str]:
+    x, y, w, h = box
+    style = 'fill="#F3F6FB" stroke="#4A6FA5" stroke-width="1.4"'
     if el.tag == "dataStoreReference":
-        arco = f"a{w / 2},8 0 0 0"
-        d = f"M{x},{y + 8} v{h - 16} {arco} {w},0 v-{h - 16} {arco} -{w},0 {arco} {w},0"
+        arc = f"a{w / 2},8 0 0 0"
+        d = f"M{x},{y + 8} v{h - 16} {arc} {w},0 v-{h - 16} {arc} -{w},0 {arc} {w},0"
     else:
         d = f"M{x},{y} h{w - 10} l10,10 v{h - 10} h-{w} z"
-    return [f'<path d="{d}" {estilo}/>']
+    return [f'<path d="{d}" {style}/>']
 
 
-def _desenhar_elemento(p: Processo, eid: str, el: Elemento) -> list[str]:
-    caixa = p.formas[eid]
-    if el.tag in TAREFAS:
-        return _desenhar_tarefa(el, caixa)
-    if el.tag in EVENTOS:
-        partes = _desenhar_evento(el, caixa)
+def _draw_element(p: Process, eid: str, el: Element) -> list[str]:
+    box = p.shapes[eid]
+    if el.tag in TASKS:
+        return _draw_task(el, box)
+    if el.tag in EVENTS:
+        parts = _draw_event(el, box)
     elif el.tag in GATEWAYS:
-        partes = _desenhar_gateway(el, caixa)
+        parts = _draw_gateway(el, box)
     elif el.tag in ("dataStoreReference", "dataObjectReference"):
-        partes = _desenhar_dado(el, caixa)
+        parts = _draw_data(el, box)
     else:
-        partes = []
-    if el.nome:
-        x, y, w, h = caixa
-        rx, ry, rw, _ = p.rotulos.get(eid, (x + w / 2 - 50, y + h + 4, 100, 27))
-        partes.append(_texto(rx + rw / 2, ry + 6, el.nome, 22, 10, vertical="top"))
-    return partes
+        parts = []
+    if el.name:
+        x, y, w, h = box
+        rx, ry, rw, _ = p.labels.get(eid, (x + w / 2 - 50, y + h + 4, 100, 27))
+        parts.append(_text(rx + rw / 2, ry + 6, el.name, 22, 10, vertical="top"))
+    return parts
 
 
-def _desenhar_pool_e_raias(p: Processo) -> list[str]:
-    partes = []
-    for eid, (x, y, w, h) in p.formas.items():
+def _draw_pool_and_lanes(p: Process) -> list[str]:
+    parts = []
+    for eid, (x, y, w, h) in p.shapes.items():
         if eid.startswith("Pool"):
-            partes.append(
+            parts.append(
                 f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#FAFAFA" stroke="#333" '
                 f'stroke-width="1.5"/><line x1="{x + 30}" y1="{y}" x2="{x + 30}" y2="{y + h}" stroke="#333"/>'
             )
-            partes += _texto_vertical(x, y + h / 2, p.nome, int(h / 7.8), 11.5, "bold")
+            parts += _vertical_text(x, y + h / 2, p.name, int(h / 7.8), 11.5, "bold")
     for lid, lane in p.lanes.items():
-        if lid in p.formas:
-            x, y, w, h = p.formas[lid]
-            partes.append(
+        if lid in p.shapes:
+            x, y, w, h = p.shapes[lid]
+            parts.append(
                 f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="none" stroke="#999"/>'
                 f'<line x1="{x + 30}" y1="{y}" x2="{x + 30}" y2="{y + h}" stroke="#999"/>'
             )
-            partes += _texto_vertical(x, y + h / 2, lane["name"], int(h / 6.4), 10, "normal")
-    return partes
+            parts += _vertical_text(x, y + h / 2, lane["name"], int(h / 6.4), 10, "normal")
+    return parts
 
 
-def _desenhar_arestas(p: Processo) -> list[str]:
-    partes = []
-    for fid, pontos in p.arestas.items():
-        fluxo = p.fluxos.get(fid, {})
-        partes.append(_seta(pontos, fluxo.get("tag") in ("dataInput", "dataOutput", "association")))
-        if fluxo.get("name") and fid in p.rotulos:
-            x, y, w, h = p.rotulos[fid]
-            partes.append(_texto(x + w / 2, y + h / 2, fluxo["name"], 12, 10.5, peso="bold", cor="#333"))
-    return partes
+def _draw_edges(p: Process) -> list[str]:
+    parts = []
+    for fid, points in p.edges.items():
+        flow = p.flows.get(fid, {})
+        parts.append(_arrow(points, flow.get("tag") in ("dataInput", "dataOutput", "association")))
+        if flow.get("name") and fid in p.labels:
+            x, y, w, h = p.labels[fid]
+            parts.append(_text(x + w / 2, y + h / 2, flow["name"], 12, 10.5, weight="bold", color="#333"))
+    return parts
 
 
-def _desenhar_legenda(p: Processo, y: float) -> list[str]:
-    partes = [_texto(20, y, "Legenda:", 20, 11, "start", "bold", vertical="top")]
-    tipos = [("automatic", "automática"), ("semi-automatic", "semiautomática"), ("manual", "manual")]
-    for i, (tipo, rotulo) in enumerate(tipos):
-        fundo, borda = CORES_TIPO[tipo]
+def _draw_legend(p: Process, y: float) -> list[str]:
+    parts = [_text(20, y, "Legend:", 20, 11, "start", "bold", vertical="top")]
+    kinds = [("automatic", "automatic"), ("semi-automatic", "semi-automatic"), ("manual", "manual")]
+    for i, (kind, label) in enumerate(kinds):
+        background, border = TYPE_COLORS[kind]
         x = 90 + i * 150
-        partes.append(f'<rect x="{x}" y="{y - 7}" width="26" height="16" rx="4" fill="{fundo}" stroke="{borda}"/>')
-        partes.append(_texto(x + 34, y + 1, rotulo, 20, 11, "start"))
-    r = resumo(p)
-    texto = (
-        f"Tempo de trabalho por edição: {r['manual_h']:.1f} h manual, {r['semi-automatic_h']:.1f} h "
-        f"semiautomático, {r['automatic_h']:.1f} h automático (durações modeladas, caminho normal)."
+        parts.append(f'<rect x="{x}" y="{y - 7}" width="26" height="16" rx="4" fill="{background}" stroke="{border}"/>')
+        parts.append(_text(x + 34, y + 1, label, 20, 11, "start"))
+    r = summary(p)
+    text = (
+        f"Work time per edition: {r['manual_h']:.1f} h manual, {r['semi-automatic_h']:.1f} h "
+        f"semi-automatic, {r['automatic_h']:.1f} h automatic (modeled durations, normal path)."
     )
-    partes.append(_texto(20, y + 26, texto, 200, 11, "start", vertical="top"))
-    return partes
+    parts.append(_text(20, y + 26, text, 200, 11, "start", vertical="top"))
+    return parts
 
 
-def para_svg(p: Processo) -> str:
-    xs = [x + w for x, _, w, _ in p.formas.values()] + [x for pts in p.arestas.values() for x, _ in pts]
-    ys = [y + h for _, y, _, h in p.formas.values()] + [y for pts in p.arestas.values() for _, y in pts]
-    largura, altura = max(xs) + 30, max(ys) + 110
-    marcadores = (
-        '<defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+def to_svg(p: Process) -> str:
+    xs = [x + w for x, _, w, _ in p.shapes.values()] + [x for pts in p.edges.values() for x, _ in pts]
+    ys = [y + h for _, y, _, h in p.shapes.values()] + [y for pts in p.edges.values() for _, y in pts]
+    width, height = max(xs) + 30, max(ys) + 110
+    markers = (
+        '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
         'orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>'
-        '<marker id="seta-dado" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+        '<marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
         'orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#666"/></marker></defs>'
     )
     o = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {largura:.0f} {altura:.0f}" '
-        f'width="{largura:.0f}" height="{altura:.0f}" role="img" aria-label="{html.escape(p.nome)}">',
-        marcadores,
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.0f} {height:.0f}" '
+        f'width="{width:.0f}" height="{height:.0f}" role="img" aria-label="{html.escape(p.name)}">',
+        markers,
         '<rect width="100%" height="100%" fill="#FFFFFF"/>',
-        _texto(20, 40, p.nome, 140, 16, "start", "bold", vertical="top"),
-        *_desenhar_pool_e_raias(p),
-        *_desenhar_arestas(p),
+        _text(20, 40, p.name, 140, 16, "start", "bold", vertical="top"),
+        *_draw_pool_and_lanes(p),
+        *_draw_edges(p),
     ]
-    for eid, el in p.elementos.items():
-        if eid in p.formas:
-            o += _desenhar_elemento(p, eid, el)
-    o += _desenhar_legenda(p, altura - 60)
+    for eid, el in p.elements.items():
+        if eid in p.shapes:
+            o += _draw_element(p, eid, el)
+    o += _draw_legend(p, height - 60)
     o.append("</svg>")
     return "\n".join(o)
 
 
-def html_visualizador(p: Processo) -> str:
-    xml = p.caminho.read_text(encoding="utf-8").replace("</script", "<\\/script")
-    cdn = f"https://unpkg.com/bpmn-js@{BPMN_JS_VERSAO}/dist"
-    origem = html.escape(atual().rel(p.caminho))
+def viewer_html(p: Process) -> str:
+    xml = p.path.read_text(encoding="utf-8").replace("</script", "<\\/script")
+    cdn = f"https://unpkg.com/bpmn-js@{BPMN_JS_VERSION}/dist"
+    origin = html.escape(current().rel(p.path))
     return f"""<!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(p.nome)}</title>
+<title>{html.escape(p.name)}</title>
 <link rel="stylesheet" href="{cdn}/assets/diagram-js.css">
 <link rel="stylesheet" href="{cdn}/assets/bpmn-js.css">
 <style>html,body{{margin:0;height:100%;font-family:Helvetica,Arial,sans-serif;background:#fff}}
-#topo{{padding:8px 16px;border-bottom:1px solid #ddd}} #canvas{{height:calc(100% - 50px)}}</style>
+#top{{padding:8px 16px;border-bottom:1px solid #ddd}} #canvas{{height:calc(100% - 50px)}}</style>
 </head>
 <body>
-<div id="topo"><strong>{html.escape(p.nome)}</strong> — arraste para mover, role para ampliar.
-Fonte: <code>{origem}</code></div>
+<div id="top"><strong>{html.escape(p.name)}</strong> — drag to move, scroll to zoom.
+Source: <code>{origin}</code></div>
 <div id="canvas"></div>
 <script src="{cdn}/bpmn-navigated-viewer.production.min.js"></script>
-<script id="diagrama" type="application/xml">{xml}</script>
+<script id="diagram" type="application/xml">{xml}</script>
 <script>
   const viewer = new BpmnJS({{ container: '#canvas' }});
-  viewer.importXML(document.getElementById('diagrama').textContent)
+  viewer.importXML(document.getElementById('diagram').textContent)
     .then(() => viewer.get('canvas').zoom('fit-viewport'))
-    .catch(err => document.getElementById('canvas').innerText = 'Erro: ' + err.message);
+    .catch(err => document.getElementById('canvas').innerText = 'Error: ' + err.message);
 </script>
 </body>
 </html>
 """
 
 
-def destino_svg(p: Processo) -> Path:
-    projeto = atual()
-    unidade = projeto.unidade_de(p.caminho)
-    prefixo = unidade.nome if unidade else "governance"
-    return projeto.docs / "processes" / f"{prefixo}__{p.caminho.stem}.svg"
+def svg_destination(p: Process) -> Path:
+    project = current()
+    unit = project.unit_of(p.path)
+    prefix = unit.name if unit else "governance"
+    return project.docs / "processes" / f"{prefix}__{p.path.stem}.svg"
 
 
-def renderizar_todos() -> list[Path]:
-    gerados = []
-    for p in todos():
-        svg = destino_svg(p)
+def render_all() -> list[Path]:
+    generated_files = []
+    for p in all_():
+        svg = svg_destination(p)
         svg.parent.mkdir(parents=True, exist_ok=True)
-        aviso = gerado.cabecalho(
-            "statera bpmn", atual().rel(p.caminho), regenerar="statera bpmn", ci=False, estilo="xml"
+        notice = generated.header(
+            "statera bpmn", current().rel(p.path), regenerate="statera bpmn", ci=False, style="xml"
         )
-        svg.write_text(aviso + para_svg(p), encoding="utf-8")
-        visualizador = svg.with_suffix(".html")
-        visualizador.write_text(gerado.em_html(html_visualizador(p), aviso), encoding="utf-8")
-        gerados += [svg, visualizador]
-    return gerados
+        svg.write_text(notice + to_svg(p), encoding="utf-8")
+        viewer = svg.with_suffix(".html")
+        viewer.write_text(generated.as_html(viewer_html(p), notice), encoding="utf-8")
+        generated_files += [svg, viewer]
+    return generated_files
 
 
 # ---------------------------------------------------------------------------
-# Validação das ligações BPMN -> repositório
+# Validation of the BPMN -> repository links
 # ---------------------------------------------------------------------------
 
-PADRAO_GSBPM = re.compile(r"^\d\.\d+([-;]\d\.\d+)*$")
-# operadores de grafo do seletor do dbt: +modelo (ancestrais), modelo+ (descendentes), @modelo, 2+modelo
-OPERADORES_DBT = re.compile(r"^(?:@|\d*\+)?(?P<name>[^+@]+?)(?:\+\d*)?$")
+GSBPM_PATTERN = re.compile(r"^\d\.\d+([-;]\d\.\d+)*$")
+# dbt selector graph operators: +model (ancestors), model+ (descendants), @model, 2+model
+DBT_OPERATORS = re.compile(r"^(?:@|\d*\+)?(?P<name>[^+@]+?)(?:\+\d*)?$")
 
 
-def nome_do_seletor(seletor: str) -> str:
-    """'+int_x' -> 'int_x' (tira os operadores de grafo do seletor do dbt)."""
-    achado = OPERADORES_DBT.match(seletor.strip())
-    return achado.group("name") if achado else seletor.strip()
+def selector_name(selector: str) -> str:
+    """'+int_x' -> 'int_x' (strips the dbt selector graph operators)."""
+    finding = DBT_OPERATORS.match(selector.strip())
+    return finding.group("name") if finding else selector.strip()
 
 
-def _validar_implementacao(nome: str, t: Elemento, modelos_dbt: set[str]) -> list[str]:
+def _validate_implementation(name: str, t: Element, dbt_models: set[str]) -> list[str]:
     impl = t.attrs.get("implementation")
     if not impl:
-        if t.tipo == "automatic":
-            return [f"{nome}: {t.id} é automática mas não declara statera:implementacao"]
+        if t.kind == "automatic":
+            return [f"{name}: {t.id} is automatic but does not declare statera:implementation"]
         return []
     if impl.startswith("py:"):
-        modulo, _, funcao = impl[3:].rpartition(".")
+        module, _, function = impl[3:].rpartition(".")
         try:
-            existe = hasattr(importlib.import_module(modulo), funcao)
+            exists = hasattr(importlib.import_module(module), function)
         except ImportError:
-            return [f"{nome}: {t.id} aponta para módulo inexistente {modulo}"]
-        return [] if existe else [f"{nome}: {t.id} aponta para {impl}, que não existe"]
+            return [f"{name}: {t.id} points to nonexistent module {module}"]
+        return [] if exists else [f"{name}: {t.id} points to {impl}, which does not exist"]
     if impl.startswith("dbt:"):
-        alvo = impl[4:]
-        lista = t.attrs.get("models", "").split(",") if alvo == "build" else [alvo]
+        target = impl[4:]
+        entries = t.attrs.get("models", "").split(",") if target == "build" else [target]
         return [
-            f"{nome}: {t.id} aponta para modelo dbt inexistente '{m}'"
-            for m in lista
-            if m.strip() and nome_do_seletor(m) not in modelos_dbt
+            f"{name}: {t.id} points to nonexistent dbt model '{m}'"
+            for m in entries
+            if m.strip() and selector_name(m) not in dbt_models
         ]
-    return [f"{nome}: {t.id} com implementação em formato desconhecido '{impl}'"]
+    return [f"{name}: {t.id} has an implementation in an unknown format '{impl}'"]
 
 
-def validar(p: Processo, modelos_dbt: set[str], papeis: set[str]) -> list[str]:
-    nome = atual().rel(p.caminho)
-    erros = [
-        f"{nome}: raia {lid} com papel desconhecido '{lane['role']}'"
+def validate(p: Process, dbt_models: set[str], roles: set[str]) -> list[str]:
+    name = current().rel(p.path)
+    errors = [
+        f"{name}: lane {lid} has unknown role '{lane['role']}'"
         for lid, lane in p.lanes.items()
-        if lane["role"] not in papeis
+        if lane["role"] not in roles
     ]
-    for el in p.elementos.values():
-        if (aguarda := el.attrs.get("awaits")) and el.tag not in TAREFAS:
-            modulo, _, funcao = aguarda[3:].rpartition(".")
+    for el in p.elements.values():
+        if (awaits := el.attrs.get("awaits")) and el.tag not in TASKS:
+            module, _, function = awaits[3:].rpartition(".")
             try:
-                existe = hasattr(importlib.import_module(modulo), funcao)
+                exists = hasattr(importlib.import_module(module), function)
             except ImportError:
-                existe = False
-            if not existe:
-                erros.append(f"{nome}: {el.id} aguarda {aguarda}, que não existe")
-    for t in p.tarefas:
-        if t.tipo not in ("automatic", "semi-automatic", "manual"):
-            erros.append(f"{nome}: {t.id} sem statera:tipo válido")
-        if not PADRAO_GSBPM.match(t.attrs.get("gsbpm", "")):
-            erros.append(f"{nome}: {t.id} sem statera:gsbpm válido")
-        if not t.duracao:
-            erros.append(f"{nome}: {t.id} sem statera:duracaoMin")
-        erros += _validar_implementacao(nome, t, modelos_dbt)
-    erros += [f"{nome}: {eid} sem forma no diagrama (DI)" for eid in p.elementos if eid not in p.formas]
-    return erros
+                exists = False
+            if not exists:
+                errors.append(f"{name}: {el.id} awaits {awaits}, which does not exist")
+    for t in p.tasks:
+        if t.kind not in ("automatic", "semi-automatic", "manual"):
+            errors.append(f"{name}: {t.id} has no valid statera:type")
+        if not GSBPM_PATTERN.match(t.attrs.get("gsbpm", "")):
+            errors.append(f"{name}: {t.id} has no valid statera:gsbpm")
+        if not t.duration:
+            errors.append(f"{name}: {t.id} has no statera:durationMin")
+        errors += _validate_implementation(name, t, dbt_models)
+    errors += [f"{name}: {eid} has no shape in the diagram (DI)" for eid in p.elements if eid not in p.shapes]
+    return errors

@@ -1,4 +1,4 @@
-# Perfil local com DuckDB. O caminho do banco vem de statera.toml ([motor]) via STATERA_DUCKDB.
+# Local DuckDB profile. The database path comes from statera.toml ([engine]) via STATERA_DUCKDB.
 statera_foo_bar:
   target: local
   outputs:

@@ -1,27 +1,27 @@
-"""O projeto dbt do órgão: gerado a partir das unidades, executado pela plataforma.
+"""The organization's dbt project: generated from the units, run by the framework.
 
-O repositório de conteúdo tem UM projeto dbt, com o `dbt_project.yml` na raiz (ADR 0017) e os
-modelos nas unidades:
+The content repository has ONE dbt project, with `dbt_project.yml` at the root (ADR 0017) and the
+models in the units:
 
-    products/<fonte>/5-process/models/     staging (leitura do bronze no corte)
-    products/<agregado>/5-process/models/  intermediate (silver canônica, por corte)
-    products/<consumo>/5-process/models/   intermediate e marts (gold)
-    products/<p>/6-analyse/dbt-tests/   controles SQL da edição (testes singulares)
-    references/<r>/                      seeds (ref)
-    queries/, products/<p>/queries/   analyses do dbt (consultas recorrentes)
+    products/<source>/5-process/models/     staging (reading bronze at the cut)
+    products/<aggregate>/5-process/models/  intermediate (canonical silver, per cut)
+    products/<consumer>/5-process/models/   intermediate and marts (gold)
+    products/<p>/6-analyse/dbt-tests/       SQL controls of the edition (singular tests)
+    references/<r>/                         seeds (ref)
+    queries/, products/<p>/queries/         dbt analyses (recurring queries)
 
-Arquivos GERADOS (o CI confere que estão em dia):
-    dbt_project.yml                           na raiz: caminhos das unidades e convenções do medalhão
-    dbt/generated/_references.yml      propriedades dos seeds, tiradas dos contratos das referências
-    dbt/generated/_groups.yml           um grupo dbt por produto (dono), para o controle de acesso
+GENERATED files (CI checks that they are up to date):
+    dbt_project.yml                  at the root: unit paths and medallion conventions
+    dbt/generated/_references.yml    seed properties, taken from the reference table contracts
+    dbt/generated/_groups.yml        one dbt group per product (owner), for access control
 
-Controle de acesso entre produtos (dbt Core: groups e access): os modelos de um produto INTERNO
-são `private` ao grupo dele, exceto os que materializam uma porta de saída (e os staging de um
-produto de fonte), que são `public`. Um consumidor que tente ler um modelo privado de outro
-produto é barrado pelo dbt na compilação.
-    dbt/generated/_rule_unit_tests.yml  (processar/rules.py)
+Access control between products (dbt Core: groups and access): the models of an INTERNAL product
+are `private` to its group, except those that materialize an output port (and the staging models of a
+source-aligned product), which are `public`. A consumer that tries to read another product's private
+model is blocked by dbt at compile time.
+    dbt/generated/_rule_unit_tests.yml  (process/rules.py)
 
-As macros genéricas vêm do pacote dbt `statera` (packages.yml, na raiz), não de cópia.
+The generic macros come from the `statera` dbt package (packages.yml, at the root), not from a copy.
 """
 
 from __future__ import annotations
@@ -34,293 +34,331 @@ from pathlib import Path
 
 import yaml
 
-from statera import classificacao, contratos, gerado
-from statera.projeto import MACROS_DBT, Projeto, atual, ler_yaml
+from statera import classification, contracts, generated
+from statera.project import DBT_MACROS, REFERENCE_COLOR, Project, current, read_yaml
 
-CAMADAS_DBT = {
+DBT_LAYERS = {
     "staging": {"+schema": "silver", "+materialized": "view", "+meta": {"layer": "silver"}},
     "intermediate": {"+schema": "silver", "+materialized": "table", "+meta": {"layer": "silver"}},
     "marts": {"+schema": "gold", "+materialized": "table", "+meta": {"layer": "gold"}},
 }
-TIPOS_SEED = {"string": "varchar", "integer": "integer", "number": "double", "date": "date", "boolean": "boolean"}
+SEED_TYPES = {"string": "varchar", "integer": "integer", "number": "double", "date": "date", "boolean": "boolean"}
 
 
-def _rel(projeto: Projeto, pasta: Path) -> str:
-    return os.path.relpath(pasta, projeto.dbt_projeto).replace(os.sep, "/")
+def _rel(project: Project, folder: Path) -> str:
+    return os.path.relpath(folder, project.dbt_project).replace(os.sep, "/")
 
 
-def _existentes(projeto: Projeto, pastas) -> list[str]:
-    return [_rel(projeto, p) for p in pastas if p.is_dir()]
+def _existing(project: Project, folders) -> list[str]:
+    return [_rel(project, p) for p in folders if p.is_dir()]
 
 
-def gerar_projeto(projeto: Projeto | None = None) -> str:
-    projeto = projeto or atual()
-    unidades = projeto.produtos()
-    conteudo = {
-        "name": projeto.dbt_nome,
+def generate_project(project: Project | None = None) -> str:
+    project = project or current()
+    units = project.products()
+    content = {
+        "name": project.dbt_name,
         "version": "0.1.0",
         "config-version": 2,
-        "profile": projeto.dbt_perfil,
+        "profile": project.dbt_profile,
         "model-paths": [
-            *_existentes(projeto, [u.fase(5) / "models" for u in unidades]),
-            _rel(projeto, projeto.dbt_pasta / "generated"),
+            *_existing(project, [u.phase(5) / "models" for u in units]),
+            _rel(project, project.dbt_folder / "generated"),
         ],
-        "seed-paths": _existentes(projeto, [r.pasta for r in projeto.referencias()]),
-        "test-paths": _existentes(projeto, [u.fase(6) / "dbt-tests" for u in unidades]),
+        "seed-paths": _existing(project, [r.folder for r in project.references()]),
+        "test-paths": _existing(project, [u.phase(6) / "dbt-tests" for u in units]),
         "macro-paths": [
-            _rel(projeto, projeto.dbt_pasta / "macros"),
-            *_existentes(projeto, [u.fase(5) / "macros" for u in unidades]),
+            _rel(project, project.dbt_folder / "macros"),
+            *_existing(project, [u.phase(5) / "macros" for u in units]),
         ],
-        "analysis-paths": _existentes(projeto, projeto.pastas_consultas()),
-        "docs-paths": [_rel(projeto, projeto.dbt_pasta / "docs")],
+        "analysis-paths": _existing(project, project.query_folders()),
+        "docs-paths": [_rel(project, project.dbt_folder / "docs")],
         "target-path": "target",
-        "packages-install-path": _rel(projeto, projeto.dbt_pasta / "dbt_packages"),
-        "clean-targets": ["target", "logs", _rel(projeto, projeto.dbt_pasta / "dbt_packages")],
-        "vars": {"cut_date": "2099-12-31", "period": "2099-12", "batches": {}, **projeto.convencoes},
-        "seeds": {projeto.dbt_nome: {"+schema": "ref"}},
-        "models": {projeto.dbt_nome: _configuracoes_de_modelos(projeto)},
-        "data_tests": {projeto.dbt_nome: {"+severity": "error"}},
+        "packages-install-path": _rel(project, project.dbt_folder / "dbt_packages"),
+        "clean-targets": ["target", "logs", _rel(project, project.dbt_folder / "dbt_packages")],
+        "vars": {"cut_date": "2099-12-31", "period": "2099-12", "batches": {}, **project.conventions},
+        "seeds": {project.dbt_name: _seed_configs(project)},
+        "models": {project.dbt_name: _model_configs(project)},
+        "exposures": {project.dbt_name: _exposure_configs(project)},
+        "data_tests": {project.dbt_name: {"+severity": "error"}},
     }
-    aviso = gerado.cabecalho(
+    if not content["exposures"][project.dbt_name]:
+        del content["exposures"]
+    notice = generated.header(
         "statera dbt generate",
-        "statera.toml e as unidades (modelos, referências, testes, macros e consultas)",
-        nota="Medalhão: bronze = sources (extrações datadas); silver = staging + intermediate; gold = marts;\n"
-        "ref = seeds. As variáveis são sobrescritas a cada edição por `statera run`.",
+        "statera.toml and the units (models, references, tests, macros and queries)",
+        note="Medallion: bronze = sources (dated extractions); silver = staging + intermediate; gold = marts;\n"
+        "ref = seeds. The variables are overridden in each edition by `statera run`.",
     )
-    return aviso + yaml.safe_dump(conteudo, allow_unicode=True, sort_keys=False, width=110)
+    return notice + yaml.safe_dump(content, allow_unicode=True, sort_keys=False, width=110)
 
 
-def _modelos_do_produto(unidade) -> list[tuple[list[str], str]]:
-    """(partes do caminho dentro de models/, nome do modelo) de cada modelo do produto, em SQL ou em
-    Python (modelos Python do dbt: `def model(dbt, session)`, com pandas)."""
-    base = unidade.fase(5) / "models"
-    arquivos = [*base.rglob("*.sql"), *(p for p in base.rglob("*.py") if not p.name.startswith("_"))]
-    return [(list(a.relative_to(base).parent.parts), a.stem) for a in sorted(arquivos)]
+def _product_models(unit) -> list[tuple[list[str], str]]:
+    """(path parts inside models/, model name) of each model of the product, in SQL or in
+    Python (dbt Python models: `def model(dbt, session)`, with pandas)."""
+    base = unit.phase(5) / "models"
+    files = [*base.rglob("*.sql"), *(p for p in base.rglob("*.py") if not p.name.startswith("_"))]
+    return [(list(a.relative_to(base).parent.parts), a.stem) for a in sorted(files)]
 
 
-def _acesso(unidade, partes: list[str], modelo: str, publicos: set[str]) -> str | None:
-    if not unidade.interno:
-        return None  # consumidor: padrão do dbt (protected)
-    if modelo in publicos or (partes and partes[0] == "staging"):
+def _access(unit, parts: list[str], model: str, public_products: set[str]) -> str | None:
+    if not unit.internal:
+        return None  # consumer: dbt default (protected)
+    if model in public_products or (parts and parts[0] == "staging"):
         return "public"
     return "private"
 
 
-def _meta_do_contrato(contrato: dict) -> dict:
-    """O que o catálogo sabe da tabela, no `meta` do modelo: aparece (e é buscável) no dbt docs."""
+def _contract_meta(contract: dict) -> dict:
+    """What the catalog knows about the table, in the model's `meta`: it shows up (and is searchable) in dbt docs."""
     return {
-        "contract": contrato["id"],
-        "urn": contratos.propriedade_custom(contrato, "urn"),
-        "classification": classificacao.resumo(classificacao.da_tabela(contrato)),
+        "contract": contract["id"],
+        "urn": contracts.custom_property_of(contract, "urn"),
+        "classification": classification.summary(classification.of_table(contract)),
     }
 
 
-def _grants(projeto: Projeto, unidade, modelo: str, saidas: set[str]) -> dict | None:
-    """Permissão de leitura no motor das saídas de um produto interno para as equipes autorizadas
-    (`authorizedConsumers` com `papel`, vigentes): a fronteira de verdade, gerada da mesma
-    declaração que a validação confere. O DuckDB da demonstração não tem papéis: só em outros motores."""
-    from statera import portas
+def _grants(project: Project, unit, model: str, outputs: set[str]) -> dict | None:
+    """Read permission in the engine on an internal product's outputs for the authorized teams
+    (`authorizedConsumers` with `role`, within their validity period): the real boundary, generated from
+    the same declaration that validation checks. The demo DuckDB has no roles: only in other engines."""
+    from statera import ports
 
-    if projeto.motor["type"] == "duckdb" or not unidade.interno or modelo not in saidas:
+    if project.engine["type"] == "duckdb" or not unit.internal or model not in outputs:
         return None
-    papeis = sorted(
-        {a["role"] for a in portas.papeis_autorizados(unidade) if portas.autorizacao_vigente(unidade, a["role"])}
-    )
-    return {"select": papeis} if papeis else None
+    roles = sorted({a["role"] for a in ports.authorized_roles(unit) if ports.current_authorization(unit, a["role"])})
+    return {"select": roles} if roles else None
 
 
-def _configuracoes_de_modelos(projeto: Projeto) -> dict:
-    """Configuração por camada (medalhão) e, por modelo, o grupo (produto), o acesso e o contrato."""
-    arvore = {camada: dict(conf) for camada, conf in CAMADAS_DBT.items()}
-    for unidade in projeto.produtos():
-        por_modelo = {}
-        for caminho in unidade.contratos():
-            c = ler_yaml(caminho)
-            if modelo := contratos.propriedade_custom(c, "dbtModel"):
-                por_modelo[modelo] = c
-        for partes, modelo in _modelos_do_produto(unidade):
-            no = arvore
-            for parte in partes:
-                no = no.setdefault(parte, {})
-            config = {"+group": unidade.nome}
-            if acesso := _acesso(unidade, partes, modelo, set(por_modelo)):
-                config["+access"] = acesso
-            if modelo in por_modelo:
-                config["+meta"] = {"product": unidade.nome, **_meta_do_contrato(por_modelo[modelo])}
-            if grants := _grants(projeto, unidade, modelo, set(por_modelo)):
+def product_tags(unit) -> list[str]:
+    """dbt tags of every node of a product: select one product (`tag:product:x`, `+tag:product:x+`) or
+    one alignment in dbt docs, the dbt CLI and any tool that reads the manifest."""
+    return [f"product:{unit.name}", f"alignment:{unit.alignment}"]
+
+
+def _seed_configs(project: Project) -> dict:
+    """Reference tables: schema `ref`, tag `reference` (+ `reference:<name>`) and the gray of references."""
+    tree = {"+schema": "ref", "+tags": ["reference"], "+docs": {"node_color": REFERENCE_COLOR}}
+    for ref in project.references():
+        for path in ref.contracts():
+            for obj in read_yaml(path).get("schema", []):
+                tree[obj["name"]] = {"+tags": [f"reference:{ref.name}"]}
+    return tree
+
+
+def _exposure_configs(project: Project) -> dict:
+    """Tags of the product's exposures, configured by their path (dbt fqn: the folders of the .yml inside
+    models/, then the exposure name). dbt applies no dbt_project.yml tags to sources or analyses: select a
+    product with its sources and queries as `+tag:product:<name>+` (parents and children of its models)."""
+    tree: dict = {}
+    for unit in project.products():
+        base = unit.phase(5) / "models"
+        for yml in sorted(base.rglob("*.yml")) if base.is_dir() else []:
+            for entry in (read_yaml(yml) or {}).get("exposures") or []:
+                node = tree
+                for part in [*yml.relative_to(base).parent.parts, entry["name"]]:
+                    node = node.setdefault(part, {})
+                node["+tags"] = product_tags(unit)
+    return tree
+
+
+def _model_configs(project: Project) -> dict:
+    """Configuration per layer (medallion) and, per model, the group (product), the tags and color of the
+    product, the access and the contract."""
+    tree = {layer: dict(conf) for layer, conf in DBT_LAYERS.items()}
+    colors = project.product_colors()
+    for unit in project.products():
+        by_model = {}
+        for path in unit.contracts():
+            c = read_yaml(path)
+            if model := contracts.custom_property_of(c, "dbtModel"):
+                by_model[model] = c
+        for parts, model in _product_models(unit):
+            node = tree
+            for part in parts:
+                node = node.setdefault(part, {})
+            config = {"+group": unit.name, "+tags": product_tags(unit), "+docs": {"node_color": colors[unit.name]}}
+            if access := _access(unit, parts, model, set(by_model)):
+                config["+access"] = access
+            if model in by_model:
+                config["+meta"] = {"product": unit.name, **_contract_meta(by_model[model])}
+            if grants := _grants(project, unit, model, set(by_model)):
                 config["+grants"] = grants
-            no[modelo] = config
-    return arvore
+            node[model] = config
+    return tree
 
 
-def gerar_grupos(projeto: Projeto | None = None) -> str:
-    projeto = projeto or atual()
-    grupos = [
-        {"name": u.nome, "owner": {"name": (u.odps.get("team") or {}).get("name", u.nome)},
-         "description": f"Produto {u.nome} ({u.alinhamento}, {'internal' if u.interno else 'publicado'})"}
-        for u in projeto.produtos()
+def generate_groups(project: Project | None = None) -> str:
+    project = project or current()
+    groups = [
+        {"name": u.name, "owner": {"name": (u.odps.get("team") or {}).get("name", u.name)},
+         "description": f"Product {u.name} ({u.alignment}, {'internal' if u.internal else 'published'})"}
+        for u in project.products()
     ]  # fmt: skip
-    corpo = yaml.safe_dump({"version": 2, "groups": grupos}, allow_unicode=True, sort_keys=False, width=110)
-    return gerado.cabecalho("statera dbt generate", "products/*/1-specify/product.odps.yaml") + corpo
+    body = yaml.safe_dump({"version": 2, "groups": groups}, allow_unicode=True, sort_keys=False, width=110)
+    return generated.header("statera dbt generate", "products/*/1-specify/product.odps.yaml") + body
 
 
-def _seed(contrato: dict) -> dict:
-    objeto = contrato["schema"][0]
-    colunas, tipos = [], {}
-    for prop in objeto["properties"]:
-        fisico = (prop.get("physicalType") or "").lower()
-        tipos[prop["name"]] = fisico or TIPOS_SEED[prop["logicalType"]]
-        testes = []
-        if prop.get("primaryKey") and _chave_simples(objeto) and prop["name"] != _valido_desde():
-            testes += ["unique", "not_null"]
+def _seed(contract: dict) -> dict:
+    obj = contract["schema"][0]
+    columns, kinds = [], {}
+    for prop in obj["properties"]:
+        physical_type = (prop.get("physicalType") or "").lower()
+        kinds[prop["name"]] = physical_type or SEED_TYPES[prop["logicalType"]]
+        tests = []
+        if prop.get("primaryKey") and _simple_key(obj) and prop["name"] != _valid_from():
+            tests += ["unique", "not_null"]
         for rel in prop.get("relationships", []) or []:
-            tabela, campo = rel["to"].split(".")
-            testes.append({"relationships": {"arguments": {"to": f"ref('{tabela}')", "field": campo}}})
-        if testes:
-            colunas.append({"name": prop["name"], "data_tests": testes})
+            table, field = rel["to"].split(".")
+            tests.append({"relationships": {"arguments": {"to": f"ref('{table}')", "field": field}}})
+        if tests:
+            columns.append({"name": prop["name"], "data_tests": tests})
     seed = {
-        "name": objeto["name"],
-        "description": contrato["description"]["purpose"],
-        "config": {"column_types": tipos},
+        "name": obj["name"],
+        "description": contract["description"]["purpose"],
+        "config": {"column_types": kinds},
         "meta": {
             "layer": "ref",
-            "contract": contrato["id"],
-            "urn": contratos.propriedade_custom(contrato, "urn"),
-            "authority": contratos.propriedade_custom(contrato, "authority"),
+            "contract": contract["id"],
+            "urn": contracts.custom_property_of(contract, "urn"),
+            "authority": contracts.custom_property_of(contract, "authority"),
         },
     }
-    if colunas:
-        seed["columns"] = colunas
-    if contratos.propriedade_custom(contrato, "temporality") == "validity":
-        chave = next(
-            (p["name"] for p in objeto["properties"] if p.get("primaryKey") and p["name"] != _valido_desde()), None
-        )
-        if chave:
-            seed["data_tests"] = [{"statera.non_overlapping_validity": {"arguments": {"key": chave}}}]
+    if columns:
+        seed["columns"] = columns
+    if contracts.custom_property_of(contract, "temporality") == "validity":
+        key = next((p["name"] for p in obj["properties"] if p.get("primaryKey") and p["name"] != _valid_from()), None)
+        if key:
+            seed["data_tests"] = [{"statera.non_overlapping_validity": {"arguments": {"key": key}}}]
     return seed
 
 
-def _valido_desde() -> str:
-    return atual().convencoes["valid_from_column"]
+def _valid_from() -> str:
+    return current().conventions["valid_from_column"]
 
 
-def _chave_simples(objeto: dict) -> bool:
-    return sum(1 for p in objeto["properties"] if p.get("primaryKey")) == 1
+def _simple_key(obj: dict) -> bool:
+    return sum(1 for p in obj["properties"] if p.get("primaryKey")) == 1
 
 
-def gerar_referencias(projeto: Projeto | None = None) -> str:
-    projeto = projeto or atual()
-    seeds = [_seed(ler_yaml(c)) for r in projeto.referencias() for c in r.contratos()]
-    corpo = yaml.safe_dump({"version": 2, "seeds": seeds}, allow_unicode=True, sort_keys=False, width=110)
-    return gerado.cabecalho("statera dbt generate", "references/*/*.odcs.yaml (contratos das referências)") + corpo
+def generate_references(project: Project | None = None) -> str:
+    project = project or current()
+    seeds = [_seed(read_yaml(c)) for r in project.references() for c in r.contracts()]
+    body = yaml.safe_dump({"version": 2, "seeds": seeds}, allow_unicode=True, sort_keys=False, width=110)
+    return generated.header("statera dbt generate", "references/*/*.odcs.yaml (reference table contracts)") + body
 
 
-def gerados(projeto: Projeto | None = None) -> dict[Path, str]:
-    projeto = projeto or atual()
+def generated_files(project: Project | None = None) -> dict[Path, str]:
+    project = project or current()
     return {
-        projeto.dbt_projeto / "dbt_project.yml": gerar_projeto(projeto),
-        projeto.dbt_pasta / "generated" / "_references.yml": gerar_referencias(projeto),
-        projeto.dbt_pasta / "generated" / "_groups.yml": gerar_grupos(projeto),
+        project.dbt_project / "dbt_project.yml": generate_project(project),
+        project.dbt_folder / "generated" / "_references.yml": generate_references(project),
+        project.dbt_folder / "generated" / "_groups.yml": generate_groups(project),
     }
 
 
-def sincronizar(projeto: Projeto | None = None) -> list[Path]:
-    escritos = []
-    if escrever_pacotes(projeto):
-        escritos.append((projeto or atual()).dbt_projeto / "packages.yml")
-    for caminho, texto in gerados(projeto).items():
-        caminho.parent.mkdir(parents=True, exist_ok=True)
-        caminho.write_text(texto, encoding="utf-8")
-        escritos.append(caminho)
-    return escritos
+def sync(project: Project | None = None) -> list[Path]:
+    written = []
+    if write_packages(project):
+        written.append((project or current()).dbt_project / "packages.yml")
+    for path, text in generated_files(project).items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        written.append(path)
+    return written
 
 
-def desatualizados(projeto: Projeto | None = None) -> list[Path]:
-    return [c for c, texto in gerados(projeto).items() if not c.exists() or c.read_text(encoding="utf-8") != texto]
-
-
-# ---------------------------------------------------------------------------
-# Execução
-# ---------------------------------------------------------------------------
-
-
-def executar(argumentos: list[str], variaveis: dict | None = None, projeto: Projeto | None = None):
-    """Roda o dbt em subprocesso (isola a conexão DuckDB do dbt da do processo Python)."""
-    projeto = projeto or atual()
-    dbt = Path(sys.executable).parent / "dbt"
-    comando = [
-        str(dbt),
-        *argumentos,
-        "--project-dir",
-        str(projeto.dbt_projeto),
-        "--profiles-dir",
-        str(projeto.dbt_projeto),
+def outdated(project: Project | None = None) -> list[Path]:
+    return [
+        c for c, text in generated_files(project).items() if not c.exists() or c.read_text(encoding="utf-8") != text
     ]
-    if variaveis:
-        comando += ["--vars", json.dumps(variaveis)]
-    projeto.warehouse.parent.mkdir(parents=True, exist_ok=True)
-    env = {**os.environ, "STATERA_DUCKDB": str(projeto.warehouse), "DBT_SEND_ANONYMOUS_USAGE_STATS": "false"}
-    return subprocess.run(comando, cwd=projeto.dbt_projeto, env=env, capture_output=True, text=True)
 
 
-def gerar_pacotes(projeto: Projeto | None = None) -> str:
-    """packages.yml do projeto dbt: o pacote dbt da plataforma é o que vem DENTRO do pacote Python instalado.
-    Assim há uma só versão a fixar (a do pacote Python, no pyproject.toml) e nenhuma credencial a mais.
-    O caminho depende da máquina (ambiente virtual), por isso o arquivo é gerado e fica fora do git."""
-    projeto = projeto or atual()
-    local = os.path.relpath(MACROS_DBT, projeto.dbt_projeto).replace(os.sep, "/")
-    aviso = gerado.cabecalho(
+# ---------------------------------------------------------------------------
+# Run
+# ---------------------------------------------------------------------------
+
+
+def run(arguments: list[str], variables: dict | None = None, project: Project | None = None):
+    """Runs dbt in a subprocess (isolates dbt's DuckDB connection from the Python process's)."""
+    project = project or current()
+    dbt = Path(sys.executable).parent / "dbt"
+    command = [
+        str(dbt),
+        *arguments,
+        "--project-dir",
+        str(project.dbt_project),
+        "--profiles-dir",
+        str(project.dbt_project),
+    ]
+    if variables:
+        command += ["--vars", json.dumps(variables)]
+    project.warehouse.parent.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, "STATERA_DUCKDB": str(project.warehouse), "DBT_SEND_ANONYMOUS_USAGE_STATS": "false"}
+    return subprocess.run(command, cwd=project.dbt_project, env=env, capture_output=True, text=True)
+
+
+def generate_packages(project: Project | None = None) -> str:
+    """packages.yml of the dbt project: the framework's dbt package is the one shipped INSIDE the installed
+    Python package. So there is only one version to pin (the Python package's, in pyproject.toml) and no
+    extra credentials. The path depends on the machine (virtual environment), so the file is generated
+    and kept out of git."""
+    project = project or current()
+    local = os.path.relpath(DBT_MACROS, project.dbt_project).replace(os.sep, "/")
+    notice = generated.header(
         "statera sync",
-        "o pacote statera instalado no ambiente (pyproject.toml)",
+        "the statera package installed in the environment (pyproject.toml)",
         ci=False,
-        nota="Fora do git (.gitignore): o caminho é o do ambiente virtual desta máquina.",
+        note="Kept out of git (.gitignore): the path is this machine's virtual environment.",
     )
-    return aviso + f"packages:\n  - local: {local}\n"
+    return notice + f"packages:\n  - local: {local}\n"
 
 
-def escrever_pacotes(projeto: Projeto | None = None) -> bool:
-    """Escreve o packages.yml se mudou; devolve True quando mudou (é preciso rodar dbt deps de novo)."""
-    projeto = projeto or atual()
-    destino, texto = projeto.dbt_projeto / "packages.yml", gerar_pacotes(projeto)
-    if destino.exists() and destino.read_text(encoding="utf-8") == texto:
+def write_packages(project: Project | None = None) -> bool:
+    """Writes packages.yml if it changed; returns True when it changed (dbt deps must be run again)."""
+    project = project or current()
+    destination, text = project.dbt_project / "packages.yml", generate_packages(project)
+    if destination.exists() and destination.read_text(encoding="utf-8") == text:
         return False
-    destino.write_text(texto, encoding="utf-8")
+    destination.write_text(text, encoding="utf-8")
     return True
 
 
-def garantir_pacotes(projeto: Projeto | None = None) -> None:
-    """`dbt deps` quando o pacote da plataforma ainda não está instalado no projeto (ou mudou de lugar)."""
-    projeto = projeto or atual()
-    if escrever_pacotes(projeto) or not (projeto.dbt_pasta / "dbt_packages" / "statera").exists():
-        processo = executar(["deps"], projeto=projeto)
-        if processo.returncode != 0:
-            raise RuntimeError(f"dbt deps falhou:\n{processo.stdout[-2000:]}")
+def ensure_packages(project: Project | None = None) -> None:
+    """`dbt deps` when the framework package is not yet installed in the project (or has moved)."""
+    project = project or current()
+    if not (project.dbt_project / "dbt_project.yml").exists():  # fresh repository: nothing generated yet
+        sync(project)
+    if write_packages(project) or not (project.dbt_folder / "dbt_packages" / "statera").exists():
+        process = run(["deps"], project=project)
+        if process.returncode != 0:
+            raise RuntimeError(f"dbt deps failed:\n{process.stdout[-2000:]}")
 
 
-def manifesto(gerar: bool = True, projeto: Projeto | None = None) -> dict:
-    """Manifest do dbt (`dbt parse` não precisa de dados)."""
-    projeto = projeto or atual()
-    if gerar or not projeto.dbt_manifesto.exists():
-        garantir_pacotes(projeto)
-        processo = executar(["parse"], projeto=projeto)
-        if processo.returncode != 0:
-            raise RuntimeError(f"dbt parse falhou:\n{processo.stdout[-3000:]}")
-    return json.loads(projeto.dbt_manifesto.read_text())
+def manifest(generate: bool = True, project: Project | None = None) -> dict:
+    """dbt manifest (`dbt parse` needs no data)."""
+    project = project or current()
+    if generate or not project.dbt_manifest.exists():
+        ensure_packages(project)
+        process = run(["parse"], project=project)
+        if process.returncode != 0:
+            raise RuntimeError(f"dbt parse failed:\n{process.stdout[-3000:]}")
+    return json.loads(project.dbt_manifest.read_text())
 
 
-def resultados(projeto: Projeto | None = None) -> list[dict]:
-    caminho = (projeto or atual()).dbt_resultados
-    return json.loads(caminho.read_text())["results"] if caminho.exists() else []
+def results(project: Project | None = None) -> list[dict]:
+    path = (project or current()).dbt_results
+    return json.loads(path.read_text())["results"] if path.exists() else []
 
 
-def falhas(resultados_: list[dict]) -> list[str]:
+def failures(results_: list[dict]) -> list[str]:
     return [
         f"{r['unique_id']}: {r['status']} — {(r.get('message') or '').strip()[:300]}"
-        for r in resultados_
+        for r in results_
         if r["status"] in ("error", "fail")
     ]
 
 
-def contagem_testes(resultados_: list[dict]) -> tuple[int, int]:
-    testes = [r for r in resultados_ if r["unique_id"].startswith(("test.", "unit_test."))]
-    return len(testes), sum(r["status"] in ("fail", "error") for r in testes)
+def test_count(results_: list[dict]) -> tuple[int, int]:
+    tests = [r for r in results_ if r["unique_id"].startswith(("test.", "unit_test."))]
+    return len(tests), sum(r["status"] in ("fail", "error") for r in tests)

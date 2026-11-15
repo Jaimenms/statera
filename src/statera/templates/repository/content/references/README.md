@@ -1,3 +1,3 @@
-# Referências
+# Reference tables
 
-Uma referência oficial por pasta: CSV + contrato ODCS (`<nome>.odcs.yaml`) com autoridade e temporalidade.
+One official reference table per folder: CSV + ODCS contract (`<name>.odcs.yaml`) with authority and temporality.

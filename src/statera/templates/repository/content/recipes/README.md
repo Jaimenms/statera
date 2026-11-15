@@ -1,3 +1,3 @@
-# Receitas
+# Recipes
 
-Exemplos executáveis para quem analisa os dados. Cabeçalho: `Recipe:`, `Layers:`, `Classification:` (e `Authors:`).
+Executable examples for those who analyze the data. Header: `Recipe:`, `Layers:`, `Classification:` (and `Authors:`).

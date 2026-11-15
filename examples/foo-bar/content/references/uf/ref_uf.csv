@@ -1,4 +1,4 @@
-cod_uf,sigla_uf,nome_uf,cod_regiao,regiao
+uf_id,uf_abbr,uf_name,region_id,region
 11,RO,Rondônia,1,Norte
 12,AC,Acre,1,Norte
 13,AM,Amazonas,1,Norte

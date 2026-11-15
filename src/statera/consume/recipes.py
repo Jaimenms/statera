@@ -1,15 +1,15 @@
-"""Receitas: exemplos curtos e completos, executados no CI para não envelhecerem.
+"""Recipes: short, complete examples, run in CI so they do not go stale.
 
-Cada receita é um arquivo em `recipes/`:
-  - `.py` no formato de células (`# %%`, compatível com Jupytext e com o VS Code), que usa a
-    biblioteca (`statera.consume.catalog`);
-  - `.sql`, executado direto no motor (somente leitura).
+Each recipe is a file in `recipes/`:
+  - `.py` in cell format (`# %%`, compatible with Jupytext and VS Code), which uses the
+    library (`statera.consume.catalog`);
+  - `.sql`, run directly on the engine (read-only).
 
-O cabeçalho declara título, camadas lidas e classificação, em linhas de comentário:
+The header declares the title, layers read and classification, in comment lines:
 
-    # Recipe: Série histórica de saldo por UF
-    # Camadas: gold
-    # Classificação: amplo · agregado
+    # Recipe: Balance time series by UF
+    # Layers: gold
+    # Classification: broad · aggregate
 """
 
 from __future__ import annotations
@@ -23,63 +23,63 @@ from pathlib import Path
 
 import duckdb
 
-from statera.projeto import Projeto, atual
+from statera.project import Project, current
 
-CABECALHO = re.compile(r"^(?:#|--)\s*(Recipe|Layers|Classification|Library|Authors):\s*(.+)$")
+HEADER = re.compile(r"^(?:#|--)\s*(Recipe|Layers|Classification|Library|Authors):\s*(.+)$")
 
 
 @dataclass
 class Recipe:
-    caminho: Path
+    path: Path
     meta: dict
 
     @property
     def title(self) -> str:
-        return self.meta.get("recipe", self.caminho.stem)
+        return self.meta.get("recipe", self.path.stem)
 
 
-def _cabecalho(caminho: Path) -> dict:
+def _header(path: Path) -> dict:
     meta = {}
-    for linha in caminho.read_text(encoding="utf-8").splitlines()[:15]:
-        if achado := CABECALHO.match(linha.strip()):
-            chave = achado.group(1).lower()
-            meta[chave] = achado.group(2).strip()
+    for line in path.read_text(encoding="utf-8").splitlines()[:15]:
+        if finding := HEADER.match(line.strip()):
+            key = finding.group(1).lower()
+            meta[key] = finding.group(2).strip()
     return meta
 
 
-def load(projeto: Projeto | None = None) -> list[Recipe]:
-    pasta = (projeto or atual()).receitas
-    arquivos = sorted([*pasta.glob("*.py"), *pasta.glob("*.sql")]) if pasta.is_dir() else []
-    return [Recipe(a, _cabecalho(a)) for a in arquivos]
+def load(project: Project | None = None) -> list[Recipe]:
+    folder = (project or current()).recipes
+    files = sorted([*folder.glob("*.py"), *folder.glob("*.sql")]) if folder.is_dir() else []
+    return [Recipe(a, _header(a)) for a in files]
 
 
-def run(receita: Recipe, projeto: Projeto | None = None) -> tuple[bool, str]:
-    """Executa a receita contra o motor do projeto. Devolve (sucesso, saída)."""
-    projeto = projeto or atual()
-    if receita.caminho.suffix == ".sql":
-        con = duckdb.connect(str(projeto.warehouse), read_only=True)
+def run(recipe: Recipe, project: Project | None = None) -> tuple[bool, str]:
+    """Runs the recipe against the project's engine. Returns (success, output)."""
+    project = project or current()
+    if recipe.path.suffix == ".sql":
+        con = duckdb.connect(str(project.warehouse), read_only=True)
         try:
-            return True, con.execute(receita.caminho.read_text(encoding="utf-8")).df().to_string(index=False)
-        except duckdb.Error as erro:
-            return False, str(erro)
+            return True, con.execute(recipe.path.read_text(encoding="utf-8")).df().to_string(index=False)
+        except duckdb.Error as error:
+            return False, str(error)
         finally:
             con.close()
-    # avisos de depreciação de bibliotecas de terceiros poluem a saída; os avisos de classificação ficam
+    # deprecation warnings from third-party libraries clutter the output; classification warnings are kept
     env = {
         **os.environ,
-        "STATERA_PROJETO": str(projeto.raiz),
+        "STATERA_PROJECT": str(project.root),
         "PYTHONWARNINGS": "ignore::DeprecationWarning,ignore::FutureWarning",
     }
-    processo = subprocess.run(
-        [sys.executable, str(receita.caminho)], cwd=projeto.raiz, env=env, capture_output=True, text=True
+    process = subprocess.run(
+        [sys.executable, str(recipe.path)], cwd=project.root, env=env, capture_output=True, text=True
     )
-    return processo.returncode == 0, (processo.stdout + processo.stderr).strip()
+    return process.returncode == 0, (process.stdout + process.stderr).strip()
 
 
-def header_problems(projeto: Projeto | None = None) -> list[str]:
+def header_problems(project: Project | None = None) -> list[str]:
     return [
-        f"{r.caminho.name}: cabeçalho sem {campo}"
-        for r in load(projeto)
-        for campo in ("recipe", "layers", "classification")
-        if campo not in r.meta
+        f"{r.path.name}: header missing {field}"
+        for r in load(project)
+        for field in ("recipe", "layers", "classification")
+        if field not in r.meta
     ]

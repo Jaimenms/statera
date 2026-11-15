@@ -1,22 +1,22 @@
 version: 2
 
 models:
-  - name: baz_uf_mensal
+  - name: baz_uf_monthly
     description: >
-      Valor médio por UF e competência, pelo script SPSS legado (baz_uf_mensal.sps) executado pelo
-      GNU PSPP de dentro de um modelo Python (RN-BAZ-001).
+      Mean value by UF and reference month, from the legacy SPSS script (baz_uf_monthly.sps) run by
+      GNU PSPP from within a Python model (BR-BAZ-001).
     config:
-      cut_date: "{{ var('cut_date') }}"  # modelos Python leem variáveis pela config
+      cut_date: "{{ var('cut_date') }}"  # Python models read variables through config
     columns:
-      - name: competencia
+      - name: period
         data_tests: [not_null]
 
-  - name: baz_mediana_uf_mensal
+  - name: baz_uf_monthly_median
     description: >
-      Mediana do valor por UF e competência, pelo script R legado (baz_mediana_uf_mensal.R) executado
-      pelo Rscript de dentro de um modelo Python (RN-BAZ-002).
+      Median value by UF and reference month, from the legacy R script (baz_uf_monthly_median.R) run
+      by Rscript from within a Python model (BR-BAZ-002).
     config:
-      cut_date: "{{ var('cut_date') }}"  # modelos Python leem variáveis pela config
+      cut_date: "{{ var('cut_date') }}"  # Python models read variables through config
     columns:
-      - name: competencia
+      - name: period
         data_tests: [not_null]

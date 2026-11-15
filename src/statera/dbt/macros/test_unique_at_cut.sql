@@ -1,6 +1,6 @@
 {#
-    Unicidade dentro da partição do corte da execução, em tabelas que guardam vários cortes.
-    Use `column_name` (teste de coluna) ou `columns` (combinação, teste de modelo).
+    Uniqueness within the partition of the run's cut, in tables that keep several cuts.
+    Use `column_name` (column test) or `columns` (combination, model test).
 #}
 {% test unique_at_cut(model, column_name=none, columns=none) %}
 

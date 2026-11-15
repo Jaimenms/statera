@@ -1655,7 +1655,7 @@ wheels = [
 
 [[package]]
 name = "statera"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "copier" },
@@ -1668,6 +1668,7 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "openpyxl" },
+    { name = "packaging" },
     { name = "pandas" },
     { name = "pyreadr" },
     { name = "pyreadstat" },
@@ -1692,6 +1693,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.23" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "openpyxl", specifier = ">=3.1" },
+    { name = "packaging", specifier = ">=24.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyreadr", specifier = ">=0.5" },
     { name = "pyreadstat", specifier = ">=1.2" },

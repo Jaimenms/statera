@@ -1,24 +1,20 @@
-# Repositório de dados de EXEMPLO MÍNIMO do padrão statera: um produto interno de fonte (foo),
-# um produto de divulgação (bar) e uma referência (uf). Tudo fictício e com DADOS SINTÉTICOS.
-# Mesmo layout que o `statera init` cria: content/ (aqui), publications/ e .github/ na pasta acima.
+# MINIMAL EXAMPLE data repository for the statera standard: an internal source product (foo),
+# a dissemination product (bar) and a reference table (uf). All fictitious, with SYNTHETIC DATA.
+# Same layout that `statera init` creates: content/ (here), publications/ and .github/ in the folder above.
 
 [project]
 name = "statera-foo-bar"
-organization = "Foo Bar (exemplo mínimo)"
+organization = "Foo Bar (minimal example)"
 acronym = "foo-bar"
-namespace = "br.gov.foo-bar"
+namespace = "org.example.foo-bar"
 specification = "0.1"
-repository_root = ".."             # raiz do repositório (onde ficam .github/, publications/, docs/)
+required_version = "~=0.2.0"         # Statera versions this repository accepts
+repository_root = ".."             # repository root (where .github/, publications/, docs/ live)
 synthetic = true
 
 [engine]
 type = "duckdb"
 path = "dbt/data/warehouse.duckdb"
-
-[conventions]
-# Colunas de convenção nos dados do órgão (os nomes das colunas são do conteúdo, em português).
-period_column = "competencia"
-cut_date_column = "data_corte"
 
 [dbt]
 folder = "dbt"
@@ -29,12 +25,12 @@ profile = "statera_foo_bar"
 editions = "../publications"
 
 [openlineage]
-namespace = "br.gov.foo-bar"
+namespace = "org.example.foo-bar"
 
 [demo]
-# Duas edições de bar; cada uma libera antes o corte de foo de que precisa.
+# Two editions of bar; each first releases the foo cut it needs.
 editions = [
   { product = "bar", period = "2026-01" },
   { product = "bar", period = "2026-02" },
 ]
-synthetic = "products/foo/3-build/synthetic.py:gerar"
+synthetic = "products/foo/3-build/synthetic.py:generate"

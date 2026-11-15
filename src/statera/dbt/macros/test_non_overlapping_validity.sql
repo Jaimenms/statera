@@ -1,7 +1,7 @@
 {#
-    Referência com vigência por linha (temporalidade "vigencia", especificação 09): para a mesma
-    chave, os intervalos [vigencia_inicio, vigencia_fim] não podem se sobrepor. Gerado a partir do
-    contrato da referência.
+    Reference table with a validity period per row (temporality "validity", specification 09): for the
+    same key, the intervals [valid_from, valid_to] must not overlap. Generated from the reference
+    table's contract.
 #}
 {% test non_overlapping_validity(model, key) %}
 

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:process:0.1",
-  "title": "Processo em YAML, espelho 1:1 do BPMN 2.0",
-  "description": "Fonte dos processos. Os tipos de elemento usam os nomes da especificação BPMN 2.0 (OMG). `statera bpmn` gera o .bpmn padrão (com DI) a partir deste arquivo; `statera bpmn import` faz o caminho inverso.",
+  "title": "Process in YAML, a 1:1 mirror of BPMN 2.0",
+  "description": "Source of the processes. Element types use the names of the BPMN 2.0 specification (OMG). `statera bpmn` generates the standard .bpmn (with DI) from this file; `statera bpmn import` does the reverse.",
   "type": "object",
   "required": [
     "id",
@@ -15,11 +15,11 @@
   "properties": {
     "id": {
       "$ref": "#/$defs/id",
-      "description": "Id do bpmn:process."
+      "description": "Id of the bpmn:process."
     },
     "name": {
       "type": "string",
-      "description": "Nome do participante (pool)."
+      "description": "Name of the participant (pool)."
     },
     "description": {
       "type": "string"
@@ -45,7 +45,7 @@
           "role": {
             "type": "string",
             "pattern": "^[a-z0-9-]+$",
-            "description": "Papel de governance/roles.yaml."
+            "description": "Role from governance/roles.yaml."
           }
         }
       }
@@ -99,7 +99,7 @@
               "message",
               "signal"
             ],
-            "description": "Definição do evento (ex.: timerEventDefinition)."
+            "description": "Event definition (e.g. timerEventDefinition)."
           },
           "documentation": {
             "type": "string"
@@ -121,7 +121,7 @@
           "column": {
             "type": "integer",
             "minimum": 0,
-            "description": "Opcional: força a coluna no diagrama."
+            "description": "Optional: forces the column in the diagram."
           },
           "statera": {
             "type": "object",
@@ -158,7 +158,7 @@
               "awaits": {
                 "type": "string",
                 "pattern": "^py:[A-Za-z_][\\w.]*$",
-                "description": "Em evento intermediário: função que diz se a espera terminou (ex.: o corte do produto interno de entrada foi liberado)."
+                "description": "On an intermediate event: function that tells whether the wait is over (e.g. the cut of the input internal product has been released)."
               }
             }
           }
@@ -190,7 +190,7 @@
           },
           "asset": {
             "type": "string",
-            "description": "Id do contrato ODCS correspondente, se houver."
+            "description": "Id of the corresponding ODCS contract, if any."
           }
         }
       }
@@ -221,7 +221,7 @@
           "condition": {
             "type": "string",
             "pattern": "^[a-z-]+$",
-            "description": "Situação da última tarefa que faz o executor seguir este fluxo (ok, falha, aprovado, reprovado)."
+            "description": "Status of the last task that makes the executor follow this flow (ok, failed, approved, rejected)."
           }
         }
       }

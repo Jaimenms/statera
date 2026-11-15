@@ -1,18 +1,18 @@
-"""Catálogo de consultas recorrentes (edital, item 13), parametrizadas e testadas.
+"""Catalog of recurring queries (call for proposals, item 13), parameterized and tested.
 
-Uma consulta é uma pasta em `queries/<tema>/<slug>/` (transversal) ou em
-`products/<p>/queries/<slug>/` (do produto), com:
+A query is a folder in `queries/<theme>/<slug>/` (cross-cutting) or in
+`products/<p>/queries/<slug>/` (product-specific), with:
 
-    query.yaml       metadados: os cinco eixos, parâmetros, regras, limitações,
-                        classificação da saída, responsável, situação, versão
-    <slug_com_sublinhado>.sql
-                        uma *analysis* do dbt: usa ref() (ganha linhagem e documentação) e
-                        var('<parametro>', <padrão>) para os parâmetros; não vira tabela
-    test.yaml          casos com dados sintéticos de entrada e saída esperada
+    query.yaml       metadata: the five axes, parameters, rules, limitations,
+                        output classification, owner, status, version
+    <slug_with_underscores>.sql
+                        a dbt *analysis*: uses ref() (gains lineage and documentation) and
+                        var('<parameter>', <default>) for the parameters; does not become a table
+    test.yaml          cases with synthetic input data and expected output
 
-Execução: os parâmetros são validados pelo TIPO declarado (nunca concatenados sem validação),
-`ref()` é resolvido pelo manifest do dbt, e a saída passa pelo controle de divulgação declarado
-em `classificacao_saida` antes de ser gravada com um Data Package de procedência.
+Run: parameters are validated by the declared TYPE (never concatenated without validation),
+`ref()` is resolved through the dbt manifest, and the output goes through the statistical disclosure
+control declared in `output_classification` before being written with a provenance Data Package.
 """
 
 from __future__ import annotations
@@ -29,27 +29,27 @@ import jinja2
 import numpy as np
 import pandas as pd
 
-from statera.edicao import agora
+from statera.edition import now
 from statera.process import dbt
-from statera.projeto import Projeto, atual, ler_yaml
+from statera.project import Project, current, read_yaml
 
-VALIDADORES = {
+VALIDATORS = {
     "period": re.compile(r"^\d{4}-(0[1-9]|1[0-2])$"),
     "ibge-code": re.compile(r"^\d{7}$"),
     "uf": re.compile(r"^[A-Z]{2}$"),
     "integer": re.compile(r"^-?\d+$"),
     "short-text": re.compile(r"^[\w\s.,-]{1,60}$"),
-    "cut": re.compile(r"^(latest|\d{4}-\d{2}-\d{2})$"),  # data de corte, ou "latest" (o último liberado)
+    "cut": re.compile(r"^(latest|\d{4}-\d{2}-\d{2})$"),  # cut-off date, or "latest" (the last released)
 }
 
 
 class QueryError(ValueError):
-    """Parâmetro inválido, consulta inexistente ou resultado divergente do esperado."""
+    """Invalid parameter, nonexistent query or result differing from the expected one."""
 
 
 @dataclass
 class Query:
-    pasta: Path
+    folder: Path
     meta: dict
 
     @property
@@ -62,23 +62,23 @@ class Query:
 
     @property
     def dbt_name(self) -> str:
-        return self.pasta.name.replace("-", "_")
+        return self.folder.name.replace("-", "_")
 
     @property
     def sql(self) -> Path:
-        return self.pasta / f"{self.dbt_name}.sql"
+        return self.folder / f"{self.dbt_name}.sql"
 
     @property
     def test_file(self) -> Path:
-        return self.pasta / "test.yaml"
+        return self.folder / "test.yaml"
 
 
-def load(projeto: Projeto | None = None) -> list[Query]:
-    projeto = projeto or atual()
+def load(project: Project | None = None) -> list[Query]:
+    project = project or current()
     return sorted(
         (
-            Query(c.parent, ler_yaml(c))
-            for base in projeto.pastas_consultas()
+            Query(c.parent, read_yaml(c))
+            for base in project.query_folders()
             if base.is_dir()
             for c in base.rglob("query.yaml")
         ),
@@ -86,168 +86,168 @@ def load(projeto: Projeto | None = None) -> list[Query]:
     )
 
 
-def get(identificador: str, projeto: Projeto | None = None) -> Query:
-    for c in load(projeto):
-        if identificador in (c.id, c.id.rsplit(".", 1)[-1], c.pasta.name):
+def get(identifier: str, project: Project | None = None) -> Query:
+    for c in load(project):
+        if identifier in (c.id, c.id.rsplit(".", 1)[-1], c.folder.name):
             return c
-    raise QueryError(f"Query '{identificador}' não encontrada")
+    raise QueryError(f"Query '{identifier}' not found")
 
 
-def validate_parameters(consulta: Query, valores: dict) -> dict:
-    """Valores finais dos parâmetros, validados pelo tipo declarado."""
-    declarados = {p["name"]: p for p in consulta.meta.get("parameters", [])}
-    if extras := set(valores) - set(declarados):
-        raise QueryError(f"Parâmetros não declarados: {sorted(extras)}")
-    finais = {}
-    for nome, p in declarados.items():
-        valor = valores.get(nome, p.get("default"))
-        if valor is None:
+def validate_parameters(query: Query, values: dict) -> dict:
+    """Final parameter values, validated by the declared type."""
+    declared_params = {p["name"]: p for p in query.meta.get("parameters", [])}
+    if extras := set(values) - set(declared_params):
+        raise QueryError(f"Undeclared parameters: {sorted(extras)}")
+    final = {}
+    for name, p in declared_params.items():
+        value = values.get(name, p.get("default"))
+        if value is None:
             if p.get("required"):
-                raise QueryError(f"Parâmetro obrigatório ausente: {nome}")
+                raise QueryError(f"Missing required parameter: {name}")
             continue
-        valor = str(valor)
+        value = str(value)
         if p["type"] == "date":
-            date.fromisoformat(valor)
-        elif not VALIDADORES[p["type"]].match(valor):
-            raise QueryError(f"Parâmetro {nome}={valor!r} não é do tipo {p['type']}")
-        finais[nome] = valor
-    return finais
+            date.fromisoformat(value)
+        elif not VALIDATORS[p["type"]].match(value):
+            raise QueryError(f"Parameter {name}={value!r} is not of type {p['type']}")
+        final[name] = value
+    return final
 
 
-def render(consulta: Query, parametros: dict, relacoes: dict[str, str]) -> str:
-    """SQL final: ref() -> relação no motor; var() -> parâmetro já validado."""
+def render(query: Query, parameters: dict, relations: dict[str, str]) -> str:
+    """Final SQL: ref() -> relation in the engine; var() -> already validated parameter."""
 
-    def ref(nome: str) -> str:
-        if nome not in relacoes:
-            raise QueryError(f"{consulta.id}: ref('{nome}') sem relação conhecida")
-        return relacoes[nome]
+    def ref(name: str) -> str:
+        if name not in relations:
+            raise QueryError(f"{query.id}: ref('{name}') has no known relation")
+        return relations[name]
 
-    def var(nome: str, padrao=None):
-        return parametros.get(nome, padrao)
+    def var(name: str, default=None):
+        return parameters.get(name, default)
 
-    # SQL do repositório (revisado por PR) com parâmetros validados por tipo; não é HTML.
-    ambiente = jinja2.Environment(undefined=jinja2.StrictUndefined, autoescape=False)
-    return ambiente.from_string(consulta.sql.read_text(encoding="utf-8")).render(ref=ref, var=var)
+    # SQL from the repository (reviewed via PR) with type-validated parameters; it is not HTML.
+    environment = jinja2.Environment(undefined=jinja2.StrictUndefined, autoescape=False)
+    return environment.from_string(query.sql.read_text(encoding="utf-8")).render(ref=ref, var=var)
 
 
-def relacoes_do_manifest(projeto: Projeto | None = None) -> dict[str, str]:
-    manifesto = dbt.manifesto(gerar=False, projeto=projeto)
+def manifest_relations(project: Project | None = None) -> dict[str, str]:
+    manifest = dbt.manifest(generate=False, project=project)
     return {
         n["name"]: f"{n['schema']}.{n.get('alias') or n['name']}"
-        for n in manifesto["nodes"].values()
+        for n in manifest["nodes"].values()
         if n["resource_type"] in ("model", "seed")
     }
 
 
-def apply_control(df: pd.DataFrame, controle: dict | None) -> tuple[pd.DataFrame, int]:
-    """Controle de divulgação na saída da consulta (mesma regra da publicação)."""
-    from statera.analyse.controle_divulgacao import aplicar
+def apply_control(df: pd.DataFrame, control: dict | None) -> tuple[pd.DataFrame, int]:
+    """Statistical disclosure control on the query output (same rule as publication)."""
+    from statera.analyse.disclosure_control import apply
 
-    resultado = aplicar(df, controle)
-    return resultado.dados, resultado.celulas_suprimidas
+    result = apply(df, control)
+    return result.data, result.suppressed_cells
 
 
-def run(identificador: str, valores: dict | None = None, saida: Path | None = None, projeto: Projeto | None = None):
-    """Executa no motor. Com `saida`, grava resultado.csv e datapackage.json de procedência."""
-    projeto = projeto or atual()
-    consulta = get(identificador, projeto)
-    parametros = validate_parameters(consulta, valores or {})
-    sql = render(consulta, parametros, relacoes_do_manifest(projeto))
-    con = duckdb.connect(str(projeto.warehouse), read_only=True)
+def run(identifier: str, values: dict | None = None, output: Path | None = None, project: Project | None = None):
+    """Runs on the engine. With `output`, writes result.csv and a provenance datapackage.json."""
+    project = project or current()
+    query = get(identifier, project)
+    parameters = validate_parameters(query, values or {})
+    sql = render(query, parameters, manifest_relations(project))
+    con = duckdb.connect(str(project.warehouse), read_only=True)
     try:
         df = con.execute(sql).df()
     finally:
         con.close()
-    df, suprimidas = apply_control(df, consulta.meta["output_classification"].get("disclosureControl"))
-    procedencia = {
-        "query": consulta.id,
-        "version": consulta.meta["version"],
-        "parameters": parametros,
-        "executed_at": agora(),
-        "suppressed_cells": suprimidas,
+    df, suppressed = apply_control(df, query.meta["output_classification"].get("disclosureControl"))
+    provenance = {
+        "query": query.id,
+        "version": query.meta["version"],
+        "parameters": parameters,
+        "executed_at": now(),
+        "suppressed_cells": suppressed,
         "sql_sha256": hashlib.sha256(sql.encode()).hexdigest(),
     }
-    df.attrs["procedencia"] = procedencia
-    if saida:
-        _gravar(df, consulta, procedencia, saida)
+    df.attrs["provenance"] = provenance
+    if output:
+        _save(df, query, provenance, output)
     return df
 
 
-def _gravar(df: pd.DataFrame, consulta: Query, procedencia: dict, saida: Path) -> None:
-    saida.mkdir(parents=True, exist_ok=True)
-    arquivo = saida / "resultado.csv"
-    df.to_csv(arquivo, index=False)
-    pacote = {
+def _save(df: pd.DataFrame, query: Query, provenance: dict, output: Path) -> None:
+    output.mkdir(parents=True, exist_ok=True)
+    file = output / "result.csv"
+    df.to_csv(file, index=False, lineterminator="\n")
+    package = {
         "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
-        "name": consulta.id.rsplit(".", 1)[-1],
-        "title": consulta.title,
+        "name": query.id.rsplit(".", 1)[-1],
+        "title": query.title,
         "resources": [
             {
-                "name": "resultado",
-                "path": arquivo.name,
+                "name": "result",
+                "path": file.name,
                 "format": "csv",
-                "hash": f"sha256:{hashlib.sha256(arquivo.read_bytes()).hexdigest()}",
+                "hash": f"sha256:{hashlib.sha256(file.read_bytes()).hexdigest()}",
             }
         ],
-        "x-statera": procedencia,
+        "x-statera": provenance,
     }
-    if autores := consulta.meta.get("authors"):
-        pacote["contributors"] = [
+    if authors := query.meta.get("authors"):
+        package["contributors"] = [
             {"title": a["name"], "roles": ["author"], **({"organization": a["unit"]} if a.get("unit") else {})}
-            for a in autores
+            for a in authors
         ]
-    (saida / "datapackage.json").write_text(json.dumps(pacote, indent=2, ensure_ascii=False), encoding="utf-8")
+    (output / "datapackage.json").write_text(json.dumps(package, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
-# Testes (dados sintéticos, sem o motor): mesmo princípio dos unit tests do dbt
+# Tests (synthetic data, without the engine): same principle as dbt unit tests
 # ---------------------------------------------------------------------------
 
 
-def _valor(v) -> str:
+def _value(v) -> str:
     if v is None or (not isinstance(v, str) and pd.isna(v)):
         return "None"
     if isinstance(v, bool | np.bool_):
         return str(bool(v))
     if isinstance(v, int | float) or hasattr(v, "item"):
-        numero = float(v)
-        return str(int(numero)) if numero.is_integer() else f"{numero:.6g}"
+        number = float(v)
+        return str(int(number)) if number.is_integer() else f"{number:.6g}"
     return str(v)
 
 
-def _normalizar(df: pd.DataFrame, colunas: list[str]) -> list[tuple]:
-    linhas = df[colunas].astype(object).values.tolist()
-    return sorted(tuple(_valor(v) for v in linha) for linha in linhas)
+def _normalize(df: pd.DataFrame, columns: list[str]) -> list[tuple]:
+    lines = df[columns].astype(object).values.tolist()
+    return sorted(tuple(_value(v) for v in line) for line in lines)
 
 
-def test(consulta: Query) -> list[str]:
-    """Roda os casos de test.yaml num DuckDB em memória. Devolve as falhas (vazio = ok)."""
-    if not consulta.test_file.exists():
-        return [f"{consulta.id}: sem test.yaml"]
-    falhas = []
-    for caso in ler_yaml(consulta.test_file)["cases"]:
+def test(query: Query) -> list[str]:
+    """Runs the test.yaml cases in an in-memory DuckDB. Returns the failures (empty = ok)."""
+    if not query.test_file.exists():
+        return [f"{query.id}: no test.yaml"]
+    failures = []
+    for case in read_yaml(query.test_file)["cases"]:
         con = duckdb.connect()
         try:
-            relacoes = {}
-            for nome, linhas in caso["inputs"].items():
-                con.register(f"_df_{nome}", pd.DataFrame(linhas))
-                con.execute(f"CREATE TABLE t_{nome} AS SELECT * FROM _df_{nome}")
-                relacoes[nome] = f"t_{nome}"
-            sql = render(consulta, validate_parameters(consulta, caso["parameters"]), relacoes)
-            obtido, _ = apply_control(
-                con.execute(sql).df(), consulta.meta["output_classification"].get("disclosureControl")
+            relations = {}
+            for name, lines in case["inputs"].items():
+                con.register(f"_df_{name}", pd.DataFrame(lines))
+                con.execute(f"CREATE TABLE t_{name} AS SELECT * FROM _df_{name}")
+                relations[name] = f"t_{name}"
+            sql = render(query, validate_parameters(query, case["parameters"]), relations)
+            actual, _ = apply_control(
+                con.execute(sql).df(), query.meta["output_classification"].get("disclosureControl")
             )
-        except (duckdb.Error, QueryError, KeyError) as erro:
-            falhas.append(f"{consulta.id} [{caso['id']}]: erro ao executar: {erro}")
+        except (duckdb.Error, QueryError, KeyError) as error:
+            failures.append(f"{query.id} [{case['id']}]: error while running: {error}")
             continue
         finally:
             con.close()
-        esperado = pd.DataFrame(caso["expected"])
-        colunas = list(esperado.columns)
-        if missing := [c for c in colunas if c not in obtido.columns]:
-            falhas.append(f"{consulta.id} [{caso['id']}]: colunas ausentes no resultado: {missing}")
-        elif _normalizar(obtido, colunas) != _normalizar(esperado, colunas):
-            falhas.append(
-                f"{consulta.id} [{caso['id']}]: resultado difere do esperado\n{obtido[colunas].to_string(index=False)}"
+        expected = pd.DataFrame(case["expected"])
+        columns = list(expected.columns)
+        if missing := [c for c in columns if c not in actual.columns]:
+            failures.append(f"{query.id} [{case['id']}]: columns missing from the result: {missing}")
+        elif _normalize(actual, columns) != _normalize(expected, columns):
+            failures.append(
+                f"{query.id} [{case['id']}]: result differs from the expected\n{actual[columns].to_string(index=False)}"
             )
-    return falhas
+    return failures

@@ -1,2 +1,2 @@
-"""Execução de código legado dentro do processo, enquanto não é reescrito: sintaxe SPSS pelo GNU PSPP
-(`pspp`) e scripts R pelo Rscript (`r`), chamados de modelos Python do dbt."""
+"""Running legacy code inside the process until it is rewritten: SPSS syntax through GNU PSPP
+(`pspp`) and R scripts through Rscript (`r`), called from dbt Python models."""

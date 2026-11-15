@@ -1,13 +1,13 @@
-"""Fase 8 — Avaliar. Tarefa do processo: `implementacao: py:statera.evaluate.step`."""
+"""Phase 8 — Evaluate. Process task: `implementation: py:statera.evaluate.step`."""
 
 from __future__ import annotations
 
-from statera.edicao import Edicao
-from statera.evaluate import avaliacao
+from statera.edition import Edition
+from statera.evaluate import evaluation
 
 
-def step(ed: Edicao) -> str:
-    """GSBPM 8.1 e 8.2 — indicadores de qualidade da edição."""
-    relatorio = avaliacao.avaliar(ed)
-    ed.log(f"  avaliação: {ed.projeto.rel(relatorio)}")
+def step(ed: Edition) -> str:
+    """GSBPM 8.1 and 8.2 — quality indicators of the edition."""
+    report = evaluation.evaluate(ed)
+    ed.log(f"  evaluation: {ed.project.rel(report)}")
     return "ok"

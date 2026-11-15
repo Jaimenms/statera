@@ -1,0 +1,12 @@
+cases:
+  - id: only_requested_uf
+    description: Only the requested UF, in reference-month order.
+    parameters: {uf: MG}
+    inputs:
+      bar_uf_monthly:
+        - {period: "2026-02", uf_abbr: MG, records: 30, total_value: 9000.00, cut_date: "2026-03-10"}
+        - {period: "2026-01", uf_abbr: MG, records: 25, total_value: 7000.00, cut_date: "2026-03-10"}
+        - {period: "2026-01", uf_abbr: SP, records: 60, total_value: 18000.00, cut_date: "2026-03-10"}
+    expected:
+      - {period: "2026-01", uf_abbr: MG, records: 25}
+      - {period: "2026-02", uf_abbr: MG, records: 30}

@@ -1,0 +1,14 @@
+rule: BR-BAR-002
+model: bar_uf_monthly_change
+cases:
+  - id: change_and_empty_first_month
+    description: SP goes from 50 to 60 records (+20%); the first reference month has no change.
+    inputs:
+      bar_uf_monthly:
+        - {period: "2026-01", uf_abbr: SP, cut_date: "2026-03-10", records: 50}
+        - {period: "2026-02", uf_abbr: SP, cut_date: "2026-03-10", records: 60}
+        - {period: "2026-01", uf_abbr: RJ, cut_date: "2026-03-10", records: 20}
+    expected:
+      - {period: "2026-01", uf_abbr: SP, change_pct: null}
+      - {period: "2026-02", uf_abbr: SP, change_pct: 20.0}
+      - {period: "2026-01", uf_abbr: RJ, change_pct: null}

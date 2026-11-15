@@ -1,31 +1,31 @@
 version: 2
 
 models:
-  - name: bar_uf_mensal
-    description: Registros e valor por UF e competência do fato (RN-BAR-001).
+  - name: bar_uf_monthly
+    description: Records and value by UF and event reference month (BR-BAR-001).
     columns:
-      - name: competencia
+      - name: period
         data_tests: [not_null]
-      - name: registros
+      - name: records
         data_tests: [not_null]
 
-  - name: bar_variacao_uf_mensal
-    description: Variação de registros por UF sobre o mês anterior (RN-BAR-002), em pandas.
+  - name: bar_uf_monthly_change
+    description: Month-over-month change in records by UF (BR-BAR-002), in pandas.
     columns:
-      - name: competencia
+      - name: period
         data_tests: [not_null]
 
 exposures:
-  - name: bar_divulgacao_mensal
-    label: Bar — divulgação mensal (planilha, CSV, sumário e Data Package)
+  - name: bar_monthly_release
+    label: Bar — monthly release (spreadsheet, CSV, summary and Data Package)
     type: analysis
     maturity: medium
-    description: Pacote publicado a cada edição.
+    description: Package published at each edition.
     depends_on:
-      - ref('bar_uf_mensal')
-      - ref('bar_variacao_uf_mensal')
+      - ref('bar_uf_monthly')
+      - ref('bar_uf_monthly_change')
     owner:
-      name: Equipe técnica de Bar (papel)
+      name: Bar technical team (role)
     meta:
       product: bar
       sharing: broad

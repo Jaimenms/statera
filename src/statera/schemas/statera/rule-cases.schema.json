@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:statera:schema:rule-cases:0.1",
-  "title": "Casos executáveis de uma regra de negócio",
-  "description": "Cada caso vira um unit test do dbt (statera rules sync).",
+  "title": "Executable cases of a business rule",
+  "description": "Each case becomes a dbt unit test (statera rules sync).",
   "type": "object",
   "required": [
     "rule",
@@ -13,7 +13,7 @@
   "properties": {
     "rule": {
       "type": "string",
-      "pattern": "^RN-[A-Z]+-[0-9]{3}$"
+      "pattern": "^BR-[A-Z]+-[0-9]{3}$"
     },
     "model": {
       "type": "string",
@@ -30,7 +30,7 @@
           "r"
         ]
       },
-      "description": "Ferramentas externas que o modelo usa: pspp (sintaxe SPSS legada) ou r (script R legado). Sem elas, os casos não rodam localmente; o CI as instala e exige."
+      "description": "External tools the model uses: pspp (legacy SPSS syntax) or r (legacy R script). Without them the cases do not run locally; CI installs and requires them."
     },
     "cases": {
       "type": "array",

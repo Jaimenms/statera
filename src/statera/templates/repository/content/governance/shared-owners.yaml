@@ -1,4 +1,4 @@
-# Responsáveis pelo que não é de um produto: referências, consultas, projeto dbt, governança.
+# Owners of what does not belong to a product: reference tables, queries, dbt project, governance.
 scope: shared
 curator: curator
 technical_owner: data-team

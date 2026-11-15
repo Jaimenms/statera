@@ -1,0 +1,46 @@
+# ODCS v3.1 contract — bronze of the foo source product. SYNTHETIC DATA.
+apiVersion: v3.1.0
+kind: DataContract
+id: bronze-foo-records
+name: Foo — records (bronze)
+version: 1.0.0
+status: active
+domain: foo
+dataProduct: foo
+tags: [bronze, foo]
+description:
+  purpose: Foo System records, one per request, stored once in the batch in which they were extracted.
+  usage: "Read by the bar product at a cut. Authorized consumer: bar."
+  limitations: Some records may be received after the cut; they go into the next cut.
+servers:
+  - {server: warehouse-local, type: duckdb, database: dbt/data/warehouse.duckdb, schema: bronze, environment: dev}
+schema:
+  - name: foo_records
+    physicalName: bronze.foo_records
+    physicalType: view
+    logicalType: object
+    dataGranularityDescription: One row per record, stored once, in the batch in which it was extracted
+    properties:
+      - {name: record_id, logicalType: string, physicalType: VARCHAR, required: true, classification: restricted}
+      - {name: person_id, logicalType: string, physicalType: VARCHAR, required: true, classification: specific, tags: [personal-data]}
+      - {name: uf_id, logicalType: integer, physicalType: BIGINT, required: true, classification: restricted}
+      - {name: event_date, logicalType: date, physicalType: DATE, required: true, classification: restricted}
+      - {name: received_at, logicalType: timestamp, physicalType: TIMESTAMP, required: true, classification: restricted}
+      - {name: value, logicalType: number, physicalType: DOUBLE, required: true, classification: restricted}
+      - {name: batch, logicalType: integer, physicalType: INTEGER, required: true, partitioned: true, partitionKeyPosition: 1, classification: restricted, description: Incremental extraction batch.}
+    quality:
+      - {id: rows_present, type: library, metric: rowCount, mustBeGreaterThan: 0}
+slaProperties:
+  - {property: retention, value: 10, unit: y, description: Batches and cuts are retained.}
+team:
+  name: Data team
+  members:
+    - {username: "role:data-team", role: owner}
+customProperties:
+  - {property: layer, value: bronze}
+  - {property: urn, value: org.example.foo-bar.foo.bronze.foo-records}
+  - {property: dbtSource, value: foo.foo_records}
+  - {property: extraction, value: {source: foo_records.parquet, receivedAtColumn: received_at, sourceSystem: Foo System}}
+  - property: classification
+    value: {sharing: restricted, nature: personal, secrecy: other}
+contractCreatedTs: "2026-11-14T00:00:00Z"

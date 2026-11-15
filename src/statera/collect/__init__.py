@@ -1,12 +1,12 @@
-"""Fase 4 — Coletar, e a ligação entre produtos por CORTE.
+"""Phase 4 — Collect, and the link between products by CUT.
 
-Implementações usadas nos processos:
-    py:statera.collect.step         extração incremental de um produto de fonte (tarefa)
-    py:statera.collect.pin_cut   espera e fixa o corte dos produtos internos de entrada
-                                       (evento intermediário de mensagem, `statera.aguarda`)
+Implementations used in the processes:
+    py:statera.collect.step      incremental extraction of a source-aligned product (task)
+    py:statera.collect.pin_cut   waits for and pins the cut of the input internal products
+                                 (intermediate message event, `statera.awaits`)
 
-O manifesto de corte de um produto interno fica em `<produto>/7-disseminate/data/<data>/cut.json`
-e é escrito por `statera.disseminate.mark_cut`.
+The cut manifest of an internal product lives in `<product>/7-disseminate/data/<date>/cut.json`
+and is written by `statera.disseminate.mark_cut`.
 """
 
 from __future__ import annotations
@@ -14,89 +14,89 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from statera import openlineage, portas
-from statera.collect import extracao
-from statera.edicao import Edicao
-from statera.projeto import Unidade
+from statera import openlineage, ports
+from statera.collect import extraction
+from statera.edition import Edition
+from statera.project import Unit
 
 
-def arquivo_corte(unidade: Unidade, data_corte: str):
-    return unidade.dados(7) / data_corte / "cut.json"
+def cut_file(unit: Unit, cut_date: str):
+    return unit.data(7) / cut_date / "cut.json"
 
 
-def ler_corte(unidade: Unidade, data_corte: str) -> dict | None:
-    caminho = arquivo_corte(unidade, data_corte)
-    return json.loads(caminho.read_text(encoding="utf-8")) if caminho.exists() else None
+def read_cut(unit: Unit, cut_date: str) -> dict | None:
+    path = cut_file(unit, cut_date)
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
-def cortes_liberados(unidade: Unidade) -> list[str]:
-    return sorted(p.parent.name for p in unidade.dados(7).glob("*/cut.json"))
+def released_cuts(unit: Unit) -> list[str]:
+    return sorted(p.parent.name for p in unit.data(7).glob("*/cut.json"))
 
 
-def _fontes(manifestos: dict) -> list[dict]:
-    """Extrações (fonte, lote, linhas, hash) de manifestos aninhados: fonte direta ou via agregado."""
-    saida = []
-    for m in manifestos.values():
-        for tabela, f in (m.get("sources") or {}).items():
-            saida.append({"source": tabela, **f})
-        saida += _fontes(m.get("inputs") or {})
-    return saida
+def _sources(manifests: dict) -> list[dict]:
+    """Extractions (source, batch, rows, hash) from nested manifests: direct source or via an aggregate."""
+    output = []
+    for m in manifests.values():
+        for table, f in (m.get("sources") or {}).items():
+            output.append({"source": table, **f})
+        output += _sources(m.get("inputs") or {})
+    return output
 
 
-def extracoes_dos_cortes(manifestos: dict) -> list[dict]:
-    vistas = {}
-    for f in _fontes(manifestos):
-        vistas[(f["source"], f["cutDate"])] = {
+def cut_extractions(manifests: dict) -> list[dict]:
+    seen_pairs = {}
+    for f in _sources(manifests):
+        seen_pairs[(f["source"], f["cutDate"])] = {
             "source": f["source"], "sourceSystem": f["sourceSystem"], "cutDate": f["cutDate"],
             "batch": f["batch"], "rows": f["rows"], "sha256": f["sha256"],
         }  # fmt: skip
-    return list(vistas.values())
+    return list(seen_pairs.values())
 
 
-def lotes_dos_cortes(manifestos: dict) -> dict[str, int]:
-    """{tabela do bronze: lote máximo} para o filtro `statera.at_cut` dos modelos staging."""
-    return {f["source"]: f["batch"] for f in _fontes(manifestos)}
+def cut_batches(manifests: dict) -> dict[str, int]:
+    """{bronze table: maximum batch} for the `statera.at_cut` filter of the staging models."""
+    return {f["source"]: f["batch"] for f in _sources(manifests)}
 
 
-def step(ed: Edicao) -> str:
-    """GSBPM 4.3 — extração incremental das fontes do produto de fonte para o bronze."""
-    fontes = extracao.fontes(ed.projeto, ed.unidade)
-    if not fontes:
-        ed.falhas.append(f"{ed.produto}: nenhum contrato do bronze com customProperties.extraction")
+def step(ed: Edition) -> str:
+    """GSBPM 4.3 — incremental extraction of the source-aligned product's sources into bronze."""
+    sources = extraction.sources(ed.project, ed.unit)
+    if not sources:
+        ed.failures.append(f"{ed.product}: no bronze contract with customProperties.extraction")
         return "failed"
-    ed.ctx["inputs"] = [openlineage.dataset(f.origem, f"sistema://{f.sistema}") for f in fontes]
-    ed.ctx["outputs"] = [openlineage.dataset(f"bronze.{f.tabela}") for f in fontes]
-    for m in extracao.extrair_incremento(date.fromisoformat(ed.data_corte), fontes):
+    ed.ctx["inputs"] = [openlineage.dataset(f.origin, f"system://{f.system}") for f in sources]
+    ed.ctx["outputs"] = [openlineage.dataset(f"bronze.{f.table}") for f in sources]
+    for m in extraction.extract_increment(date.fromisoformat(ed.cut_date), sources):
         if m["batch"] is None:
-            ed.log(f"  bronze {m['source']}: corte dentro da marca d'água ({m['marca_dagua']}); nenhum lote novo")
+            ed.log(f"  bronze {m['source']}: cut within the watermark ({m['watermark']}); no new batch")
         else:
             ed.log(
-                f"  bronze {m['source']}: lote {m['batch']} com {m['rows']} linhas "
-                f"({m['window_start'] or 'início'} a {m['window_end']})"
+                f"  bronze {m['source']}: batch {m['batch']} with {m['rows']} rows "
+                f"({m['window_start'] or 'beginning'} to {m['window_end']})"
             )
-    extracao.publicar_bronze_no_warehouse(fontes, ed.projeto)
-    ed.cortes = {}
+    extraction.publish_bronze_to_warehouse(sources, ed.project)
+    ed.cuts = {}
     return "ok"
 
 
-def pin_cut(ed: Edicao) -> bool:
-    """Espera os cortes dos produtos internos de entrada; quando todos existem, fixa-os na edição."""
-    entradas = portas.produtos_de_entrada(ed.unidade)
-    faltando, manifestos = [], {}
-    for unidade in entradas:
-        manifesto = ler_corte(unidade, ed.data_corte)
-        if manifesto is None:
-            faltando.append(unidade.nome)
+def pin_cut(ed: Edition) -> bool:
+    """Waits for the cuts of the input internal products; when all exist, pins them in the edition."""
+    inputs = ports.input_products(ed.unit)
+    missing_products, manifests = [], {}
+    for unit in inputs:
+        manifest = read_cut(unit, ed.cut_date)
+        if manifest is None:
+            missing_products.append(unit.name)
         else:
-            manifestos[unidade.nome] = manifesto
-    if faltando:
-        ed.log(f"  corte {ed.data_corte} ainda não liberado por: {', '.join(faltando)}")
+            manifests[unit.name] = manifest
+    if missing_products:
+        ed.log(f"  cut {ed.cut_date} not yet released by: {', '.join(missing_products)}")
         return False
-    ed.cortes = manifestos
-    ed.extracoes = extracoes_dos_cortes(manifestos)
-    if fontes := extracao.fontes(ed.projeto):
-        alvo = {f.tabela for f in fontes} & set(lotes_dos_cortes(manifestos))
-        extracao.publicar_bronze_no_warehouse([f for f in fontes if f.tabela in alvo], ed.projeto)
-    fixados = ", ".join(f"{nome} (execução {m['run'][:8]})" for nome, m in manifestos.items())
-    ed.log(f"  corte {ed.data_corte} fixado: {fixados or 'nenhum produto interno de entrada'}")
+    ed.cuts = manifests
+    ed.extractions = cut_extractions(manifests)
+    if sources := extraction.sources(ed.project):
+        target = {f.table for f in sources} & set(cut_batches(manifests))
+        extraction.publish_bronze_to_warehouse([f for f in sources if f.table in target], ed.project)
+    pinned = ", ".join(f"{name} (run {m['run'][:8]})" for name, m in manifests.items())
+    ed.log(f"  cut {ed.cut_date} pinned: {pinned or 'no input internal product'}")
     return True
