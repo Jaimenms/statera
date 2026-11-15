@@ -16,12 +16,18 @@ Foo System ──► foo (internal, source: batches and cuts) ──cut──►
 
 | Unit | Purpose | Files |
 |---|---|---|
-| [products/foo/](products/foo/1-specify/product.odps.yaml) | Extracts the Foo System in immutable batches and releases **cuts** | descriptor, classification, owners, process, synthetic generator, bronze contract, staging |
-| [products/bar/](products/bar/1-specify/product.odps.yaml) | Publishes records and value by UF and month (SQL) and the change over the previous month ([Python model](products/bar/5-process/models/marts/bar/bar_uf_monthly_change.py), pandas) | descriptor, classification, owners, calendar, process, 2 gold contracts, 3 models, 2 rules with cases, 1 control, series, summary, 1 query |
-| [products/baz/](products/baz/1-specify/product.odps.yaml) | Mean value by UF, from the [legacy SPSS script](products/baz/5-process/models/marts/baz/baz_uf_monthly.sps) that the [Python model](products/baz/5-process/models/marts/baz/baz_uf_monthly.py) runs in GNU PSPP; and median by UF, from the [legacy R script](products/baz/5-process/models/marts/baz/baz_uf_monthly_median.R) that the [Python model](products/baz/5-process/models/marts/baz/baz_uf_monthly_median.py) runs in Rscript | level 2: no to-be process yet; **requires PSPP and R** (`apt install pspp r-base-core`), so it is left out of the demo |
+| [products/foo/](products/foo/1-specify/product.odps.yaml) | Extracts the Foo System in immutable batches and releases **cuts** | descriptor, classification, owners, process, [synthetic source](products/foo/3-build/synthetic.py), bronze contract, staging |
+| [products/bar/](products/bar/1-specify/product.odps.yaml) | Publishes records and value by UF and month (SQL) and the change over the previous month ([Python model](products/bar/5-process/models/marts/bar/bar_uf_monthly_change.py), pandas) | descriptor, classification, owners, calendar, process, 2 gold contracts, 3 models, 2 rules with cases, 2 controls (one a [product check](products/bar/6-analyse/checks.py) with cases), series, summary, 1 query |
+| [products/baz/](products/baz/1-specify/product.odps.yaml) | Mean value by UF, from the [legacy SPSS script](products/baz/5-process/models/marts/baz/baz_uf_monthly.sps) that the [Python model](products/baz/5-process/models/marts/baz/baz_uf_monthly.py) runs in GNU PSPP; and median by UF, from the [legacy R script](products/baz/5-process/models/marts/baz/baz_uf_monthly_median.R) that the [Python model](products/baz/5-process/models/marts/baz/baz_uf_monthly_median.py) runs in Rscript | level 2: no executable process yet; **requires PSPP and R** (`apt install pspp r-base-core`), so it is left out of the demo |
 | [references/uf/](references/uf/ref_uf.odcs.yaml) | UFs (IBGE) | CSV and contract |
 | [governance/](governance/roles.yaml) | Roles and shared owners | 2 files |
 | `statera.toml` | Name, namespace `org.example.foo-bar`, engine, register, demo | 1 file |
+
+The processes name the steps by class (`statera.extend`, specification 05): the framework's `Extract`,
+`Gate`, `MarkCut`, `PinCut`, `DbtBuild`, `Package` and `Publish`, and the controls name checks: the
+framework's `RevisionBetweenEditions` and bar's own `NoRecordsLost` (`6-analyse/checks.py`, with its cases in
+`6-analyse/check-cases/`). foo's `FooSystem` (`3-build/synthetic.py`) is the `SyntheticSource` that stands in
+for the Foo System in the demo.
 
 Generated (do not edit by hand): `dbt_project.yml`, `dbt/generated/`, the `.bpmn` files,
 `.github/CODEOWNERS` and `docs/`.

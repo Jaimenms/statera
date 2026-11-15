@@ -12,7 +12,7 @@ defines **profiles** on top of them and what is missing between them.
 | [02 — Namespace](02-namespace.md) | Unique identifiers across organizations |
 | [03 — Classification](03-classification.md) | Sharing, nature, confidentiality and statistical disclosure control; the publication gate |
 | [04 — Standards profiles](04-profiles.md) | What the standard requires beyond ODCS, ODPS, Data Package and OpenLineage |
-| [05 — Processes and execution](05-processes-and-execution.md) | YAML mirroring BPMN; the to-be process as the execution plan |
+| [05 — Processes and execution](05-processes-and-execution.md) | YAML mirroring BPMN; one process per product as the execution plan; the extension classes (`statera.extend`: Task, Check, Await, SyntheticSource) |
 | [06 — Controls, indicators and series](06-controls-indicators-series.md) | Declarative formats for phases 6, 7 and 8 |
 | [07 — Consumption](07-consumption.md) | Recurring queries, metrics, recipes and library |
 | [08 — Conformance levels](08-conformance-levels.md) | Gradual adoption: catalogued, reproducible, controlled, evaluated |

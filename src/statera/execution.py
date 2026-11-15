@@ -1,6 +1,6 @@
-"""Running an edition: the product's to-be process IS the run plan.
+"""Running an edition: the product's process IS the run plan.
 
-The executor walks the process YAML (`<product>/2-design/processes/to-be.yaml`) from the start
+The executor walks the process YAML (`<product>/2-design/process.yaml`) from the start
 event, following the flows:
 
   - automatic task         runs the `implementation` (py:<module>.<function> or dbt:build) and keeps
@@ -24,13 +24,13 @@ generated from the same YAML documents exactly what runs (see specification,
 from __future__ import annotations
 
 import getpass
-import importlib
 import os
 from collections import defaultdict
 
 from statera import openlineage
 from statera.design import bpmn, processes
 from statera.edition import Edition, EditionFailure
+from statera.extend.base import Task, TaskResult
 from statera.project import Project, current
 
 HUMAN_TYPES = ("manual", "semi-automatic")
@@ -40,12 +40,43 @@ class InvalidProcess(RuntimeError):
     """The process cannot be run as modeled."""
 
 
-def _implementation(reference: str):
-    module, _, function = reference.removeprefix("py:").rpartition(".")
+def _bind(ed: Edition, reference: str, kind: type):
+    """The class (or legacy function) a process element names; deprecated forms warn."""
+    from statera.extend import registry
+
     try:
-        return getattr(importlib.import_module(module), function)
-    except (ImportError, AttributeError) as error:
-        raise InvalidProcess(f"implementation {reference} not found") from error
+        binding = registry.bind(ed.unit, reference, kind)
+    except (registry.ExtensionError, ImportError, AttributeError) as error:
+        raise InvalidProcess(f"implementation {reference} not found: {error}") from error
+    if binding.deprecated:
+        registry.warn_deprecated(reference, binding.deprecated)
+    return binding
+
+
+def _declared(ed: Edition, binding) -> tuple[list[str], list[str]]:
+    return binding.cls.tables(ed.unit) if binding.cls else ([], [])
+
+
+def _execute(ed: Edition, e: dict, binding) -> TaskResult:
+    """Runs a task: a class with its context, or a legacy function with the edition. A raised exception, or an
+    outcome the class does not declare, is the outcome `failed` with the message."""
+    from statera.extend.base import TaskContext
+
+    try:
+        if binding.function:
+            return TaskResult.of(str(binding.function(ed)))
+        inputs, outputs = _declared(ed, binding)
+        result = binding.cls().run(TaskContext(ed, e, inputs, outputs))
+        if not isinstance(result, TaskResult):
+            result = TaskResult.of(str(result))
+        if result.outcome not in binding.cls.outcomes:
+            declared = f"{binding.cls.__name__}.outcomes {sorted(binding.cls.outcomes)}"
+            return TaskResult.failed(f"outcome '{result.outcome}' is not among {declared}")
+        return result
+    except InvalidProcess:
+        raise
+    except Exception as error:  # noqa: BLE001 - spec 05: an exception is the outcome `failed`
+        return TaskResult.failed(f"{type(error).__name__}: {error}")
 
 
 def _datasets(proc: dict, element: dict, key: str) -> list[dict]:
@@ -64,33 +95,31 @@ def _datasets(proc: dict, element: dict, key: str) -> list[dict]:
 
 def _run_task(ed: Edition, proc: dict, e: dict) -> str:
     ext = e.get("statera", {})
-    impl = ext.get("implementation", "")
-    inputs, outputs = _datasets(proc, e, "inputs"), _datasets(proc, e, "outputs")
+    binding = _bind(ed, ext.get("implementation", ""), Task)
+    declared_in, declared_out = _declared(ed, binding)
+    inputs = [openlineage.dataset(t) for t in declared_in] or _datasets(proc, e, "inputs")
+    outputs = [openlineage.dataset(t) for t in declared_out] or _datasets(proc, e, "outputs")
     ed.log(f"{e['id']} — {e['name']}")
-    status, message = "ok", ""
     with openlineage.execution(f"{ed.product}.{e['id']}", inputs, outputs, ed.facet, ed.events_file, ed.parent) as ctx:
         ed.ctx = ctx
-        try:
-            if impl == "dbt:build":
-                from statera.process import dbt_step
-
-                status = dbt_step(ed, list(ext.get("models", [])))
-            elif impl.startswith("py:"):
-                status = _implementation(impl)(ed)
-            else:
-                raise InvalidProcess(f"{e['id']}: implementation '{impl}' in an unknown format")
-        except EditionFailure as error:
-            status, message = "failed", str(error)
-            ed.failures.append(f"{e['id']}: {error}")
-    ed.record_task(e["id"], status, ctx.get("duration_s"), **({"message": message[:300]} if message else {}))
+        result = _execute(ed, e, binding)
+    if result.outcome == "failed" and result.message:
+        ed.failures.append(f"{e['id']}: {result.message}")
+        ed.log(f"  failed: {result.message}")
+    extra = {"message": result.message[:300]} if result.message else {}
+    if result.metrics:
+        extra["metrics"] = result.metrics
+    ed.record_task(e["id"], result.outcome, ctx.get("duration_s"), **extra)
     ed.save()
-    return status
+    return result.outcome
 
 
 def _next_node(outputs: dict, e: dict, status: str) -> str:
     flows = outputs[e["id"]]
     if e["type"] in bpmn.GATEWAYS:
         chosen = [f for f in flows if f.get("condition") == status]
+        if not chosen and status == "warning":  # a gate warned, and the process models no `warning` path
+            chosen = [f for f in flows if f.get("condition") == "ok"]
         if len(chosen) != 1:
             raise InvalidProcess(f"{e['id']}: no flow (or more than one) with condition '{status}'")
         return chosen[0]["to"]
@@ -147,7 +176,10 @@ def _walk(ed: Edition, proc: dict, node: str, status: str, approve: bool) -> Edi
 
 
 def _await(ed: Edition, e: dict) -> bool:
-    satisfied = bool(_implementation(e["statera"]["awaits"])(ed))
+    from statera.extend.base import Await, TaskContext
+
+    binding = _bind(ed, e["statera"]["awaits"], Await)
+    satisfied = bool(binding.function(ed) if binding.function else binding.cls().ready(TaskContext(ed, e)))
     if satisfied:
         ed.record_task(e["id"], "ok", None, event=True)
     ed.save()
@@ -186,7 +218,9 @@ def _complete_human_task(
     ed.log(f"{e['id']} — {e['name']}: {decision}{' (simulated)' if simulated else ''}")
     if ext.get("implementation") and decision == "approved":
         ed.ctx = {}
-        _implementation(ext["implementation"])(ed)
+        result = _execute(ed, e, _bind(ed, ext["implementation"], Task))
+        if result.outcome == "failed":
+            raise EditionFailure(f"{e['id']}: {result.message or 'the automatic part of the task failed'}")
     ed.record_task(e["id"], decision, None, human=True, simulated=simulated)
     return decision
 
@@ -211,7 +245,7 @@ def run(
     project: Project | None = None,
     with_dependencies: bool = False,
 ) -> Edition:
-    """Runs an edition from the start, through the product's to-be process.
+    """Runs an edition from the start, through the product's process.
 
     Internal product (source-aligned or aggregate): the "edition" is a cut; pass only the cut-off date.
     With `with_dependencies`, first releases the missing cuts of the input internal products.
@@ -227,14 +261,14 @@ def run(
     cut_date = cut_date or release_calendar(unit, period)["cut_date"]
     if with_dependencies:
         ensure_dependencies(unit, cut_date, approve)
-    proc = processes.load(unit.to_be_process)
+    proc = processes.load(unit.process)
     if errors := processes.validate_structure(proc):
         raise InvalidProcess("; ".join(errors))
     ed = Edition(product, period, cut_date, force)
     ed.run_id = openlineage.new_run_id()
     openlineage.emit(openlineage.event("START", f"{product}.edition", ed.run_id, [], [], ed.facet), ed.events_file)
     cut = "" if unit.internal else f" — cut-off date {cut_date}"
-    ed.log(f"{ed.label}{cut} — process {project.rel(unit.to_be_process)}")
+    ed.log(f"{ed.label}{cut} — process {project.rel(unit.process)}")
     start = next(e["id"] for e in proc["elements"] if e["type"] == "startEvent")
     return _walk(ed, proc, start, "ok", approve)
 
@@ -252,7 +286,7 @@ def resume(
     ed = Edition.load(unit, period)
     if ed.status != "waiting" or not ed.pending:
         raise EditionFailure(f"{ed.label} is not awaiting a human task or an event (status: {ed.status})")
-    proc = processes.load(unit.to_be_process)
+    proc = processes.load(unit.process)
     element = next(e for e in proc["elements"] if e["id"] == ed.pending)
     ed.status = "running"
     if (element.get("statera") or {}).get("awaits") and element["type"] not in bpmn.TASKS:
@@ -286,7 +320,7 @@ def _step(unit, ed: Edition) -> tuple[str, str]:
     if not task:
         return "—", "—"
     try:
-        proc = processes.load(unit.to_be_process)
+        proc = processes.load(unit.process)
     except Exception:  # noqa: BLE001 - process changed or missing: show the id
         return task, "?"
     element = next((e for e in proc["elements"] if e["id"] == task), None)

@@ -43,7 +43,7 @@
     },
     {
       "label": "statera: run edition",
-      "detail": "Runs an edition through the to-be process (stops at the first human task)",
+      "detail": "Runs an edition through the product's process (stops at the first human task)",
       "type": "process", "command": "uv",
       "args": ["run", "--all-groups", "statera", "run", "--product", "${input:product}", "--period", "${input:period}",
                "--with-dependencies"],

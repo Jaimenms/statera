@@ -16,7 +16,7 @@ customProperties:
   - {property: alignment, value: source}
   - {property: visibility, value: internal}
   - {property: urn, value: org.example.foo-bar.foo}
-  - {property: process, value: 2-design/processes/to-be.yaml}
+  - {property: process, value: 2-design/process.yaml}
   - {property: conformanceLevel, value: 3}
   - {property: sourceSystems, value: [Foo System]}
   - property: authorizedConsumers

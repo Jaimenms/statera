@@ -42,7 +42,7 @@ INDEX_COLUMNS = [
 def _root_readme(project: Project) -> str:
     return f"""# Register of published editions — {project.organization or project.name}
 
-This repository is written **by the production process** (publication task of the to-be process,
+This repository is written **by the production process** (publication task of the product's process,
 run by `statera`), by automatic commit, for each published edition. Do not edit it by hand. The
 code, the contracts and the design of the series live in the content repository (`{project.root.name}`);
 only the history of editions lives here:

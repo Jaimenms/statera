@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "redhat.vscode-yaml",
+    "bierner.markdown-mermaid",
+    "charliermarsh.ruff",
+    "innoverio.vscode-dbt-power-user",
+    "miragon-gmbh.vs-code-bpmn-modeler"
+  ]
+}

@@ -9,7 +9,7 @@ def test_discovers_units_and_namespace(minimal_project):
         ("product", "base-data"), ("product", "consumer"), ("product", "sample"),
     ]  # fmt: skip
     assert p.product("sample").urn == "org.example.sample"
-    assert p.processes()[-1] == p.root / "products/sample/2-design/processes/to-be.yaml"
+    assert p.processes()[-1] == p.root / "products/sample/2-design/process.yaml"
 
 
 def test_product_alignment_and_visibility(minimal_project):

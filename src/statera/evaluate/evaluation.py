@@ -44,7 +44,7 @@ def _period_end(period: str) -> date:
 
 
 def _process(unit: Unit) -> bpmn.Process | None:
-    path = unit.to_be_process.with_suffix(".bpmn")
+    path = unit.process.with_suffix(".bpmn")
     return bpmn.read(path) if path.exists() else None
 
 

@@ -27,7 +27,7 @@ Product `customProperties`: `alignment` (`source` · `aggregate` · `consumer`) 
 (`internal` · `public`), 09; `authorizedConsumers` (internal product, 09); `theme`, `frequency`
 (`monthly` · `quarterly` · `semiannual` · `annual` · `biweekly` · `on-demand`), `purpose`
 (`official-release` · `on-request` · `study` · `dashboard` · `internal-control`), `bases` (the datasets the
-product is built on, in consumer-aligned products), `urn`, `process` (path to the to-be),
+product is built on, in consumer-aligned products), `urn`, `process` (path to the product's process, `2-design/process.yaml`),
 `conformanceLevel` (target, 08) and `legacyParity` (`done` · `in-progress` · `not-applicable` ·
 `not-declared`); `sourceSystems` (source-aligned product); `distributions` (dissemination product
 without a series): the list of files published today, in the DCAT vocabulary, each with `title`,

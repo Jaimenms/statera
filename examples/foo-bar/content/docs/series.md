@@ -22,7 +22,7 @@ Source: [series.yaml](../products/bar/7-disseminate/series.yaml) · summary temp
 | Main port | by-uf |
 | Record of each edition | `bar/{period}.datapackage.json` |
 | Series index | `bar/editions.csv` |
-| Who writes the record | to-be process (task Task_Publish) |
+| Who writes the record | the process (task Task_Publish) |
 
 **Coverage.** Each edition republishes the current year up to the edition's reference month, at the edition's cut.
 
@@ -45,7 +45,7 @@ Source: [series.yaml](../products/baz/7-disseminate/series.yaml) · summary temp
 | Main port | mean-value-by-uf |
 | Record of each edition | `baz/{period}.datapackage.json` |
 | Series index | `baz/editions.csv` |
-| Who writes the record | to-be process (task Task_Publish), once it exists |
+| Who writes the record | the process (task Task_Publish), once it exists |
 
 **Coverage.** Each edition republishes the current year up to the edition's reference month, at the edition's cut.
 

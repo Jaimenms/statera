@@ -13,28 +13,33 @@ shows what is missing for level 1 (catalogued). To move up a level, see the spec
 |---|---|
 {%- if alignment == 'consumer' %}
 | `1-specify/` | ODPS descriptor, approved classification, owners, calendar |
-| `2-design/processes/` | To-be process in YAML (mirror of the BPMN), which is also the execution plan |
+| `2-design/process.yaml` | The product's process in YAML (mirror of the BPMN), which is also the execution plan: its steps name classes (`implementation: DbtBuild`, `Gate`, `Package`, `Publish`…) |
 | `3-build/tests/` | Product tests |
 | `5-process/` | Gold contracts, dbt models (marts), rules, metrics |
-| `6-analyse/` | Controls (`controls.yaml`, `dbt-tests/`) |
+| `6-analyse/` | Controls (`controls.yaml`, `dbt-tests/`); the product's own `Check` classes in `checks.py`, each with its cases in `check-cases/<Check>.yaml` |
 | `7-disseminate/` | Publication series and summary template |
 | `8-evaluate/` | Quality indicators and action plan |
 | `queries/` | The product's recurring queries |
 {%- elif alignment == 'aggregate' %}
 | `1-specify/` | ODPS descriptor (with `authorizedConsumers`), approved classification, owners |
-| `2-design/processes/` | To-be process: waits for the source cuts, transforms, validates and releases the cut |
+| `2-design/process.yaml` | Process: waits for the source cuts (`PinCut`), transforms (`DbtBuild`), validates (`Gate`) and releases the cut (`MarkCut`) |
 | `3-build/tests/` | Product tests |
 | `5-process/` | Silver contracts with `partitionedBy: cut_date`, intermediate models, rules with cases |
-| `6-analyse/` | Contract checks at the cut (no statistical disclosure control: nothing is published) |
+| `6-analyse/` | Contract checks at the cut (no statistical disclosure control: nothing is published); `checks.py` and `check-cases/` for the product's own checks |
 | `7-disseminate/data/<date>/cut.json` | Immutable manifest of each released cut (generated) |
 | `8-evaluate/` | Service indicators (cut delay, completeness) |
 {%- else %}
 | `1-specify/` | ODPS descriptor (with `authorizedConsumers`), approved classification, owners |
-| `2-design/processes/` | To-be process: extracts the increment, validates the load and marks the cut |
+| `2-design/process.yaml` | Process: extracts the increment (`Extract`), validates the load (`Gate`) and marks the cut (`MarkCut`) |
+| `3-build/synthetic.py` | `SyntheticSource` classes that stand in for the source system in tests and demos (`statera synthetic`) |
 | `4-collect/contracts/` | Bronze contracts with `extraction` (source system, received-at column) and retention |
 | `5-process/models/staging/` | Staging models with the `statera.at_cut` filter |
 | `7-disseminate/data/<date>/cut.json` | Immutable manifest of each cut (batches and hashes; generated) |
 | `8-evaluate/` | Service indicators (extraction delay, completeness) |
 {%- endif %}
+
+Steps the framework does not provide are the product's own `Task` (or `Await`) classes, in
+`<phase>/tasks.py`, named by the process: they declare their GSBPM sub-process and the contract tables they
+read and write (`statera.extend`, specification 05).
 
 Update this product when the template evolves: `copier update` in this folder.

@@ -1,11 +1,19 @@
-# Edition controls (GSBPM 6.2). Framework type; the product chooses table, columns and thresholds.
+# Edition controls (GSBPM 6.2), run by the Gate of the process (`checks: [CK-01, CK-02]`). Each control names
+# a Check class: the framework's (RevisionBetweenEditions) or the product's (6-analyse/checks.py), with its
+# parameters.
 controls:
   - id: CK-01
     name: Revision of already released reference months
-    type: revision-between-editions
+    check: RevisionBetweenEditions
     port: by-uf
     key: [period, uf_abbr]
     measures: [records]
     relative_base: records
     warning_threshold: 0.10
     error_threshold: 0.60
+  - id: CK-02
+    name: No records lost between editions
+    check: NoRecordsLost
+    port: by-uf
+    key: [period, uf_abbr]
+    measure: records

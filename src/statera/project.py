@@ -80,7 +80,7 @@ def read_yaml(path: Path):
 # not apply says why, instead of being missing (absence is ambiguous: does it not apply, or was it forgotten?).
 SKELETON = {
     "1-specify/calendar.yaml": "calendar",
-    "2-design/processes/to-be.yaml": "process",
+    "2-design/process.yaml": "process",
     "6-analyse/controls.yaml": "controls",
     "7-disseminate/series.yaml": "series",
     "8-evaluate/indicators.yaml": "indicators",
@@ -166,11 +166,26 @@ class Unit:
         return sorted(c for c in self.folder.rglob("*.odcs.yaml") if "data" not in c.parts)
 
     def processes(self) -> list[Path]:
-        return sorted(c for c in (self.phase(2) / "processes").glob("*.yaml") if not_applicable(c) is None)
+        """The product's process (one per product), when it has content."""
+        return [self.process] if self.process.exists() and not_applicable(self.process) is None else []
 
     @property
-    def to_be_process(self) -> Path:
-        return self.phase(2) / "processes" / "to-be.yaml"
+    def process(self) -> Path:
+        """`2-design/process.yaml`: the product's single process, which is also the run plan (specification 05).
+        A repository of statera 0.5 or earlier (`2-design/processes/to-be.yaml`) still runs; validation says
+        how to move it."""
+        single = self.phase(2) / "process.yaml"
+        legacy = self.legacy_processes_folder / "to-be.yaml"
+        return legacy if not single.exists() and legacy.exists() else single
+
+    @property
+    def legacy_processes_folder(self) -> Path:
+        """`2-design/processes/` of statera 0.5 and earlier (as-is and to-be processes)."""
+        return self.phase(2) / "processes"
+
+    @property
+    def to_be_process(self) -> Path:  # statera 0.5 name, kept for code that still uses it
+        return self.process
 
     @property
     def runs_folder(self) -> Path:

@@ -21,4 +21,4 @@ correction_policy: A published edition is not recomputed; a correction requires 
 edition_registry:
   edition: "bar/{period}.datapackage.json"
   index: bar/editions.csv
-  written_by: to-be process (task Task_Publish)
+  written_by: the process (task Task_Publish)

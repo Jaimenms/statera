@@ -20,7 +20,7 @@ customProperties:
   - {property: purpose, value: official-release}
   - {property: bases, value: [foo-system]}
   - {property: urn, value: org.example.foo-bar.bar}
-  - {property: process, value: 2-design/processes/to-be.yaml}
+  - {property: process, value: 2-design/process.yaml}
   - {property: conformanceLevel, value: 3}
   - {property: legacyParity, value: not-applicable}
 inputPorts:

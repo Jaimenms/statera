@@ -106,18 +106,19 @@ uv run statera demo
 | GSBPM phase | Module | What |
 |---|---|---|
 | 1 | `project`, `contracts`, `classification`, `governance` | Reads `statera.toml`, discovers the products; ODCS contracts; classification; generated CODEOWNERS |
-| 2 | `design` | Process in YAML mirroring BPMN 2.0; generated `.bpmn`, SVG and viewer |
+| 2 | `design` | One process per product, in YAML mirroring BPMN 2.0 (`2-design/process.yaml`); generated `.bpmn`, SVG and viewer |
 | 4 | `collect` | Incremental extraction in batches; immutable cuts with a manifest |
 | 5 | `process` | dbt project generated from the products; rules with cases (SQL and Python); legacy code (SPSS via PSPP, R) |
 | 6 | `analyse` | Contracts checked against the engine; controls; statistical disclosure control (cell suppression, k-anonymity) |
 | 7 | `disseminate` | Edition package (CSV, xlsx, summary, Data Package, CKAN) and editions register |
 | 8 | `evaluate` | Quality indicators and action plan; alerts acknowledged before approval, or blocking |
+| — | `extend` | The public extension API: `Task`, `Check`, `Await` and `SyntheticSource`, the classes every process step extends (the framework's and the products') |
 | — | `consume` | Library (Ibis): catalog, published editions, cuts, metrics, queries, recipes |
 
 ## Command line
 
 `statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
-cuts | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
+cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
 clean`. See `statera --help`. Commands work from any folder of a data repository.
 
 `statera status` shows, for every product, where its latest edition (or cut) is in the BPMN process,
@@ -136,6 +137,27 @@ ed = cat.edition("employment-flows", "2026-06")  # what was published (local or 
 ed.table("net-change-by-uf")
 ed.provenance
 ```
+
+## Extending
+
+A process names its steps by class: the framework's (`Extract`, `DbtBuild`, `Gate`, `Package`, `Publish`,
+`Evaluate`, `MarkCut`, `PinCut`) or the product's own, written against `statera.extend` (stable from 0.6.0,
+specification 05):
+
+```python
+from statera.extend import Check, CheckContext, CheckResult
+
+
+class NoRecordsLost(Check):  # products/bar/6-analyse/checks.py, with cases in check-cases/NoRecordsLost.yaml
+    """For every key released in the previous edition, the number of records must not decrease."""
+
+    def evaluate(self, ctx: CheckContext) -> CheckResult: ...
+```
+
+`Task` and `Await` classes go in `<phase>/tasks.py`, `Check` classes in `6-analyse/checks.py` (listed in
+`controls.yaml` and run by a `Gate`) and `SyntheticSource` classes in `3-build/synthetic.py`
+(`statera synthetic`). Validation checks what the classes declare (GSBPM sub-process, tables, outcomes)
+against the process and the contracts without running them.
 
 ## Development
 

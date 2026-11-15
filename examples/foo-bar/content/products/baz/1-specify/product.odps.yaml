@@ -1,6 +1,6 @@
 # DISSEMINATION product computed by LEGACY code: an SPSS script (run by GNU PSPP) and an
 # R script (run by Rscript), both called from dbt Python models. Level 2 (reproducible): the script runs
-# from the repository, on the foo cut, but has not been rewritten yet and has no to-be process.
+# from the repository, on the foo cut, but has not been rewritten yet and has no executable process.
 # ILLUSTRATIVE EXAMPLE, SYNTHETIC DATA.
 apiVersion: v1.0.0
 kind: DataProduct

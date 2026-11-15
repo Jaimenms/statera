@@ -1,0 +1,49 @@
+# Cases of the NoRecordsLost check (6-analyse/checks.py): input tables, the control's parameters and the
+# expected verdict. Run by `statera validate` and `statera check`.
+check: NoRecordsLost
+cases:
+  - id: late-records-arrive
+    period: "2026-02"
+    params: {port: by-uf, key: [period, uf_abbr], measure: records}
+    previous:
+      by-uf:
+        - {period: "2026-01", uf_abbr: SP, records: 192}
+        - {period: "2026-01", uf_abbr: RJ, records: 73}
+    current:
+      by-uf:
+        - {period: "2026-01", uf_abbr: SP, records: 230}
+        - {period: "2026-01", uf_abbr: RJ, records: 73}
+        - {period: "2026-02", uf_abbr: SP, records: 182}
+    expected: ok
+  - id: first-edition
+    period: "2026-01"
+    params: {port: by-uf, key: [period, uf_abbr], measure: records}
+    current:
+      by-uf:
+        - {period: "2026-01", uf_abbr: SP, records: 192}
+    expected: ok
+    message: no previous edition
+  - id: records-lost
+    period: "2026-02"
+    params: {port: by-uf, key: [period, uf_abbr], measure: records}
+    previous:
+      by-uf:
+        - {period: "2026-01", uf_abbr: SP, records: 192}
+        - {period: "2026-01", uf_abbr: RJ, records: 73}
+    current:
+      by-uf:
+        - {period: "2026-01", uf_abbr: SP, records: 150}
+        - {period: "2026-01", uf_abbr: RJ, records: 73}
+    expected: failed
+    message: "2026-01/SP: 192 -> 150"
+  - id: released-key-disappears
+    period: "2026-02"
+    params: {port: by-uf, key: [period, uf_abbr], measure: records}
+    previous:
+      by-uf:
+        - {period: "2026-01", uf_abbr: PE, records: 23}
+    current:
+      by-uf:
+        - {period: "2026-02", uf_abbr: PE, records: 24}
+    expected: failed
+    message: "1 key(s) lost records"

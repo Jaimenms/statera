@@ -12,11 +12,14 @@ Groups (and the conformance level from which each one is required):
   layers         (2) allowed medallion dependencies in the dbt graph
   consumption    (2) queries (metadata, parameters, tests), metrics and recipes
   rules          (3) cases of the rules implemented in Python models
+  checks         (3) cases of the products' checks (6-analyse/check-cases/<Check>.yaml)
   classification (3) broad consumers only read publishable assets; queries that read restricted
                      data and produce broad output declare statistical disclosure control
   access         (1) dissemination products declare an access form; visualizations are complete
   processes      (3) valid, executable processes: gateways with conditions, existing
-                     implementations and roles
+                     implementations and roles; the extension classes' declarations (GSBPM, outcomes,
+                     tables and their contracts, checks and their cases, faults used in CI), without
+                     running any class
   generated      (1-3) generated files up to date (CODEOWNERS, dbt project, unit tests, BPMN)
   hygiene        (1) no data or secrets outside the data/ folders
   conformance    (target) each product reaches the level it declares (or the one requested in --level)
@@ -381,6 +384,22 @@ def check_python_rules(project: Project) -> list[Finding]:
     return findings
 
 
+def check_check_cases(project: Project) -> list[Finding]:
+    """Cases of the products' checks (6-analyse/check-cases/<Check>.yaml), run like the rule cases."""
+    from statera.extend.cases import run_check_cases
+
+    results = run_check_cases(project)
+    findings = [
+        Finding("checks", False, f"{r.product}: {r.check} / {r.case}: {r.message}", 3)
+        for r in results
+        if r.status == "failed"
+    ]
+    if not findings:
+        checks = len({(r.product, r.check) for r in results})
+        findings.append(Finding("checks", True, f"{len(results)} case(s) of {checks} check(s) passed", 3))
+    return findings
+
+
 def _ref_roles(project: Project) -> list[Finding]:
     known = set(governance.roles(project))
     findings = [
@@ -733,6 +752,14 @@ def check_processes(project: Project, manifest: dict) -> list[Finding]:
                     f"gateway {gid} has an outgoing flow without `condition` (the executor would not know the path)"
                 )
         findings += [Finding("processes", False, f"{project.rel(source)}: {e}", 3) for e in errors]
+    for unit in project.units:  # statera 0.6: one process per product, 2-design/process.yaml
+        for old in sorted(unit.legacy_processes_folder.glob("*.yaml")):
+            hint = (
+                "move it to 2-design/process.yaml (and delete the old .bpmn: statera bpmn regenerates it)"
+                if old.stem == "to-be"
+                else "a product has a single process: take it out of the product (e.g. to docs/) or merge it"
+            )
+            findings.append(Finding("processes", False, f"{project.rel(old)}: {hint}", 1))
     for orphan in processes.bpmn_without_source():
         findings.append(
             Finding("processes", False, f"{project.rel(orphan)} without a source YAML (statera bpmn import)", 3)
@@ -749,6 +776,9 @@ def check_processes(project: Project, manifest: dict) -> list[Finding]:
                     3,
                 )
             )
+    from statera.extend import checks as extension_checks
+
+    findings += [Finding("processes", ok, message, 3) for ok, message in extension_checks.findings(project)]
     return findings
 
 
@@ -876,6 +906,7 @@ def collect_findings(generate_manifest: bool = True, level: int | None = None) -
         lambda: _ref_series_indicators(project),
         lambda: check_layers(m),
         lambda: check_python_rules(project),
+        lambda: check_check_cases(project),
         lambda: check_consumer(project, m),
         lambda: check_classification(project, m),
         lambda: check_access(project, m),

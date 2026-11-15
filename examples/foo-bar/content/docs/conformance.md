@@ -17,5 +17,5 @@ Conformance levels of the specification (1 cataloged, 2 reproducible, 3 controll
 
 - **bar**, level 4: 8-evaluate/indicators.yaml declares it does not apply (to be defined: edition quality indicators and action plan); the level requires quality indicators
 - **baz**, level 3: no controls (6-analyse/controls.yaml or dbt-tests/)
-- **baz**, level 3: 2-design/processes/to-be.yaml declares it does not apply (to be designed: today the SPSS script runs by hand; the to-be process comes with level 3); the level requires executable process
+- **baz**, level 3: 2-design/process.yaml declares it does not apply (to be designed: today the SPSS script runs by hand; the executable process comes with level 3); the level requires executable process
 - **foo**, level 4: 8-evaluate/indicators.yaml declares it does not apply (to be defined: service indicators for the Foo System extraction (delay, completeness)); the level requires service indicators: delay, completeness

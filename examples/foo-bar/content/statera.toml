@@ -8,7 +8,7 @@ organization = "Foo Bar (minimal example)"
 acronym = "foo-bar"
 namespace = "org.example.foo-bar"
 specification = "0.1"
-required_version = "~=0.5.0"         # Statera versions this repository accepts
+required_version = "~=0.6.0"         # Statera versions this repository accepts
 repository_root = ".."             # repository root (where .github/, publications/, docs/ live)
 synthetic = true
 
@@ -33,9 +33,9 @@ editions = "../publications"
 namespace = "org.example.foo-bar"
 
 [demo]
-# Two editions of bar; each first releases the foo cut it needs.
+# Two editions of bar; each first releases the foo cut it needs. The synthetic data comes from the products'
+# SyntheticSource classes (products/foo/3-build/synthetic.py), run by `statera synthetic`.
 editions = [
   { product = "bar", period = "2026-01" },
   { product = "bar", period = "2026-02" },
 ]
-synthetic = "products/foo/3-build/synthetic.py:generate"

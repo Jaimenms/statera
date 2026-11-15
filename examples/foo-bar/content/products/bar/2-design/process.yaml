@@ -1,6 +1,6 @@
 # Process in YAML, mirror of the BPMN 2.0, and run plan: `statera run --product bar --period YYYY-MM`.
-id: Process_Bar_ToBe
-name: Bar monthly production (TO-BE)
+id: Process_Bar
+name: Bar monthly production
 
 lanes:
   - {id: Lane_Pipeline, name: Pipeline (statera run), role: data-team}
@@ -13,7 +13,7 @@ elements:
     name: foo cut available
     lane: Lane_Pipeline
     event: message
-    statera: {awaits: 'py:statera.collect.pin_cut'}
+    statera: {awaits: PinCut}
   - id: Task_Transform
     type: serviceTask
     name: Compute the product tables (dbt build)
@@ -22,19 +22,19 @@ elements:
       type: automatic
       gsbpm: 5.3-5.7
       durationMin: 1
-      implementation: dbt:build
+      implementation: DbtBuild
       models: [stg_foo__records, int_bar__records, bar_uf_monthly, bar_uf_monthly_change]
   - id: Task_Controls
     type: serviceTask
     name: Check contracts and controls across editions
     lane: Lane_Pipeline
-    statera: {type: automatic, gsbpm: '6.2', durationMin: 1, implementation: 'py:statera.analyse.step'}
+    statera: {type: automatic, gsbpm: '6.2', durationMin: 1, implementation: Gate, checks: [CK-01, CK-02]}
   - {id: Gateway_Controls, type: exclusiveGateway, name: 'Controls OK?', lane: Lane_Pipeline}
   - id: Task_Package
     type: serviceTask
     name: Generate xlsx, summary and Data Package
     lane: Lane_Pipeline
-    statera: {type: automatic, gsbpm: 6.4;7.2, durationMin: 1, implementation: 'py:statera.disseminate.step'}
+    statera: {type: automatic, gsbpm: 6.4;7.2, durationMin: 1, implementation: Package}
   - id: Task_Investigate
     type: userTask
     name: Investigate the failure
@@ -50,7 +50,7 @@ elements:
     type: userTask
     name: Publish the package
     lane: Lane_Team
-    statera: {type: semi-automatic, gsbpm: '7.3', durationMin: 10, implementation: 'py:statera.disseminate.publish'}
+    statera: {type: semi-automatic, gsbpm: '7.3', durationMin: 10, implementation: Publish}
   - {id: End_Published, type: endEvent, name: Edition published, lane: Lane_Team}
 
 flows:

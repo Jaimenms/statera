@@ -5,41 +5,41 @@
 > To change it: edit the sources and run `statera docs`.  
 > **Example with SYNTHETIC DATA.**
 
-The source of each process is a **YAML mirror of BPMN 2.0** in `<unit>/2-design/processes/`. `statera bpmn` generates the standard `.bpmn` (Camunda Modeler, bpmn.io, VS Code extension) and the images below. The to-be process is also the **execution plan**: `statera run` walks the flows, runs the automatic tasks and stops at the human ones.
+Each product has **one process**, a **YAML mirror of BPMN 2.0** in `<product>/2-design/process.yaml`. `statera bpmn` generates the standard `.bpmn` (Camunda Modeler, bpmn.io, VS Code extension) and the images below. The process is also the **execution plan**: `statera run` walks the flows, runs the automatic tasks and stops at the human ones.
 
-## Effort per edition compared
+## Effort per edition
 
 | Process | Tasks | Manual | Semi-automatic | Automatic | Total |
 |---|---|---|---|---|---|
-| Bar monthly production (TO-BE) | 6 | 0.5 h | 0.2 h | 0.05 h | 0.7 h |
-| Foo System extraction (TO-BE) | 4 | 0.0 h | 0.0 h | 0.05 h | 0.1 h |
+| Bar monthly production | 6 | 0.5 h | 0.2 h | 0.05 h | 0.7 h |
+| Foo System extraction | 4 | 0.0 h | 0.0 h | 0.05 h | 0.1 h |
 
-Modeled durations (`statera:durationMin`), on the normal path, without exception tasks. In the as-is, they are **assumptions to be confirmed in the assessment**. The observed duration is on the series page in the editions register.
+Modeled durations (`statera:durationMin`), on the normal path, without exception tasks. The observed duration is on the series page in the editions register.
 
-## Bar monthly production (TO-BE)
+## Bar monthly production
 
-Source: [to-be.yaml](../products/bar/2-design/processes/to-be.yaml) · generated: [to-be.bpmn](../products/bar/2-design/processes/to-be.bpmn) · [interactive viewer](processes/bar__to-be.html)
+Source: [process.yaml](../products/bar/2-design/process.yaml) · generated: [process.bpmn](../products/bar/2-design/process.bpmn) · [interactive viewer](processes/bar.html)
 
-![Bar monthly production (TO-BE)](processes/bar__to-be.svg)
+![Bar monthly production](processes/bar.svg)
 
 | Task | Lane (role) | Kind | GSBPM | Duration | Implementation |  |
 |---|---|---|---|---|---|---|
-| Compute the product tables (dbt build) | Pipeline (statera run) | automatic | 5.3-5.7 | 1 min | `dbt:build` |  |
-| Check contracts and controls across editions | Pipeline (statera run) | automatic | 6.2 | 1 min | `py:statera.analyse.step` |  |
-| Generate xlsx, summary and Data Package | Pipeline (statera run) | automatic | 6.4;7.2 | 1 min | `py:statera.disseminate.step` |  |
+| Compute the product tables (dbt build) | Pipeline (statera run) | automatic | 5.3-5.7 | 1 min | `DbtBuild` |  |
+| Check contracts and controls across editions | Pipeline (statera run) | automatic | 6.2 | 1 min | `Gate` |  |
+| Generate xlsx, summary and Data Package | Pipeline (statera run) | automatic | 6.4;7.2 | 1 min | `Package` |  |
 | Investigate the failure | Bar technical team | manual | 5.3 | 60 min |  | exception |
 | Review and approve the release | Bar technical team | manual | 6.5 | 30 min |  |  |
-| Publish the package | Bar technical team | semi-automatic | 7.3 | 10 min | `py:statera.disseminate.publish` |  |
+| Publish the package | Bar technical team | semi-automatic | 7.3 | 10 min | `Publish` |  |
 
-## Foo System extraction (TO-BE)
+## Foo System extraction
 
-Source: [to-be.yaml](../products/foo/2-design/processes/to-be.yaml) · generated: [to-be.bpmn](../products/foo/2-design/processes/to-be.bpmn) · [interactive viewer](processes/foo__to-be.html)
+Source: [process.yaml](../products/foo/2-design/process.yaml) · generated: [process.bpmn](../products/foo/2-design/process.bpmn) · [interactive viewer](processes/foo.html)
 
-![Foo System extraction (TO-BE)](processes/foo__to-be.svg)
+![Foo System extraction](processes/foo.svg)
 
 | Task | Lane (role) | Kind | GSBPM | Duration | Implementation |  |
 |---|---|---|---|---|---|---|
-| Extract the increment received since the last load | Data team (statera run) | automatic | 4.3 | 1 min | `py:statera.collect.step` |  |
-| Check the bronze contract at the cut | Data team (statera run) | automatic | 4.4 | 1 min | `py:statera.analyse.step` |  |
-| Mark the cut and notify consumers | Data team (statera run) | automatic | 7.3 | 1 min | `py:statera.disseminate.mark_cut` |  |
+| Extract the increment received since the last load | Data team (statera run) | automatic | 4.3 | 1 min | `Extract` |  |
+| Check the bronze contract at the cut | Data team (statera run) | automatic | 4.4 | 1 min | `Gate` |  |
+| Mark the cut and notify consumers | Data team (statera run) | automatic | 7.3 | 1 min | `MarkCut` |  |
 | Investigate the load with the Foo System | Data team (statera run) | manual | 4.3 | 60 min |  | exception |

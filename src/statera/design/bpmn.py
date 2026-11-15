@@ -1,6 +1,6 @@
 """Reading, validation and visualization of BPMN 2.0 processes.
 
-The .bpmn files in <unit>/2-design/processes/ are generated from the process YAML files
+The .bpmn files (<unit>/2-design/process.bpmn) are generated from the process YAML files
 (processes.py) and open in any BPMN tool (Camunda Modeler, bpmn.io).
 Attributes in the `statera` namespace link each task to the repository and to the run:
 
@@ -20,7 +20,7 @@ This module:
   - renders SVG from the file's own DI (no Node or browser), to be displayed
     on GitHub and in the VS Code Markdown preview;
   - generates an interactive HTML viewer with bpmn-js;
-  - summarizes tasks, times and types (basis of the as-is vs. to-be comparison);
+  - summarizes tasks, times and types (effort per edition);
   - validates the links between the diagram and the repository.
 """
 
@@ -484,8 +484,8 @@ Source: <code>{origin}</code></div>
 def svg_destination(p: Process) -> Path:
     project = current()
     unit = project.unit_of(p.path)
-    prefix = unit.name if unit else "governance"
-    return project.docs / "processes" / f"{prefix}__{p.path.stem}.svg"
+    name = unit.name if unit else f"governance__{p.path.stem}"  # one process per product
+    return project.docs / "processes" / f"{name}.svg"
 
 
 def render_all() -> list[Path]:
@@ -539,7 +539,7 @@ def _validate_implementation(name: str, t: Element, dbt_models: set[str]) -> lis
             for m in entries
             if m.strip() and selector_name(m) not in dbt_models
         ]
-    return [f"{name}: {t.id} has an implementation in an unknown format '{impl}'"]
+    return []  # a class name: resolved and checked by statera.extend.checks (validation group "processes")
 
 
 def validate(p: Process, dbt_models: set[str], roles: set[str]) -> list[str]:
@@ -550,7 +550,7 @@ def validate(p: Process, dbt_models: set[str], roles: set[str]) -> list[str]:
         if lane["role"] not in roles
     ]
     for el in p.elements.values():
-        if (awaits := el.attrs.get("awaits")) and el.tag not in TASKS:
+        if (awaits := el.attrs.get("awaits")) and el.tag not in TASKS and awaits.startswith("py:"):
             module, _, function = awaits[3:].rpartition(".")
             try:
                 exists = hasattr(importlib.import_module(module), function)

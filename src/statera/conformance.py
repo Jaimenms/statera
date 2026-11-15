@@ -87,10 +87,10 @@ def _missing(u: Unit, relative: str, label: str) -> list[str]:
 
 
 def _executable_process(u: Unit) -> list[str]:
-    if missing := _missing(u, "2-design/processes/to-be.yaml", "executable process"):
+    if missing := _missing(u, "2-design/process.yaml", "executable process"):
         return missing
-    if not u.to_be_process.with_suffix(".bpmn").exists():
-        return ["to-be.bpmn not generated (statera bpmn)"]
+    if not u.process.with_suffix(".bpmn").exists():
+        return ["process.bpmn not generated (statera bpmn)"]
     return []
 
 

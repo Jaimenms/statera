@@ -7,7 +7,7 @@ and of the five stars of open data). They are cumulative and checked **without d
 |---|---|---|
 | **1 — Catalogued** | `product.odps.yaml`, `classification.yaml`, `owners.yaml`; each output port with a contract in the profile (urn, consistent classification) and approved; dissemination product: where the public accesses it (`series.yaml` or declared `distributions`). A contract may declare `manualProduction` instead of the dbt node | Joining the federated catalog; answering "what exists and who is responsible" |
 | **2 — Reproducible** | `calendar.yaml` (cut-off dates); `series.yaml`; each output built by a dbt model in the repository; at least one catalogued recurring query | Reproducing any published number |
-| **3 — Controlled** | Business rule with cases in the product or in an internal product it depends on; controls; outputs that pass the publication gate; executable to-be process and generated BPMN; lineage of every output back to a bronze source | Stopping errors before publication |
+| **3 — Controlled** | Business rule with cases in the product or in an internal product it depends on; controls; outputs that pass the publication gate; executable process (`2-design/process.yaml`) and generated BPMN; lineage of every output back to a bronze source | Stopping errors before publication |
 | **4 — Evaluated** | `indicators.yaml` with valid calculations and action plan; `legacyParity` `done` or `not-applicable` | Measurable continuous improvement |
 
 - The product declares its **target** in `product.odps.yaml` (`customProperties`, `conformanceLevel`);

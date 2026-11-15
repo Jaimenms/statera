@@ -27,7 +27,7 @@ flows:
 
 def _setup(project, blocking: bool = False):
     product = project.root / "products/sample"
-    (product / "2-design/processes/to-be.yaml").write_text(PROCESS, encoding="utf-8")
+    (product / "2-design/process.yaml").write_text(PROCESS, encoding="utf-8")
     alert = {"operator": ">=", "value": 0, **({"blocking": True} if blocking else {})}
     indicators = {
         "indicators": [

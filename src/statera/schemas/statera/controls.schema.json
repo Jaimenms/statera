@@ -1,84 +1,150 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:statera:schema:controls:0.1",
-  "title": "Declarative controls of an edition (GSBPM 6.2)",
-  "type": "object",
-  "required": [
-    "controls"
-  ],
-  "additionalProperties": false,
-  "properties": {
-    "controls": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "type",
-          "port"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^CK-[0-9]{2}$"
-          },
-          "name": {
-            "type": "string"
-          },
-          "port": {
-            "type": "string",
-            "pattern": "^[a-z0-9-]+$"
-          },
-          "type": {
-            "enum": [
-              "revision-between-editions",
-              "outlier"
-            ]
-          },
-          "severity": {
-            "enum": [
-              "error",
-              "warning"
-            ]
-          }
-        },
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "type": {
-                  "const": "revision-between-editions"
-                }
-              }
-            },
-            "then": {
-              "required": [
-                "key",
-                "measures",
-                "relative_base",
-                "warning_threshold",
-                "error_threshold"
-              ]
-            }
-          },
-          {
-            "if": {
-              "properties": {
-                "type": {
-                  "const": "outlier"
-                }
-              }
-            },
-            "then": {
-              "required": [
-                "measure",
-                "factor"
-              ]
-            }
-          }
-        ]
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "urn:statera:schema:controls:0.1",
+ "title": "Declarative controls of an edition (GSBPM 6.2)",
+ "type": "object",
+ "required": [
+  "controls"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "controls": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^CK-[0-9]{2}$"
+     },
+     "name": {
+      "type": "string"
+     },
+     "port": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+     },
+     "type": {
+      "enum": [
+       "revision-between-editions",
+       "outlier"
+      ],
+      "description": "statera 0.5 form, an alias of check: revision-between-editions = RevisionBetweenEditions, outlier = Outlier."
+     },
+     "severity": {
+      "enum": [
+       "error",
+       "warning"
+      ]
+     },
+     "check": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9_]*$",
+      "description": "The Check class (statera.extend): the product's (6-analyse/checks.py) or the framework's (RevisionBetweenEditions, Outlier). The other keys are its parameters (ctx.params)."
+     }
+    },
+    "allOf": [
+     {
+      "if": {
+       "required": [
+        "type"
+       ],
+       "properties": {
+        "type": {
+         "const": "revision-between-editions"
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "error_threshold",
+        "key",
+        "measures",
+        "name",
+        "port",
+        "relative_base",
+        "warning_threshold"
+       ]
       }
-    }
+     },
+     {
+      "if": {
+       "required": [
+        "type"
+       ],
+       "properties": {
+        "type": {
+         "const": "outlier"
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "factor",
+        "measure",
+        "name",
+        "port"
+       ]
+      }
+     },
+     {
+      "if": {
+       "required": [
+        "check"
+       ],
+       "properties": {
+        "check": {
+         "const": "RevisionBetweenEditions"
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "port",
+        "key",
+        "measures",
+        "relative_base",
+        "warning_threshold",
+        "error_threshold"
+       ]
+      }
+     },
+     {
+      "if": {
+       "required": [
+        "check"
+       ],
+       "properties": {
+        "check": {
+         "const": "Outlier"
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "port",
+        "measure",
+        "factor"
+       ]
+      }
+     }
+    ],
+    "oneOf": [
+     {
+      "required": [
+       "check"
+      ]
+     },
+     {
+      "required": [
+       "type"
+      ]
+     }
+    ]
+   }
   }
+ }
 }

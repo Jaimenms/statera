@@ -4,7 +4,7 @@
   "title": "Bar — records and value by UF — February 2026 (SYNTHETIC DATA)",
   "description": "Number of records and total and mean value by UF and reference month.",
   "version": "1.0.0",
-  "created": "2026-11-15T11:15:50+00:00",
+  "created": "2026-11-15T11:47:05+00:00",
   "keywords": [
     "monthly",
     "official-release"
@@ -137,8 +137,8 @@
       "path": "bar-2026-02.xlsx",
       "format": "xlsx",
       "mediatype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "bytes": 8050,
-      "hash": "sha256:2db52a1c7cd6e1b84448c30e7d9200ac8e4e522198f512dd5ad36d92985e33d6"
+      "bytes": 8051,
+      "hash": "sha256:e1d00879d20ea949c578224551d574fb5a79115970777cecb8553f3a35d45138"
     },
     {
       "name": "summary",
@@ -154,8 +154,8 @@
     "urn": "org.example.foo-bar.bar",
     "period": "2026-02",
     "cutDate": "2026-03-10",
-    "codeVersion": "6567cb6",
-    "run": "df08c9d0-0c00-4c25-a063-bff5046980ae",
+    "codeVersion": "cbf8f65",
+    "run": "580684fa-c4d7-4b1b-8be7-0b8e09b60ab8",
     "extractions": [
       {
         "source": "foo_records",
@@ -169,7 +169,7 @@
     "cuts": {
       "foo": {
         "cutDate": "2026-03-10",
-        "run": "9316da9b-dddd-4c3d-bad7-684a0b6ba806",
+        "run": "2c283e94-80f1-443f-a6b6-e19be8fb0664",
         "urn": "org.example.foo-bar.foo"
       }
     },

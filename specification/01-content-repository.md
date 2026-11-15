@@ -96,8 +96,11 @@ editions = [                         # in order; each edition first releases the
   { product = "employment-flows", period = "2026-05" },
   { product = "monthly-earnings", period = "2026-03" },
 ]
-synthetic = "products/payroll-events/3-build/synthetic.py:generate"   # hook: file.py:function
 ```
+
+The synthetic data of the demo comes from the products' `SyntheticSource` classes
+(`<product>/3-build/synthetic.py`, run by `statera synthetic`, 05). The `[demo] synthetic =
+"file.py:function"` hook of 0.5 is still accepted in 0.6 when no product has such a class.
 
 Column names belong to the content and may follow the organization's own language and conventions; the
 `[conventions]` section tells the framework which columns play the role of reference period, cut-off date and validity period (09).
@@ -138,13 +141,16 @@ that apply to it.
 | Phase | File | Schema |
 |---|---|---|
 | 1 | `product.odps.yaml`; `classification.yaml`; `owners.yaml`; `calendar.yaml` (dissemination products) | ODPS 1.0 (profile 04); `classification`, `owners`, `calendar` |
-| 2 | `processes/*.yaml` (and the generated `.bpmn`) | `process` (05) |
-| 3 | tests, synthetic data generator | — |
+| 2 | `process.yaml`, the product's single process (and the generated `process.bpmn`); the `processes/` folder of 0.5 fails validation | `process` (05) |
+| 3 | tests; `synthetic.py` with the `SyntheticSource` classes (from 0.6, 05) | — |
 | 4 | `contracts/*.odcs.yaml` (bronze) | ODCS 3.1 (profile 04) |
 | 5 | `contracts/*.odcs.yaml`, `models/` (dbt: `.sql`, or `.py` with pandas; legacy `.sps` or `.R` called by a `.py`), `rules/<RN>/{rule.md,cases.yaml}`, `macros/`, `metrics.yaml` | ODCS; `rule-cases`; `metrics` |
-| 6 | `controls.yaml`, `dbt-tests/*.sql` | `controls` (06) |
+| 6 | `controls.yaml`, `dbt-tests/*.sql`; from 0.6, `checks.py` with the product's `Check` classes and `check-cases/<Check>.yaml` (05) | `controls` (06); check cases (05) |
 | 7 | `series.yaml`, `summary.md.j2` (dissemination); `data/<date>/cut.json`, generated (internal) | `publication-series` (06); cut manifest (09) |
 | 8 | `indicators.yaml` | `indicators` (06) |
+
+In any phase, `tasks.py` holds the product's own `Task` and `Await` classes, the steps its process names that
+the framework does not provide (from 0.6, 05).
 
 Cross-cutting: `governance/` (`roles.yaml`, `shared-owners.yaml`, ADRs, `processes/`),
 `queries/`, `recipes/` (07), `dbt/` and `docs/` (generated documentation), all in `content/`.
@@ -193,7 +199,7 @@ as absence of content at the levels that require it, and shows the reason.
 | File | Dissemination | Internal (source-aligned or aggregate) |
 |---|---|---|
 | `1-specify/calendar.yaml` | cut-off and release dates of each edition | **generated**: the cuts requested by the consumers' calendars, including through other internal products |
-| `2-design/processes/to-be.yaml` | to-be process (execution plan) | same |
+| `2-design/process.yaml` | the product's process (execution plan) | same |
 | `6-analyse/controls.yaml` | controls across editions | controls of the load or of the cut, or `not_applicable` (quality in the contracts) |
 | `7-disseminate/series.yaml` | publication series | **always** `not_applicable`: an internal product is not disseminated |
 | `8-evaluate/indicators.yaml` | quality indicators and action plan | service indicators (delay, completeness) |
@@ -216,7 +222,7 @@ stays where `statera.toml` says.
 
 They are not edited by hand; CI **must** fail if they are out of date:
 `dbt_project.yml`, `dbt/generated/*.yml`, the `calendar.yaml` of internal products,
-`**/2-design/processes/*.bpmn`, `.github/CODEOWNERS` (at the repository root,
+`**/2-design/*.bpmn`, `.github/CODEOWNERS` (at the repository root,
 `[project] repository_root`). The documentation in `content/docs/` is also generated
 (`statera docs`); `statera sync` regenerates the rest.
 

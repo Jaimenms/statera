@@ -1,6 +1,6 @@
 """Framework tests: independent of any real content repository.
 
-The minimal project below has a product with a to-be process that exercises the executor:
+The minimal project below has a product with a process that exercises the executor:
 automatic task, gateway with conditions, exception path, human task, rejection and
 semi-automatic task. And a small mesh of products: the internal source product `base-data`
 releases cuts, and the dissemination product `consumer` waits for the cut in an intermediate event.
@@ -136,7 +136,7 @@ def minimal_project(tmp_path, monkeypatch):
                 properties:
                   - {name: id, logicalType: string}
         """,
-        "products/base-data/2-design/processes/to-be.yaml": SOURCE_PROCESS,
+        "products/base-data/2-design/process.yaml": SOURCE_PROCESS,
         "products/consumer/1-specify/product.odps.yaml": """
             apiVersion: v1.0.0
             kind: DataProduct
@@ -155,8 +155,8 @@ def minimal_project(tmp_path, monkeypatch):
               - {period: "2026-01", cut_date: "2026-02-20", release: "2026-02-27"}
               - {period: "2026-02", cut_date: "2026-02-20", release: "2026-03-27"}
         """,
-        "products/consumer/2-design/processes/to-be.yaml": CONSUMER_PROCESS,
-        "products/sample/2-design/processes/to-be.yaml": PROCESS,
+        "products/consumer/2-design/process.yaml": CONSUMER_PROCESS,
+        "products/sample/2-design/process.yaml": PROCESS,
     }
     for rel, text in files.items():
         path = root / rel

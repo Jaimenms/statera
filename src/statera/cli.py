@@ -7,7 +7,7 @@ Getting started:
     statera new-product my-statistic
 Day to day:
     statera check                        # what CI runs: validation, lint and fast tests (--all: every test)
-Production (the product's to-be process):
+Production (the product's process):
     statera run --product foo --period 2026-06                    # stops at the 1st human task
     statera run --product foo --period 2026-06 --with-dependencies
     statera run --product bar-events --cut-date 2026-07-20         # internal product: one cut
@@ -23,6 +23,7 @@ Consumption (needs no production tools; reads the shared engine, or --engine loc
     statera metric balance --by region --period 2026-06
     statera recipes test
 Demo:
+    statera synthetic [--product foo] [--fault F]   # the products' synthetic sources
     statera demo                         # from scratch: synthetic data, editions, documentation
 """
 
@@ -153,12 +154,24 @@ def _cmd_cuts(args) -> int:
 
 
 def _cmd_synthetic(args) -> int:
+    from statera.extend import synthetic
+
     p = _project()
-    if not p.demo.get("synthetic"):
-        print("statera.toml does not declare [demo] synthetic", file=sys.stderr)
+    try:
+        generated = synthetic.run(p, product=args.product or None, fault=args.fault, references=args.references)
+    except synthetic.SyntheticError as error:
+        print(f"statera synthetic: {error}", file=sys.stderr)
         return 2
-    counts = p.hook(p.demo["synthetic"])(p, failure=args.failure, references=args.references)
-    print(f"Synthetic sources generated: {counts}" + (f" (injected fault: {args.failure})" if args.failure else ""))
+    for g in generated:
+        if g.product is None:
+            print(
+                f"Note: the [demo] synthetic hook ({g.source}) is deprecated since statera 0.6; write SyntheticSource "
+                "classes in <product>/3-build/synthetic.py",
+                file=sys.stderr,
+            )
+        counts = ", ".join(f"{table}={n}" for table, n in g.counts.items()) or "nothing"
+        where = f"{g.product}/{g.source}" if g.product else g.source
+        print(f"Synthetic source {where}: {counts}" + (f" (injected fault: {g.fault})" if g.fault else ""))
     return 0
 
 
@@ -276,7 +289,7 @@ def _cmd_bpmn(args) -> int:
 
     if args.action == "import":
         if not args.file:
-            print("Give the .bpmn: statera bpmn import <unit>/2-design/processes/<file>.bpmn", file=sys.stderr)
+            print("Give the .bpmn: statera bpmn import <product>/2-design/process.bpmn", file=sys.stderr)
             return 2
         print(f"YAML updated: {processes.import_bpmn(Path(args.file).resolve())}")
         return 0
@@ -562,7 +575,8 @@ def _cmd_demo(args) -> int:
     p = _project()
     _cmd_clean(argparse.Namespace(registry=True))
     _cmd_sync(args)
-    _cmd_synthetic(argparse.Namespace(failure=None, references=False))
+    if code := _cmd_synthetic(argparse.Namespace(product=None, fault=None, references=False)):
+        return code
     for edition in p.demo.get("editions", []):
         print(f"\n[statera] ==== {edition['product']} {edition['period']} ====", flush=True)
         ed = execution.run(edition["product"], edition["period"], approve=True, with_dependencies=True)
@@ -597,7 +611,7 @@ def main(argv: list[str] | None = None) -> int:
         func=_cmd_doctor
     )
 
-    s = sub.add_parser("run", help="runs an edition (or, for an internal product, a cut) through the to-be process")
+    s = sub.add_parser("run", help="runs an edition (or, for an internal product, a cut) through the product's process")
     s.add_argument("--product", dest="product", default=product)
     s.add_argument("--period", dest="period", help="required for a dissemination product")
     s.add_argument(
@@ -640,9 +654,12 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--product", dest="product")
     s.set_defaults(func=_cmd_cuts)
 
-    s = sub.add_parser("synthetic", help="generates the synthetic sources ([demo] synthetic hook)")
+    s = sub.add_parser(
+        "synthetic", help="generates the synthetic sources (SyntheticSource classes), in dependency order"
+    )
+    s.add_argument("--product", dest="product", help="only this product's sources (default: every product)")
     s.add_argument(
-        "--fault", dest="failure", choices=["distribution"], help="injects an error to demonstrate the controls"
+        "--fault", dest="fault", help="injects a fault declared by a source (`faults`), to exercise the checks"
     )
     s.add_argument(
         "--references", dest="references", action="store_true", help="also regenerates the synthetic reference tables"

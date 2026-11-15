@@ -1,6 +1,6 @@
 [project]
 name = "statera"
-version = "0.5.0"
+version = "0.6.0"
 description = "Framework for the statera standard: validation, process-driven execution, documentation, lineage, editions register and query library for statistical products"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

@@ -1,6 +1,6 @@
 # Process in YAML, mirror of the BPMN 2.0, and run plan: `statera run --product foo --cut-date YYYY-MM-DD`.
-id: Process_Foo_ToBe
-name: Foo System extraction (TO-BE)
+id: Process_Foo
+name: Foo System extraction
 
 lanes:
   - {id: Lane_Data, name: Data team (statera run), role: data-team}
@@ -12,18 +12,18 @@ elements:
     name: Extract the increment received since the last load
     lane: Lane_Data
     outputs: [Store_Bronze]
-    statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:statera.collect.step'}
+    statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: Extract}
   - id: Task_Validate
     type: serviceTask
     name: Check the bronze contract at the cut
     lane: Lane_Data
-    statera: {type: automatic, gsbpm: '4.4', durationMin: 1, implementation: 'py:statera.analyse.step'}
+    statera: {type: automatic, gsbpm: '4.4', durationMin: 1, implementation: Gate}
   - {id: Gateway_Ok, type: exclusiveGateway, name: 'Load OK?', lane: Lane_Data}
   - id: Task_MarkCut
     type: serviceTask
     name: Mark the cut and notify consumers
     lane: Lane_Data
-    statera: {type: automatic, gsbpm: '7.3', durationMin: 1, implementation: 'py:statera.disseminate.mark_cut'}
+    statera: {type: automatic, gsbpm: '7.3', durationMin: 1, implementation: MarkCut}
   - id: Task_Investigate
     type: userTask
     name: Investigate the load with the Foo System

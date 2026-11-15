@@ -1,4 +1,4 @@
-"""Phase 6 — Analyse. Process task: `implementation: py:statera.analyse.step`.
+"""Phase 6 — Analyse. Process task: `implementation: Gate` (statera.extend), with `checks: [CK-..]`.
 
 Gathers ALL control results of the edition and decides the status the gateway uses:
   - dbt tests (data, CK-* SQL controls, business rule unit tests), run in the previous task;
@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from statera import contracts, openlineage, ports
-from statera.analyse import controls, verification
+from statera.analyse import verification
 from statera.disseminate import registry
 from statera.edition import Edition, now
 
@@ -56,23 +56,54 @@ def _rows(results: list[verification.Result]) -> list[dict]:
     ]
 
 
-def step(ed: Edition) -> str:
-    """GSBPM 6.2 — validate outputs. Returns 'failed' if any blocking control failed."""
+def _run_checks(ed: Edition, check_ids: list[str] | None) -> tuple[list[verification.Result], dict, list[dict]]:
+    """The checks of the gate (controls.yaml entries, by id; all of them when the process lists none)."""
+    import duckdb
+
+    from statera.extend import registry as extensions
+    from statera.extend.base import CheckContext, CheckResult
+
+    definitions = (ed.unit.read("6-analyse/controls.yaml") or {}).get("controls", [])
+    if check_ids is not None:
+        by_id = {d["id"]: d for d in definitions}
+        definitions = [by_id[i] for i in check_ids if i in by_id]  # unknown ids: validation reports them
+    results, tables, details = [], {}, []
+    for definition in definitions:
+        label = f"{definition['id']} {definition.get('name') or definition.get('check') or definition.get('type')}"
+        try:
+            cls = extensions.check_class(ed.unit, definition)
+            severity = definition.get("severity", cls.severity)
+            context = CheckContext(
+                ed.product, ed.period, definition,
+                current=lambda port: ports.read_port(ed.unit, port),
+                previous=lambda port: registry.previous_table(ed.unit, ed.period, port),
+                period_column=ed.project.conventions["period_column"], log=ed.log,
+            )  # fmt: skip
+            outcome = cls().evaluate(context)
+        except (duckdb.Error, KeyError, extensions.ExtensionError) as error:  # e.g. a table dbt did not build
+            severity, outcome = "error", CheckResult.fail(f"not run: {str(error).splitlines()[0]}")
+        ok = outcome.verdict == "ok"
+        level = "info" if ok else ("warning" if outcome.verdict == "warning" else severity)
+        results.append(verification.Result("control", label, ok, outcome.message, level))
+        details.append({"control": definition["id"], "verdict": outcome.verdict, "severity": level,
+                        "message": outcome.message, "rows": outcome.rows})  # fmt: skip
+        if outcome.table is not None:
+            tables[definition["id"]] = outcome.table
+    return results, tables, details
+
+
+def gate(ed: Edition, check_ids: list[str] | None = None) -> str:
+    """GSBPM 6.2 — validate outputs: contracts, dbt tests and the gate's checks. Returns `failed` when a
+    contract, a dbt test or a check of severity error fails; `warning` when a check warns or one of severity
+    warning fails; `ok` otherwise."""
     scope = contracts_in_scope(ed)
     own_contracts = [c for path, c in contracts.all_(ed.project).values() if ed.project.unit_of(path) == ed.unit]
     ed.ctx["inputs"] = [openlineage.dataset(contracts.physical_table(c)) for c in own_contracts]
 
     checks = verification.check_all(scope, ed.project, ed.cut_date)
     _save(ed, "contracts", _rows(checks))
-    definitions = (ed.unit.read("6-analyse/controls.yaml") or {}).get("controls", [])
-    control_inputs = controls.Inputs(
-        ed.period,
-        current=lambda port: ports.read_port(ed.unit, port),
-        previous=lambda port: registry.previous_table(ed.unit, ed.period, port),
-        period_column=ed.project.conventions["period_column"],
-    )
-    control_results, tables = controls.run(definitions, control_inputs)
-    _save(ed, "controls", _rows(control_results))
+    control_results, tables, details = _run_checks(ed, check_ids)
+    _save(ed, "controls", details)
     dbt_failures = ed.dbt_results.get("failures", [])
     _save(ed, "dbt-tests", [{"failed": f} for f in dbt_failures])
 
@@ -90,4 +121,10 @@ def step(ed: Edition) -> str:
         for b in blockers[:10]:
             ed.log(f"  FAIL {b}")
         return "failed"
-    return "ok"
+    return "warning" if any(not r.ok for r in control_results) else "ok"
+
+
+def step(ed: Edition) -> str:
+    """statera 0.5 form (`py:statera.analyse.step`): the Gate with every control; a warning is `ok`."""
+    outcome = gate(ed)
+    return "ok" if outcome == "warning" else outcome

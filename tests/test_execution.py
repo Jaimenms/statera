@@ -1,4 +1,4 @@
-"""The to-be process is the run plan: executor semantics."""
+"""The product's process is the run plan: executor semantics."""
 
 import pytest
 import testing_steps

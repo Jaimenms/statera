@@ -6,8 +6,9 @@ repository is a direct mirror of the specification: element types use the BPMN 2
 the standard is isolated in the `statera` block. The output is always standard BPMN 2.0 XML, with DI
 (coordinates), which opens in any tool.
 
-    <unit>/2-design/processes/<name>.yaml  --statera bpmn-->         <name>.bpmn (generated, alongside)
-    <unit>/2-design/processes/<name>.bpmn  --statera bpmn import-->  <name>.yaml
+    <unit>/2-design/process.yaml  --statera bpmn-->         process.bpmn (generated, alongside)
+    <unit>/2-design/process.bpmn  --statera bpmn import-->  process.yaml
+    (cross-cutting processes: governance/processes/<name>.yaml)
 
 Flows leaving gateways carry `condition` (ok, failed, approved, rejected...), written to the
 BPMN as conditionExpression: it is what the executor (statera.execution) uses to choose the path.
@@ -35,13 +36,13 @@ from statera.project import STATERA_SCHEMAS, current
 COL, X0, Y0 = 175, 110, 80
 LANE_HEIGHT, LANE_HEIGHT_WITH_DATA = 150, 230
 SIZES = {
-    "task": (140, 80),
+    "task": (100, 80),  # BPMN default size (bpmn.io, Camunda, Miragon lint)
     "event": (36, 36),
     "gateway": (50, 50),
     "dataStoreReference": (50, 50),
     "dataObjectReference": (36, 50),
 }
-ATTRIBUTES = ("type", "gsbpm", "durationMin", "implementation", "models", "exception", "awaits")
+ATTRIBUTES = ("type", "gsbpm", "durationMin", "implementation", "models", "exception", "awaits", "params", "checks")
 Point = tuple[float, float]
 
 
@@ -294,6 +295,9 @@ def _ext_attributes(ext: dict) -> str:
         if key not in ext:
             continue
         value = ext[key]
+        if isinstance(value, dict):  # params: JSON in the attribute
+            parts.append(f' statera:{key}="{escape(json.dumps(value, ensure_ascii=False), {chr(34): "&quot;"})}"')
+            continue
         if isinstance(value, list):
             value = ",".join(value)
         elif isinstance(value, bool):
@@ -471,7 +475,8 @@ def outdated() -> list[Path]:
 
 def bpmn_without_source() -> list[Path]:
     project = current()
-    folders = {u.phase(2) / "processes" for u in project.units} | {project.governance / "processes"}
+    folders = {u.phase(2) for u in project.units} | {u.legacy_processes_folder for u in project.units}
+    folders |= {project.governance / "processes"}
     return [
         b for folder in sorted(folders) for b in sorted(folder.glob("*.bpmn")) if not b.with_suffix(".yaml").exists()
     ]
@@ -490,8 +495,10 @@ def _ext_from_attrs(attrs: dict) -> dict:
         value = attrs[key]
         if key == "durationMin":
             value = float(value) if "." in value else int(value)
-        elif key == "models":
+        elif key in ("models", "checks"):
             value = [m for m in value.split(",") if m]
+        elif key == "params":
+            value = json.loads(value)
         elif key == "exception":
             value = value == "true"
         ext[key] = value

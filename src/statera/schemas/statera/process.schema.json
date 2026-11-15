@@ -144,7 +144,8 @@
               },
               "implementation": {
                 "type": "string",
-                "pattern": "^(py|dbt):.+"
+                "pattern": "^((py|dbt):.+|[A-Z][A-Za-z0-9_]*)$",
+                "description": "The class of the step (statera.extend Task: the product's, in <phase>/tasks.py, or the framework's: Gate, DbtBuild, Extract, Package, Publish, MarkCut, Evaluate). `py:<module>.<function>` (deprecated) and `dbt:build` remain accepted."
               },
               "models": {
                 "type": "array",
@@ -157,8 +158,21 @@
               },
               "awaits": {
                 "type": "string",
-                "pattern": "^py:[A-Za-z_][\\w.]*$",
-                "description": "On an intermediate event: function that tells whether the wait is over (e.g. the cut of the input internal product has been released)."
+                "pattern": "^(py:[A-Za-z_][\\w.]*|[A-Z][A-Za-z0-9_]*)$",
+                "description": "On an intermediate event: the Await class that says whether the wait is over (the framework's PinCut: the cut of the input internal products, 09). `py:<module>.<function>` (deprecated) remains accepted."
+              },
+              "params": {
+                "type": "object",
+                "description": "Parameters given to the step's class (ctx.params)."
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^CK-[0-9]{2}$"
+                },
+                "uniqueItems": true,
+                "description": "On a gate: the controls (ids in 6-analyse/controls.yaml) it runs; all of them when omitted."
               }
             }
           }

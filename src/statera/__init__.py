@@ -13,8 +13,8 @@ Package layout by GSBPM 5.1 phase:
     disseminate/  edition package, Data Package, editions register (phase 7, Disseminate)
     evaluate/     declarative quality indicators (phase 8, Evaluate)
     consume/      query library, metrics, recurring queries, recipes
-    execution.py  runs the product's to-be process, task by task
+    execution.py  runs the product's process, task by task
 """
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 SPECIFICATION = "0.1"

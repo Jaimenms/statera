@@ -11,7 +11,7 @@ Organization: Foo Bar (minimal example) · namespace `org.example.foo-bar` · st
 |---|---|
 | [Catalog](catalog.md) | Units by the 5 catalog axes, assets by layer, ODCS contracts |
 | [Lineage](lineage.md) | All products together and one page per product; impact of a change, by product |
-| [Processes](processes.md) | As-is and to-be BPMN with GSBPM; the to-be is the execution plan |
+| [Processes](processes.md) | Each product's process, BPMN with GSBPM; it is also the execution plan |
 | [Rules](rules.md) | Business rules with executable cases, by unit |
 | [Series](series.md) | What each edition publishes and where editions are recorded |
 | [Queries](queries.md) | Cataloged, parameterized and tested recurring queries |
@@ -21,4 +21,4 @@ Organization: Foo Bar (minimal example) · namespace `org.example.foo-bar` · st
 
 Only what changes when the repository changes goes here. What changes with each edition (published editions, revisions, lineage per version, observed duration) is on the series page in the editions register.
 
-Validation status at generation time: **67 checks ok, 0 failures** (`statera validate`).
+Validation status at generation time: **70 checks ok, 0 failures** (`statera validate`).

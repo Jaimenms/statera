@@ -524,9 +524,9 @@ def generate_processes(project: Project) -> list[Path]:
         "# Processes (BPMN 2.0 annotated with GSBPM)",
         "",
         _notice(project),
-        "The source of each process is a **YAML mirror of BPMN 2.0** in `<unit>/2-design/processes/`. "
+        "Each product has **one process**, a **YAML mirror of BPMN 2.0** in `<product>/2-design/process.yaml`. "
         "`statera bpmn` generates the standard `.bpmn` (Camunda Modeler, bpmn.io, VS Code extension) and the "
-        "images below. The to-be process is also the **execution plan**: `statera run` walks the flows, "
+        "images below. The process is also the **execution plan**: `statera run` walks the flows, "
         "runs the automatic tasks and stops at the human ones.",
         "",
     ]
@@ -545,13 +545,12 @@ def generate_processes(project: Project) -> list[Path]:
             ]
         )
     parts += [
-        "## Effort per edition compared",
+        "## Effort per edition",
         "",
         _table(["Process", "Tasks", "Manual", "Semi-automatic", "Automatic", "Total"], summaries),
         "",
-        "Modeled durations (`statera:durationMin`), on the normal path, without exception tasks. In the "
-        "as-is, they are **assumptions to be confirmed in the assessment**. The observed duration is on the "
-        "series page in the editions register.",
+        "Modeled durations (`statera:durationMin`), on the normal path, without exception tasks. The observed "
+        "duration is on the series page in the editions register.",
         "",
     ]
     for p in processes:
@@ -828,13 +827,15 @@ def generate_conformance(project: Project) -> Path:
 
 def _section_revisions(unit: Unit, dps: list[dict]) -> list[str]:
     from statera.analyse import controls
+    from statera.extend.framework import CONTROL_TYPES
 
     main = registry.series_config(unit)["main_resource"]
     definition = next(
         (
             c
             for c in (unit.read("6-analyse/controls.yaml") or {}).get("controls", [])
-            if c["type"] == "revision-between-editions" and c["port"] == main
+            if (c.get("check") or CONTROL_TYPES.get(c.get("type", ""))) == "RevisionBetweenEditions"
+            and c.get("port") == main
         ),
         None,
     )
@@ -981,7 +982,7 @@ def generate_index(project: Project) -> Path:
     pages = [
         ["[Catalog](catalog.md)", "Units by the 5 catalog axes, assets by layer, ODCS contracts"],
         ["[Lineage](lineage.md)", "All products together and one page per product; impact of a change, by product"],
-        ["[Processes](processes.md)", "As-is and to-be BPMN with GSBPM; the to-be is the execution plan"],
+        ["[Processes](processes.md)", "Each product's process, BPMN with GSBPM; it is also the execution plan"],
         ["[Rules](rules.md)", "Business rules with executable cases, by unit"],
         ["[Series](series.md)", "What each edition publishes and where editions are recorded"],
         ["[Queries](queries.md)", "Cataloged, parameterized and tested recurring queries"],

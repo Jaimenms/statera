@@ -82,10 +82,11 @@ content/
   statera.toml          repository configuration (engine, column conventions, register, required version)
   products/<product>/   one folder per statistic, organized by GSBPM phase:
     1-specify/          ODCS contract, ODPS product, classification, owners, calendar
-    2-design/           process (YAML mirror of the BPMN)
+    2-design/           process.yaml: the product's process (YAML mirror of the BPMN), also the run plan
+    3-build/            tests; synthetic.py (SyntheticSource classes) for tests and demos
     4-collect/          extraction from the sources
     5-process/          dbt models (SQL or Python), rules with test cases, metrics
-    6-analyse/          controls and statistical disclosure control
+    6-analyse/          controls, the product's checks (checks.py, check-cases/) and disclosure control
     7-disseminate/      published series
     8-evaluate/         quality indicators
   references/           shared reference tables (classifications, territories…)

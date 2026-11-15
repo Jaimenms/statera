@@ -1,6 +1,6 @@
 # Register of published editions — Foo Bar (minimal example)
 
-This repository is written **by the production process** (publication task of the to-be process,
+This repository is written **by the production process** (publication task of the product's process,
 run by `statera`), by automatic commit, for each published edition. Do not edit it by hand. The
 code, the contracts and the design of the series live in the content repository (`content`);
 only the history of editions lives here:
