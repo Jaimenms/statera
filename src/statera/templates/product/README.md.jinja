@@ -19,7 +19,6 @@ shows what is missing for level 1 (catalogued). To move up a level, see the spec
 | `6-analyse/` | Controls (`controls.yaml`, `dbt-tests/`); the product's own `Check` classes in `checks.py`, each with its cases in `check-cases/<Check>.yaml` |
 | `7-disseminate/` | Publication series and summary template |
 | `8-evaluate/` | Quality indicators and action plan |
-| `queries/` | The product's recurring queries |
 {%- elif alignment == 'aggregate' %}
 | `1-specify/` | ODPS descriptor (with `authorizedConsumers`), approved classification, owners |
 | `2-design/process.yaml` | Process: waits for the source cuts (`PinCut`), transforms (`DbtBuild`), validates (`Gate`) and releases the cut (`MarkCut`) |

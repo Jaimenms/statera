@@ -1,7 +1,7 @@
 """Catalog of recurring queries (call for proposals, item 13), parameterized and tested.
 
 A query is a folder in `queries/<theme>/<slug>/` (cross-cutting) or in
-`products/<p>/queries/<slug>/` (product-specific), with:
+(statera 0.7: there are no queries inside products; the `product` axis says which one a query serves), with:
 
     query.yaml       metadata: the five axes, parameters, rules, limitations,
                         output classification, owner, status, version
@@ -41,6 +41,17 @@ VALIDATORS = {
     "integer": re.compile(r"^-?\d+$"),
     "short-text": re.compile(r"^[\w\s.,-]{1,60}$"),
     "cut": re.compile(r"^(latest|\d{4}-\d{2}-\d{2})$"),  # cut-off date, or "latest" (the last released)
+}
+
+
+FORMATS = {
+    "period": "YYYY-MM (reference period, e.g. 2026-06)",
+    "date": "YYYY-MM-DD",
+    "cut": "YYYY-MM-DD cut-off date, or latest (the last released cut)",
+    "ibge-code": "7-digit IBGE code (e.g. 3550308)",
+    "uf": "2-letter UF code, uppercase (e.g. SP)",
+    "integer": "integer",
+    "short-text": "short text (letters, digits, spaces and . , -; up to 60 characters)",
 }
 
 
@@ -98,19 +109,19 @@ def validate_parameters(query: Query, values: dict) -> dict:
     """Final parameter values, validated by the declared type."""
     declared_params = {p["name"]: p for p in query.meta.get("parameters", [])}
     if extras := set(values) - set(declared_params):
-        raise QueryError(f"Undeclared parameters: {sorted(extras)}")
+        raise QueryError(f"Undeclared parameters: {sorted(extras)} (statera query show {query.id} --help)")
     final = {}
     for name, p in declared_params.items():
         value = values.get(name, p.get("default"))
         if value is None:
             if p.get("required"):
-                raise QueryError(f"Missing required parameter: {name}")
+                raise QueryError(f"Missing required parameter: {name} (statera query show {query.id} --help)")
             continue
         value = str(value)
         if p["type"] == "date":
             date.fromisoformat(value)
         elif not VALIDATORS[p["type"]].match(value):
-            raise QueryError(f"Parameter {name}={value!r} is not of type {p['type']}")
+            raise QueryError(f"Parameter {name}={value!r} is not of type {p['type']}: {FORMATS[p['type']]}")
         final[name] = value
     return final
 
@@ -139,6 +150,66 @@ def apply_control(df: pd.DataFrame, control: dict | None) -> tuple[pd.DataFrame,
     return result.data, result.suppressed_cells
 
 
+def describe(identifier: str, project: Project | None = None) -> str:
+    """What someone needs to run a query: what it answers, its parameters (type, format, required or default),
+    limitations, output classification and a command to copy."""
+    query = get(identifier, project)
+    meta = query.meta
+    lines = [f"{query.id} — {query.title}", ""]
+    if description := (meta.get("description") or "").strip():
+        lines += [description, ""]
+    parameters = meta.get("parameters", [])
+    lines.append("Parameters (--param name=value):" if parameters else "Parameters: none")
+    width = max((len(p["name"]) for p in parameters), default=0)
+    for p in parameters:
+        need = "required" if p.get("required") else f"default {p['default']}" if "default" in p else "optional"
+        text = f" — {p['description']}" if p.get("description") else ""
+        lines.append(f"  {p['name']:<{width}}  {p['type']}: {FORMATS.get(p['type'], p['type'])}; {need}{text}")
+    example = " ".join(
+        f"--param {p['name']}={p.get('default') or _EXAMPLES.get(p['type'], '...')}"
+        for p in parameters
+        if p.get("required") or "default" in p
+    )
+    if limitations := (meta.get("limitations") or "").strip():
+        lines += ["", f"Limitations: {limitations}"]
+    out = meta.get("output_classification") or {}
+    if out:
+        shown = " · ".join(f"{k} {v}" for k, v in out.items() if k != "disclosureControl")
+        control = " · with disclosure control" if out.get("disclosureControl") else ""
+        lines.append(f"Output: {shown}{control}")
+    lines.append(
+        f"Owner: {meta.get('owner', '—')} · product: {meta.get('product', '—')} · status: {meta.get('status', '—')} "
+        f"· version: {meta.get('version', '—')}"
+    )
+    command = " ".join(part for part in (query.id, example) if part)
+    lines += [
+        "",
+        "Examples:",
+        f"  statera query show {command}     # the plain SQL",
+        f"  statera query run {command} --output result/",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+_EXAMPLES = {"period": "2026-06", "date": "2026-06-30", "cut": "latest", "ibge-code": "3550308", "uf": "SP",
+             "integer": "1", "short-text": "text"}  # fmt: skip
+
+
+def compiled_sql(identifier: str, values: dict | None = None, project: Project | None = None) -> str:
+    """The SQL that `run` executes, with ref() resolved to the engine's tables and var() to the parameters
+    (validated by type; defaults where not given): plain SQL to read, copy or run in another tool."""
+    project = project or current()
+    query = get(identifier, project)
+    parameters = validate_parameters(query, values or {})
+    return _compiled(query, parameters, project)
+
+
+def _compiled(query: Query, parameters: dict, project: Project) -> str:
+    sql = render(query, parameters, dbt.relations(project)).strip()
+    shown = ", ".join(f"{k}={v}" for k, v in parameters.items()) or "none"
+    return f"-- {query.id} {query.meta.get('version', '')} · parameters: {shown}\n{sql}\n"
+
+
 def run(
     identifier: str,
     values: dict | None = None,
@@ -151,7 +222,7 @@ def run(
     project = project or current()
     query = get(identifier, project)
     parameters = validate_parameters(query, values or {})
-    sql = render(query, parameters, dbt.relations(project))
+    sql = _compiled(query, parameters, project)
     df = connection.fetch(sql, project=project, engine=engine)
     df, suppressed = apply_control(df, query.meta["output_classification"].get("disclosureControl"))
     provenance = {
@@ -166,6 +237,7 @@ def run(
     df.attrs["provenance"] = provenance
     if output:
         _save(df, query, provenance, output)
+        (Path(output) / "query.sql").write_text(sql, encoding="utf-8")  # exactly what ran
     return df
 
 

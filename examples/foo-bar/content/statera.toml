@@ -8,7 +8,7 @@ organization = "Foo Bar (minimal example)"
 acronym = "foo-bar"
 namespace = "org.example.foo-bar"
 specification = "0.1"
-required_version = "~=0.6.0"         # Statera versions this repository accepts
+required_version = "~=0.7.0"         # Statera versions this repository accepts
 repository_root = ".."             # repository root (where .github/, publications/, docs/ live)
 synthetic = true
 

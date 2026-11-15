@@ -110,7 +110,7 @@ produced. Read from a shared engine, the cut **must** be given explicitly.
 ## Recurring queries
 
 ```
-queries/<theme>/<slug>/  or  products/<p>/queries/<slug>/
+queries/<theme>/<slug>/
 ├── query.yaml        schema `query`: id in the namespace, the five catalog axes (theme, product,
 │                     bases, frequency, purpose), typed parameters, rules, limitations,
 │                     output classification (with disclosure control), owner, status, version
@@ -118,6 +118,17 @@ queries/<theme>/<slug>/  or  products/<p>/queries/<slug>/
 └── test.yaml         schema `query-test`: synthetic inputs per ref, parameters, expected output
 ```
 
+- Every recurring query lives in `queries/<theme>/<slug>/`, including the ones that serve a single
+  product: the `product` axis says which (the lineage and the documentation group it with that product;
+  `governance/shared-owners.yaml` may give its review to the product's team). Since 0.7 a
+  `products/<p>/queries/` folder fails validation.
+- `statera query show|run <id> --help` explains one query: what it answers, each parameter (type, format,
+  required or default), limitations, output classification and commands to copy (Python:
+  `statera.consume.queries.describe`). A missing or undeclared parameter points to it.
+- `statera query show <id> [--param name=value]` prints the plain SQL that `statera query run` executes:
+  `ref()` resolved to the engine's tables and `var()` to the validated parameters (defaults where not
+  given), with a header line naming the query, its version and the parameters; `run --output` saves it
+  as `query.sql` next to the result (Python: `statera.consume.queries.compiled_sql`).
 - Parameter types: `period`, `date`, `cut`, `ibge-code`, `uf`, `integer`, `short-text`. Values
   are validated by type **before** reaching the SQL; an undeclared parameter is rejected.
 - Queries only read silver, gold and ref (never bronze or staging).

@@ -305,7 +305,12 @@ class Project:
         return self.root / "recipes"
 
     def query_folders(self) -> list[Path]:
-        return [self.root / "queries", *(p.folder / "queries" for p in self.products())]
+        """`queries/`: every recurring query, by theme; the product it serves is its `product` axis."""
+        return [self.root / "queries"]
+
+    def legacy_query_folders(self) -> list[Path]:
+        """`products/<p>/queries/` of statera 0.6 and earlier: no longer read (validation says how to move)."""
+        return [p.folder / "queries" for p in self.products() if (p.folder / "queries").is_dir()]
 
     def processes(self) -> list[Path]:
         cross_cutting = sorted((self.governance / "processes").glob("*.yaml"))

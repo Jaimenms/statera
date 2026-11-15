@@ -83,9 +83,9 @@ def readable(minimal_project, monkeypatch):
             properties: [{name: uf, logicalType: string}]
         """,
     )
-    _write(root / "products/sample/queries/by-uf/query.yaml", QUERY)
+    _write(root / "queries/test/by-uf/query.yaml", QUERY)
     _write(
-        root / "products/sample/queries/by-uf/by_uf.sql",
+        root / "queries/test/by-uf/by_uf.sql",
         "select period, value from {{ ref('sample_by_uf') }} where uf = '{{ var(\"uf\") }}' order by period",
     )
     _write(root / "products/sample/5-process/metrics.yaml", METRICS)
@@ -393,3 +393,28 @@ def test_validation_checks_the_declared_connectors(readable):
         "connector gone: 'nope.py:connect' is not an existing 'file.py:function'": False,
         "reader s3: connectors/ok.py has no function read": False,
     }
+
+
+def test_the_compiled_sql_is_what_runs(readable, tmp_path):
+    sql = queries.compiled_sql("by-uf", {"uf": "SP"}, project=readable)
+    assert "{{" not in sql and "ref(" not in sql and "'SP'" in sql
+    assert sql.splitlines()[0].startswith("-- ") and "uf=SP" in sql.splitlines()[0]
+    with pytest.raises(queries.QueryError, match="not of type"):
+        queries.compiled_sql("by-uf", {"uf": "S'P"}, project=readable)  # validated before reaching the SQL
+    _warehouse(readable.warehouse)
+    queries.run("by-uf", {"uf": "SP"}, output=tmp_path / "out", project=readable)
+    assert (tmp_path / "out" / "query.sql").read_text(encoding="utf-8") == sql
+
+
+def test_a_query_explains_its_parameters(readable, capsys):
+    from statera import cli
+
+    text = queries.describe("by-uf", project=readable)
+    assert "Parameters (--param name=value):" in text and "uf: 2-letter UF code" in text and "required" in text
+    assert "statera query run org.example.query.by-uf --param uf=SP --output result/" in text
+    for action in ("show", "run"):
+        assert cli.main(["query", action, "by-uf", "--help"]) == 0
+        assert "2-letter UF code" in capsys.readouterr().out
+    assert cli.main(["query", "show", "nonexistent", "-h"]) == 2
+    with pytest.raises(queries.QueryError, match="statera query show org.example.query.by-uf --help"):
+        queries.compiled_sql("by-uf", {}, project=readable)

@@ -8,7 +8,7 @@ models in the units:
     products/<consumer>/5-process/models/   intermediate and marts (gold)
     products/<p>/6-analyse/dbt-tests/       SQL controls of the edition (singular tests)
     references/<r>/                         seeds (ref)
-    queries/, products/<p>/queries/         dbt analyses (recurring queries)
+    queries/                               dbt analyses (recurring queries)
 
 GENERATED files (CI checks that they are up to date):
     dbt_project.yml                  at the root: unit paths and medallion conventions

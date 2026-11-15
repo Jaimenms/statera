@@ -18,8 +18,7 @@ test-paths: []
 macro-paths:
 - dbt/macros
 analysis-paths:
-- products/bar/queries
-- products/baz/queries
+- queries
 docs-paths:
 - dbt/docs
 target-path: target

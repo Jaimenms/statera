@@ -120,6 +120,21 @@ def _targets(project: Project) -> list[tuple[Path, str]]:
     return targets
 
 
+def check_query_location(project: Project) -> list[Finding]:
+    """statera 0.7: every recurring query lives in queries/<theme>/<slug>/ (none inside a product)."""
+    findings = []
+    for folder in project.legacy_query_folders():
+        for query in sorted(folder.glob("*/query.yaml")):
+            theme = (read_yaml(query) or {}).get("theme", "<theme>")
+            findings.append(Finding(
+                "consumption", False,
+                f"{project.rel(query.parent)}: queries no longer live inside products; move it to "
+                f"queries/{theme}/{query.parent.name}/ (its `product` axis keeps saying which product it serves)",
+                1,
+            ))  # fmt: skip
+    return findings
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -918,6 +933,7 @@ def collect_findings(generate_manifest: bool = True, level: int | None = None) -
         lambda: check_python_rules(project),
         lambda: check_check_cases(project),
         lambda: check_consumer(project, m),
+        lambda: check_query_location(project),
         lambda: check_classification(project, m),
         lambda: check_access(project, m),
         lambda: check_processes(project, m),

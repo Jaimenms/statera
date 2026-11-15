@@ -101,3 +101,23 @@ def test_dbt_project_tags_and_colors_each_product(minimal_project):
     assert config["+tags"] == ["product:consumer", "alignment:consumer"]
     assert config["+docs"]["node_color"] == minimal_project.product_colors()["consumer"]
     assert len(set(minimal_project.product_colors().values())) == len(minimal_project.products())
+
+
+def test_a_query_is_grouped_with_the_product_its_axis_names(minimal_project):
+    folder = minimal_project.root / "queries/theme/by-consumer"
+    folder.mkdir(parents=True)
+    (folder / "query.yaml").write_text("product: consumer\n", encoding="utf-8")
+    manifest = _manifest()
+    manifest["nodes"]["analysis.p.cross_query"]["original_file_path"] = "queries/theme/by-consumer/q.sql"
+    g = lineage.build(manifest)
+    assert g.nodes["analysis.p.cross_query"].group == "product:consumer"
+
+
+def test_queries_inside_a_product_fail_validation(minimal_project):
+    from statera import validation
+
+    folder = minimal_project.root / "products/sample/queries/old"
+    folder.mkdir(parents=True)
+    (folder / "query.yaml").write_text("theme: work\n", encoding="utf-8")
+    [finding] = validation.check_query_location(minimal_project)
+    assert not finding.ok and "move it to queries/work/old/" in finding.message

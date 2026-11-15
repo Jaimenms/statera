@@ -404,6 +404,9 @@ def _cmd_query(args) -> int:
             print(f"FAIL {f}")
         print(f"{len(targets)} query(ies) tested, {len(failures)} failure(s)")
         return 1 if failures else 0
+    if args.action == "show":
+        print(queries.compiled_sql(args.id, _pairs(args.param)), end="")
+        return 0
     df = queries.run(args.id, _pairs(args.param), Path(args.output) if args.output else None, engine=args.engine)
     print(df.to_string(index=False))
     print(f"\nprovenance: {df.attrs['provenance']}")
@@ -595,6 +598,17 @@ def main(argv: list[str] | None = None) -> int:
         if handed_off is not None:
             return handed_off
 
+    raw = sys.argv[1:] if argv is None else argv
+    if _query_help_requested(raw):  # `statera query run|show|test <id> --help`: the query's own help
+        from statera.consume import queries
+
+        try:
+            print(queries.describe(raw[2]), end="")
+        except queries.QueryError as error:
+            print(error, file=sys.stderr)
+            return 2
+        return 0
+
     p = argparse.ArgumentParser(
         prog="statera", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -719,7 +733,10 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(func=_cmd_docs)
 
     s = sub.add_parser("query", help="cataloged recurring queries")
-    s.add_argument("action", choices=["list", "run", "test"])
+    s.add_argument(
+        "action", choices=["list", "show", "run", "test"],
+        help="show: the SQL that run executes; `statera query show <id> --help` explains the query's parameters",
+    )  # fmt: skip
     s.add_argument("id", nargs="?")
     s.add_argument("--param", action="append", help="name=value (repeatable)")
     s.add_argument("--output", dest="output", help="folder for result.csv and the provenance datapackage.json")
@@ -784,7 +801,7 @@ def main(argv: list[str] | None = None) -> int:
         p.error("give --product")
     if args.command == "resume" and not (args.period or args.cut_date):
         p.error("give --period (or --cut-date, for an internal product)")
-    if args.command == "query" and args.action == "run" and not args.id:
+    if args.command == "query" and args.action in ("run", "show") and not args.id:
         p.error("give the query id")
     if args.command == "status" and (args.period or args.cut_date) and not args.product:
         p.error("give --product with --period or --cut-date")
@@ -830,6 +847,16 @@ def _expected_errors() -> tuple[type[Exception], ...]:
         AccessDenied,
         CutNotAvailable,
         ProductionToolsMissing,
+    )
+
+
+def _query_help_requested(argv: list[str]) -> bool:
+    return (
+        len(argv) >= 4
+        and argv[0] == "query"
+        and argv[1] in ("run", "show", "test")
+        and not argv[2].startswith("-")
+        and any(a in ("-h", "--help") for a in argv[3:])
     )
 
 

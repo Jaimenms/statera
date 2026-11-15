@@ -9,6 +9,9 @@
 /content/dbt/                                                @org-example/data-team
 /content/dbt_project.yml                                     @org-example/data-team
 /content/governance/                                         @org-example/curation
+/content/queries/                                            @org-example/curation
+/content/queries/foo/uf-series/                              @org-example/bar-team
+/content/queries/foo/mean-value-by-uf/                       @org-example/bar-team
 
 # --- products/bar/1-specify/owners.yaml
 /content/products/bar/                                       @org-example/bar-team

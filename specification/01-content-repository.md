@@ -123,7 +123,7 @@ hyphens) and forms part of the identifier (02). A product declares, in `product.
 
 | Type | Folder | Recognized by | Typical phases |
 |---|---|---|---|
-| Dissemination product (`alignment: consumer`) | `products/<name>/` | `1-specify/product.odps.yaml` | 1 to 8, plus `queries/` |
+| Dissemination product (`alignment: consumer`) | `products/<name>/` | `1-specify/product.odps.yaml` | 1 to 8 (its recurring queries live in `queries/`, with `product` naming it, 07) |
 | Source-aligned internal product (`alignment: source`) | `products/<name>/` | same | 1, 2, 3, 4 (bronze in batches), 5 (staging), 7 (cuts) |
 | Aggregate internal product (`alignment: aggregate`) | `products/<name>/` | same | 1, 2, 5 (silver per cut, rules), 6, 7 (cuts) |
 | Reference table | `references/<name>/` | a `*.odcs.yaml` in the folder | — (CSV + contract with temporality, 09) |

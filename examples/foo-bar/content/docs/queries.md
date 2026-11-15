@@ -9,12 +9,12 @@ Queries that recur, standardized, parameterized, tested and organized by the fiv
 
 | Query | Theme | Product | Bases | Frequency | Purpose | Status |
 |---|---|---|---|---|---|---|
-| [Mean value series for a UF](../products/baz/queries/mean-value-by-uf/query.yaml) | foo | baz | gold.baz_uf_monthly | on-demand | on-request | cataloged |
-| [Series of records and value for a UF](../products/bar/queries/uf-series/query.yaml) | foo | bar | gold.bar_uf_monthly | on-demand | on-request | cataloged |
+| [Mean value series for a UF](../queries/foo/mean-value-by-uf/query.yaml) | foo | baz | gold.baz_uf_monthly | on-demand | on-request | cataloged |
+| [Series of records and value for a UF](../queries/foo/uf-series/query.yaml) | foo | bar | gold.bar_uf_monthly | on-demand | on-request | cataloged |
 
 ## Mean value series for a UF
 
-`org.example.foo-bar.query.mean-value-by-uf` · version 0.1.0 · owner `bar-team` · [SQL](../products/baz/queries/mean-value-by-uf/mean_value_by_uf.sql)
+`org.example.foo-bar.query.mean-value-by-uf` · version 0.1.0 · owner `bar-team` · [SQL](../queries/foo/mean-value-by-uf/mean_value_by_uf.sql)
 
 Monthly mean value series for a UF, from the baz release table.
 
@@ -28,7 +28,7 @@ Monthly mean value series for a UF, from the baz release table.
 
 ## Series of records and value for a UF
 
-`org.example.foo-bar.query.uf-series` · version 0.1.0 · owner `bar-team` · [SQL](../products/bar/queries/uf-series/uf_series.sql)
+`org.example.foo-bar.query.uf-series` · version 0.1.0 · owner `bar-team` · [SQL](../queries/foo/uf-series/uf_series.sql)
 
 Monthly series of records and total value for a UF, from the release table.
 

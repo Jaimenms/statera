@@ -19,6 +19,8 @@ You do not need the production tools (dbt, legacy-code readers): only [uv](https
 uv sync                                  # installs only what reading needs
 uv run statera doctor                    # says where the data comes from (or whom to ask)
 uv run statera query list                # cataloged queries
+uv run statera query show <id> --help                    # what the query answers and its parameters
+uv run statera query show <id> --param uf=SP           # the plain SQL it runs (no {% raw %}{{ }}{% endraw %})
 uv run statera query run <id> --param uf=SP --output result/
 ```
 

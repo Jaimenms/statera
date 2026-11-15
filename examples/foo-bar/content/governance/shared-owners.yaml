@@ -1,4 +1,4 @@
-# Owners of what does not belong to a product: reference tables, dbt project, governance.
+# Owners of what does not belong to a product: reference tables, queries, dbt project, governance.
 scope: shared
 curator: curation
 technical_owner: data-team
@@ -10,3 +10,7 @@ paths:
   - {pattern: /dbt/, roles: [data-team]}
   - {pattern: /dbt_project.yml, roles: [data-team]}
   - {pattern: /governance/, roles: [curation]}
+  - {pattern: /queries/, roles: [curation]}
+  # queries that serve a single product: reviewed by its team (the last matching pattern wins in CODEOWNERS)
+  - {pattern: /queries/foo/uf-series/, roles: [bar-team]}
+  - {pattern: /queries/foo/mean-value-by-uf/, roles: [bar-team]}

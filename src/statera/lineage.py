@@ -21,7 +21,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from statera import classification, contracts
-from statera.project import current
+from statera.project import current, read_yaml
 
 LAYER_ORDER = ["source", "bronze", "ref", "silver", "gold", "consumer"]
 LAYER_LABEL = {
@@ -170,6 +170,12 @@ def _assign_units(g: Graph, manifest: dict) -> None:
         path = (entries.get(uid) or {}).get("original_file_path")
         if path and (unit := project.unit_of(project.root / path)):
             node.unit, node.unit_kind = unit.name, unit.kind
+        elif path and node.kind == "query":  # queries/<theme>/<slug>/: the product it serves is its axis
+            meta = project.root / path
+            query = read_yaml(meta.parent / "query.yaml") if (meta.parent / "query.yaml").exists() else {}
+            product = (query or {}).get("product")
+            if product and any(u.name == product for u in project.products()):
+                node.unit, node.unit_kind = product, "product"
 
 
 def build(manifest: dict | None = None) -> Graph:
