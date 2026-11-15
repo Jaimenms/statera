@@ -2,5 +2,9 @@
   // dbt Power User treats every dbt_project.yml in the workspace as a project to parse. The one in
   // src/statera/dbt/ is the framework's dbt PACKAGE (macros only: no profile, no models), which dbt cannot
   // parse on its own ("dbt configuration is invalid"). The only real dbt project here is the example's.
-  "dbt.allowListFolders": ["examples/foo-bar/content"]
+  "dbt.allowListFolders": ["examples/foo-bar/content"],
+  // dbt is not installed globally: it lives in the development environment (`uv sync`). Without this,
+  // dbt Power User looks in whatever interpreter the Python extension selected and, when that is not this
+  // .venv, marks dbt_project.yml with "dbt not found". On Windows the path is .venv/Scripts/python.exe.
+  "dbt.dbtPythonPathOverride": "${workspaceFolder}/.venv/bin/python"
 }
