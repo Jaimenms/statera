@@ -28,18 +28,50 @@ REPOSITORY      <org>/publications/          register of published editions
 ## Installing
 
 Requires [uv](https://docs.astral.sh/uv/) and read access to this repository. Works the same on Windows,
-Linux and Mac.
+Linux and Mac. What you install depends on what you do:
+
+| You… | Install | Gets you |
+|---|---|---|
+| only **read** the data (analysts, other teams) | `statera` | catalog, queries, metrics, recipes, published editions |
+| **produce** it (the data team) | `statera[produce]` | dbt (the process) and Copier (`init`, `new-product`) |
+| keep products with legacy **R** code | `statera[legacy-r]` | reading and writing `.rds` (R itself is installed apart) |
+| keep products with legacy **SPSS** code | `statera[legacy-spss]` | reading and writing `.sav` (GNU PSPP is installed apart) |
+| read a shared PostgreSQL or Trino engine | `statera[postgres]`, `statera[trino]` | the Ibis backend |
+
+In a data repository you rarely choose: its `pyproject.toml` lists only what reading needs, and the
+production tools as dependency groups (`produce`, `legacy-r`, `legacy-spss`) that the commands which produce
+install by themselves. Someone who clones the repository to query it never downloads dbt.
+
+The global command (optional) is installed once per computer; the data team, who creates repositories,
+installs it with the production tools:
 
 ```bash
-uv tool install git+ssh://git@github.com/Jaimenms/statera.git   # once per computer
-uv tool upgrade statera                                         # later, rarely needed
+uv tool install git+ssh://git@github.com/Jaimenms/statera.git                              # to read
+uv tool install "statera[produce] @ git+ssh://git@github.com/Jaimenms/statera.git"         # to produce
+uv tool upgrade statera                                                                     # later, rarely needed
 ```
 
 The global `statera` command does almost nothing by itself: inside a data repository it finds the
 repository root and hands the command off to the Statera version that repository pins
-(`uv run --project <root> statera …`; uv updates the environment when needed). Every repository keeps
-its own version, and a computer never runs old rules by accident. Outside a repository (`statera init`)
-it runs itself. `uv run statera …` works too, with nothing installed globally; CI uses that form.
+(`uv run --project <root> statera …`; uv updates the environment when needed, adding the production groups
+only for the commands that produce). Every repository keeps its own version, and a computer never runs old
+rules by accident. Outside a repository (`statera init`) it runs itself. `uv run statera …` works too, with
+nothing installed globally; CI uses that form (`uv run --all-groups statera check --all`).
+
+## Only reading the data
+
+Inside a data repository (no production tools needed):
+
+```bash
+statera doctor                                   # says where the data is read from, or whom to ask
+statera query list
+statera query run uf-series --param uf=SP --output result/
+```
+
+The data comes from the shared engine the data team declares in `statera.toml` (`[consumption] engine`: a
+DuckDB file on a share, https:// or s3://, or a PostgreSQL/Trino URL); `STATERA_ENGINE` overrides it, for
+example with credentials. Published editions are read from the series' publication storage (`files_url`),
+with every file checked against the hash in the register. See [specification 07](specification/07-consumption.md).
 
 ## Starting a data repository
 
@@ -88,10 +120,10 @@ clean`. See `statera --help`. Commands work from any folder of a data repository
 ```python
 from statera.consume import catalog
 
-cat = catalog.open()
+cat = catalog.open()  # the shared engine of statera.toml; engine="local" reads your own runs
 cat.search(theme="formal-employment", layer="gold")
 t = cat.table("gold.employment_flows_uf_monthly")  # Ibis table (current)
-ed = cat.edition("employment-flows", "2026-06")  # what was published, hash verified
+ed = cat.edition("employment-flows", "2026-06")  # what was published (local or files_url), hash verified
 ed.table("net-change-by-uf")
 ed.provenance
 ```
@@ -99,7 +131,7 @@ ed.provenance
 ## Development
 
 ```bash
-uv sync && uv run pytest -q && uv run ruff check .
+uv sync && uv run pytest -q && uv run ruff check .   # the dev group includes every extra
 ```
 
 The framework tests depend on no organization. CI also runs the `foo-bar` example end to end and, where

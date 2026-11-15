@@ -16,6 +16,12 @@
     cat.metric("balance", by=["region"], period="2026-06")
     cat.query("balance-series-by-uf", uf="SP", period_start="2026-01", period_end="2026-06")
 
+Where the data is read from (statera.consume.connection): the shared engine the data team declares in
+statera.toml ([consumption] engine) or STATERA_ENGINE, else the local engine built by `statera run`;
+`catalog.open(engine="local")` forces the local one. Published editions are read from the local
+publication folder or, when it is not here, from the publication storage of the series (`files_url` in
+series.yaml), with the hash checked either way.
+
 Ibis translates the same code into the SQL of other engines (PostgreSQL, Trino, Spark): the analysis
 written in the notebook with DuckDB runs on the server without rewriting. The contract's classification is
 SHOWN and raises a warning, but the real protection belongs to the engine (permissions generated from the
@@ -25,7 +31,9 @@ contracts): the library is a convenience, not a security boundary.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import urllib.request
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,7 +42,7 @@ import ibis
 import pandas as pd
 
 from statera import classification, contracts
-from statera.consume import metrics, queries
+from statera.consume import connection, metrics, queries
 from statera.disseminate import registry
 from statera.project import Project, current
 
@@ -87,6 +95,7 @@ class PublishedEdition:
     datapackage: dict
     folder: Path
     period_column: str = "period"
+    files_url: str | None = None  # publication storage of the edition's files, when they are not local
 
     @property
     def provenance(self) -> dict:
@@ -111,19 +120,37 @@ class PublishedEdition:
         resource = next((r for r in self.datapackage["resources"] if r["name"] == port), None)
         if resource is None:
             raise KeyError(f"port '{port}' is not in the edition; available: {self.ports()}")
-        file = self.folder / resource["path"]
-        actual = "sha256:" + hashlib.sha256(file.read_bytes()).hexdigest()
+        where, content = self._read(resource["path"])
+        actual = "sha256:" + hashlib.sha256(content).hexdigest()
         if actual != resource["hash"]:
             raise ValueError(
-                f"{file}: hash differs from the recorded one ({resource['hash']}); file changed after publication"
+                f"{where}: hash differs from the recorded one ({resource['hash']}); file changed after publication"
             )
-        return ibis.memtable(pd.read_csv(file, dtype={self.period_column: str}))
+        return ibis.memtable(pd.read_csv(io.BytesIO(content), dtype={self.period_column: str}))
+
+    def _read(self, path: str) -> tuple[str, bytes]:
+        """The published file: local (production folder) or from the publication storage."""
+        local = self.folder / path
+        if local.exists():
+            return str(local), local.read_bytes()
+        if not self.files_url:
+            raise FileNotFoundError(
+                f"the files of {self.product} {self.period} are not here ({local}) and the series declares no "
+                f"publication storage (files_url in {self.product}/7-disseminate/series.yaml)"
+            )
+        base = self.files_url.format(product=self.product, period=self.period)
+        url = base.rstrip("/") + "/" + path
+        if not connection.URL.match(url):
+            return url, Path(url).read_bytes()  # a network share
+        with urllib.request.urlopen(url, timeout=120) as response:  # noqa: S310 (declared in series.yaml)
+            return url, response.read()
 
 
 class Catalog:
-    def __init__(self, project: Project, role: str | None = None):
+    def __init__(self, project: Project, role: str | None = None, engine: str | None = None):
         self.project = project
         self.role = role
+        self.engine = engine
         self._contracts = {contracts.physical_table(c): (path, c) for path, c in contracts.all_(project).values()}
         self._con = None
 
@@ -134,8 +161,13 @@ class Catalog:
     @property
     def con(self):
         if self._con is None:
-            self._con = ibis.duckdb.connect(str(self.project.warehouse), read_only=True)
+            self._con = connection.connect(self.project, self.engine)
         return self._con
+
+    @property
+    def source(self) -> str:
+        """Which engine this catalog reads (credentials hidden)."""
+        return connection.describe(self.project, self.engine)
 
     # --- discovery ----------------------------------------------------------------------------
     def search(
@@ -249,6 +281,11 @@ class Catalog:
         partition = contracts.custom_property_of(c, "partitionedBy")
         if partition and not cut_date:
             released = self.cuts(table)
+            if not released and not connection.is_local(self.project, self.engine):
+                raise CutNotAvailable(
+                    f"{table} is partitioned by cut, and the released cuts are recorded where the data is "
+                    f"produced, not here: give cut_date (cuts in the engine: {_cut_dates(t, self._cut_column)})"
+                )
             if not released:
                 raise CutNotAvailable(f"{table}: no cut released yet")
             cut_date = released[-1]
@@ -301,6 +338,7 @@ class Catalog:
             "contract_version": c["version"],
             "cut_dates": cuts,
             "engine": self.project.data_namespace,
+            "source": self.source,
         }
 
     def edition(self, product: str, period: str) -> PublishedEdition:
@@ -314,6 +352,7 @@ class Catalog:
             json.loads(path.read_text(encoding="utf-8")),
             unit.data(7) / period,
             self.project.conventions["period_column"],
+            registry.series_config(unit).get("files_url") if registry.series_file(unit).exists() else None,
         )
 
     def editions(self, product: str) -> pd.DataFrame:
@@ -338,7 +377,7 @@ class Catalog:
         filters: dict | None = None,
     ) -> pd.DataFrame:
         """Official metric (metrics.yaml): grouped by `by`, for one period or a range (`periods`)."""
-        return metrics.compute(name, by, period, periods, filters, self.project)
+        return metrics.compute(name, by, period, periods, filters, self.project, self.engine)
 
     def queries(self) -> pd.DataFrame:
         return pd.DataFrame(
@@ -354,11 +393,11 @@ class Catalog:
 
     def query(self, query_id: str, **params) -> pd.DataFrame:
         """Runs a cataloged query; the parameters are those declared in its query.yaml."""
-        return queries.run(query_id, params, project=self.project)
+        return queries.run(query_id, params, project=self.project, engine=self.engine)
 
     def sql(self, text: str) -> pd.DataFrame:
         """Raw SQL on the engine (read-only)."""
-        return self.con.sql(text).to_pandas()
+        return connection.run_sql(self.con, text)
 
     def close(self) -> None:
         if self._con is not None:
@@ -370,10 +409,12 @@ def _cut_dates(t: ibis.Table, column: str) -> list[str]:
     return sorted(t.select(d=t[column].cast("string")).distinct().to_pandas()["d"].tolist())
 
 
-def open(project: Project | None = None, role: str | None = None) -> Catalog:
+def open(project: Project | None = None, role: str | None = None, engine: str | None = None) -> Catalog:
     """Opens the catalog. `role` (or STATERA_ROLE) identifies someone outside the team that owns the
     internal products: reading them then requires a valid authorization. In production, the reader is
-    identified by their engine login, and the engine's permissions (generated grants) are the real boundary."""
+    identified by their engine login, and the engine's permissions (generated grants) are the real boundary.
+    `engine`: where to read the data (statera.consume.connection); by default, the shared engine declared
+    in statera.toml, else the local one. The connection opens on the first read."""
     import os
 
-    return Catalog(project or current(), role or os.environ.get("STATERA_ROLE") or None)
+    return Catalog(project or current(), role or os.environ.get("STATERA_ROLE") or None, engine)

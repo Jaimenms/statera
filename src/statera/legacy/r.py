@@ -65,7 +65,13 @@ def _r_text(path: Path) -> str:
 
 def run(script: Path, inputs: dict[str, pd.DataFrame], output: str = "result", timeout: int = 900):
     """Runs the R script with the inputs (DataFrames) and returns the data.frame saved to `output`."""
-    import pyreadr
+    try:
+        import pyreadr
+    except ImportError as error:
+        raise RError(
+            "pyreadr is not installed: declare legacy-r = ['statera[legacy-r]'] in [dependency-groups]"
+            " of the data repository's pyproject.toml (then any production command installs it)"
+        ) from error
 
     for name in [*inputs, output]:
         if not NAME.match(name):

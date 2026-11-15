@@ -543,6 +543,29 @@ def check_classification(project: Project, manifest: dict) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
+def _query_relations(project: Project, manifest: dict) -> list[Finding]:
+    """Queries run without dbt (statera.process.dbt.relations): its rules must give what dbt resolved."""
+    static, resolved = dbt.relations(project), dbt.manifest_relations(manifest)
+    read_by_queries = {
+        manifest["nodes"][parent]["name"]
+        for n in manifest["nodes"].values()
+        if n["resource_type"] == "analysis"
+        for parent in n["depends_on"]["nodes"]
+        if parent in manifest["nodes"]
+    }
+    return [
+        Finding(
+            "consumption",
+            False,
+            f"model {name}: dbt builds {resolved[name]}, but queries run without dbt would read "
+            f"{static.get(name)}; remove the schema or alias override from its config",
+            2,
+        )
+        for name in sorted(read_by_queries)
+        if name in resolved and static.get(name) != resolved[name]
+    ]
+
+
 def check_consumer(project: Project, manifest: dict) -> list[Finding]:
     from statera.consume import metrics, queries, recipes
 
@@ -586,6 +609,7 @@ def check_consumer(project: Project, manifest: dict) -> list[Finding]:
                 findings.append(
                     Finding("consumption", False, f"metric {name}: component '{component}' does not exist", 2)
                 )
+    findings += _query_relations(project, manifest)
     findings += [Finding("consumption", False, p, 2) for p in recipes.header_problems(project)]
     findings.append(
         Finding(

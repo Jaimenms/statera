@@ -64,7 +64,13 @@ def _quote(path: Path) -> str:
 
 def run(syntax: Path, inputs: dict[str, pd.DataFrame], output: str = "result", timeout: int = 900):
     """Runs the syntax in PSPP with the inputs (DataFrames) and returns the dataset saved to `output`."""
-    import pyreadstat
+    try:
+        import pyreadstat
+    except ImportError as error:
+        raise PSPPError(
+            "pyreadstat is not installed: declare legacy-spss = ['statera[legacy-spss]'] in [dependency-groups]"
+            " of the data repository's pyproject.toml (then any production command installs it)"
+        ) from error
 
     for name in [*inputs, output]:
         if not HANDLE_NAME.match(name):

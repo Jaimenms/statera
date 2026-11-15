@@ -8,13 +8,18 @@ organization = "Foo Bar (minimal example)"
 acronym = "foo-bar"
 namespace = "org.example.foo-bar"
 specification = "0.1"
-required_version = "~=0.2.0"         # Statera versions this repository accepts
+required_version = "~=0.3.0"         # Statera versions this repository accepts
 repository_root = ".."             # repository root (where .github/, publications/, docs/ live)
 synthetic = true
 
 [engine]
 type = "duckdb"
 path = "dbt/data/warehouse.duckdb"
+
+[consumption]
+# Shared engine for those outside the data team (statera.consume.connection). The example has none: it reads
+# the local engine that `statera demo` builds.
+# engine = "https://data.example.org/foo-bar/warehouse.duckdb"
 
 [dbt]
 folder = "dbt"

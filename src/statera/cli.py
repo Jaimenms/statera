@@ -18,7 +18,7 @@ Quality and conformance:
     statera validate [--level 2]         statera conformance          statera contracts
 Generated files:
     statera sync                         # dbt_project.yml, rule unit tests, BPMN, CODEOWNERS
-Consumption:
+Consumption (needs no production tools; reads the shared engine, or --engine local):
     statera query list | run <id> --param uf=SP | test
     statera metric balance --by region --period 2026-06
     statera recipes test
@@ -350,7 +350,7 @@ def _cmd_query(args) -> int:
             print(f"FAIL {f}")
         print(f"{len(targets)} query(ies) tested, {len(failures)} failure(s)")
         return 1 if failures else 0
-    df = queries.run(args.id, _pairs(args.param), Path(args.output) if args.output else None)
+    df = queries.run(args.id, _pairs(args.param), Path(args.output) if args.output else None, engine=args.engine)
     print(df.to_string(index=False))
     print(f"\nprovenance: {df.attrs['provenance']}")
     return 0
@@ -361,7 +361,7 @@ def _cmd_metric(args) -> int:
 
     by = [d for d in (args.by or "").split(",") if d]
     period_range = (args.from_, args.until) if args.from_ and args.until else None
-    df = metrics.compute(args.name, by, args.period, period_range, _pairs(args.filter_))
+    df = metrics.compute(args.name, by, args.period, period_range, _pairs(args.filter_), engine=args.engine)
     print(df.to_string(index=False))
     proc = {k: v for k, v in df.attrs["provenance"].items() if k != "sql"}
     print(f"\nprovenance: {proc}")
@@ -378,7 +378,7 @@ def _cmd_recipes(args) -> int:
         return 0
     failures = 0
     for r in entries:
-        ok, output = recipes.run(r)
+        ok, output = recipes.run(r, engine=args.engine)
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'} {r.path.name}")
         if not ok or args.show:
@@ -658,6 +658,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("id", nargs="?")
     s.add_argument("--param", action="append", help="name=value (repeatable)")
     s.add_argument("--output", dest="output", help="folder for result.csv and the provenance datapackage.json")
+    s.add_argument("--engine", dest="engine", help=ENGINE_HELP)
     s.set_defaults(func=_cmd_query)
 
     s = sub.add_parser("metric", help="computes an official metric")
@@ -667,11 +668,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--from", dest="from_")
     s.add_argument("--to", dest="until")
     s.add_argument("--filter", dest="filter_", action="append", help="dimension=value (repeatable)")
+    s.add_argument("--engine", dest="engine", help=ENGINE_HELP)
     s.set_defaults(func=_cmd_metric)
 
     s = sub.add_parser("recipes", help="lists or runs the recipes")
     s.add_argument("action", choices=["list", "test"])
     s.add_argument("--show", dest="show", action="store_true", help="shows the output of each recipe")
+    s.add_argument("--engine", dest="engine", help=ENGINE_HELP)
     s.set_defaults(func=_cmd_recipes)
 
     s = sub.add_parser("init", help="creates a data repository from scratch (content/, publications/, docs/)")
@@ -722,7 +725,37 @@ def main(argv: list[str] | None = None) -> int:
         names = ", ".join(u.name for u in _project().products())
         print(f"give --product (products in this repository: {names})", file=sys.stderr)
         return 2
-    return args.func(args)
+    try:
+        return args.func(args)
+    except _expected_errors() as error:
+        print(f"[statera] {error}", file=sys.stderr)
+        return 1
+    except ModuleNotFoundError as error:
+        if error.name not in PRODUCTION_MODULES:
+            raise
+        print(f"[statera] {MISSING_PRODUCTION.format(module=error.name)}", file=sys.stderr)
+        return 1
+
+
+ENGINE_HELP = "where to read the data: `local`, a DuckDB file or URL, or an engine URL (default: statera.toml)"
+PRODUCTION_MODULES = {"copier", "dbt"}
+MISSING_PRODUCTION = (
+    "`{module}` is not installed: this command needs the production tools (extra `produce`). In a data "
+    'repository, declare produce = ["statera[produce]"] in [dependency-groups] of pyproject.toml and run the '
+    "command through `statera` (or `uv sync --all-groups`). For `statera init`, install the global command with "
+    'them: uv tool install --force "statera[produce] @ git+ssh://git@github.com/Jaimenms/statera.git"'
+)
+
+
+def _expected_errors() -> tuple[type[Exception], ...]:
+    """Errors whose message says what to do: shown without a traceback (a reader is not a developer)."""
+    from statera.consume.catalog import AccessDenied, CutNotAvailable
+    from statera.consume.connection import EngineNotAvailable
+    from statera.consume.metrics import MetricError
+    from statera.consume.queries import QueryError
+    from statera.process.dbt import ProductionToolsMissing
+
+    return (EngineNotAvailable, QueryError, MetricError, AccessDenied, CutNotAvailable, ProductionToolsMissing)
 
 
 def _version_problem() -> str | None:

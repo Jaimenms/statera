@@ -3,6 +3,36 @@
 Principle: **the same number, the same way, in any tool.** Consumption reuses the production
 definitions (contracts, rules, metrics) instead of each analyst recomputing them.
 
+Corollary: **reading needs nothing that producing needs.** Someone outside the data team installs only
+`statera` (no dbt, no Copier, no legacy-code readers; 01, "Who installs what") and reads from a shared
+engine; they never run the process to get the data.
+
+## Where the data is read from
+
+Production writes to the local engine (`[engine]`, built by `statera run`). Those who only read use a
+**shared engine** that the data team keeps up to date, declared in `statera.toml`:
+
+```toml
+[consumption]
+engine = "s3://labor-stats/warehouse.duckdb"      # a DuckDB file: a path (network share), https://, s3://
+# engine = "postgres://reader@db.example.org/stats"   # or any engine Ibis connects to
+```
+
+The engine read is, in order: the explicit choice (`catalog.open(engine=…)`, `--engine` in `statera query`,
+`metric` and `recipes`), the `STATERA_ENGINE` variable (for a URL with credentials, which **must not** go
+into git), `[consumption] engine`, and the local engine. `local` forces the local engine. A DuckDB file is
+attached **read-only**; in the other engines, the reader's login and the generated grants are the
+boundary. Every output records which engine it read (`engine` in the provenance). With no local engine
+and no shared one, reading fails saying whom to ask; `statera doctor` reports it too.
+
+**Published editions** are read from the local publication folder or, when it is not there, from the
+publication storage declared in the series (`files_url` in `series.yaml`, with `{period}`: an https://
+URL or a network path). Either way, each file is checked against the hash in the editions register, so a
+file changed after publication is refused.
+
+Partitioned tables (cuts of internal products, 09): the released cuts are recorded where the data is
+produced. Read from a shared engine, the cut **must** be given explicitly.
+
 ## Recurring queries
 
 ```
@@ -17,6 +47,9 @@ queries/<theme>/<slug>/  or  products/<p>/queries/<slug>/
 - Parameter types: `period`, `date`, `cut`, `ibge-code`, `uf`, `integer`, `short-text`. Values
   are validated by type **before** reaching the SQL; an undeclared parameter is rejected.
 - Queries only read silver, gold and ref (never bronze or staging).
+- Running a query needs no dbt: `ref()` is resolved by the same rules the generated `dbt_project.yml`
+  gives dbt (schema by layer folder, seeds in `ref`, name = file name). Validation **must** fail when a
+  model read by a query overrides its schema or alias, so that both resolutions never diverge.
 - The output goes through the disclosure control of `output_classification`; when written to a file,
   it goes out with a provenance Data Package.
 - Status (`status`): `exploratory` → `cataloged` → `certified` → `deprecated`.

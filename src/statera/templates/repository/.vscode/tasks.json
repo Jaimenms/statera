@@ -1,6 +1,7 @@
 {
   // Day-to-day commands (Terminal > Run Task…, or Ctrl/Cmd+Shift+B for `check`). They call
   // `uv run statera …`, which uses the Statera version this repository pins, on Windows, Linux and Mac.
+  // The production tasks add `--all-groups` (dbt and the legacy-code readers); doctor needs none of them.
   // The same commands work in any terminal as `statera …` once Statera is installed globally
   // (uv tool install git+ssh://git@github.com/Jaimenms/statera.git).
   "version": "2.0.0",
@@ -10,13 +11,13 @@
     {
       "label": "statera: check",
       "detail": "What CI runs: validation, lint and fast tests",
-      "type": "process", "command": "uv", "args": ["run", "statera", "check"],
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "check"],
       "group": {"kind": "build", "isDefault": true}, "problemMatcher": []
     },
     {
       "label": "statera: check (all tests)",
       "detail": "Also the slow tests (full process with dbt)",
-      "type": "process", "command": "uv", "args": ["run", "statera", "check", "--all"],
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "check", "--all"],
       "group": "test", "problemMatcher": []
     },
     {
@@ -27,24 +28,24 @@
     {
       "label": "statera: sync",
       "detail": "Regenerates the generated files (dbt_project.yml, internal calendars, BPMN, CODEOWNERS…)",
-      "type": "process", "command": "uv", "args": ["run", "statera", "sync"], "problemMatcher": []
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "sync"], "problemMatcher": []
     },
     {
       "label": "statera: conformance",
       "detail": "Conformance level of each product and what is missing for the next one",
-      "type": "process", "command": "uv", "args": ["run", "statera", "conformance"], "problemMatcher": []
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "conformance"], "problemMatcher": []
     },
     {
       "label": "statera: new product",
       "type": "process", "command": "uv",
-      "args": ["run", "statera", "new-product", "${input:productName}", "--alignment", "${input:alignment}"],
+      "args": ["run", "--all-groups", "statera", "new-product", "${input:productName}", "--alignment", "${input:alignment}"],
       "problemMatcher": []
     },
     {
       "label": "statera: run edition",
       "detail": "Runs an edition through the to-be process (stops at the first human task)",
       "type": "process", "command": "uv",
-      "args": ["run", "statera", "run", "--product", "${input:product}", "--period", "${input:period}",
+      "args": ["run", "--all-groups", "statera", "run", "--product", "${input:product}", "--period", "${input:period}",
                "--with-dependencies"],
       "problemMatcher": []
     },
@@ -52,34 +53,34 @@
       "label": "statera: resume edition",
       "detail": "Completes the pending human task and continues",
       "type": "process", "command": "uv",
-      "args": ["run", "statera", "resume", "--product", "${input:product}", "--period", "${input:period}"],
+      "args": ["run", "--all-groups", "statera", "resume", "--product", "${input:product}", "--period", "${input:period}"],
       "problemMatcher": []
     },
     {
       "label": "statera: edition status",
       "type": "process", "command": "uv",
-      "args": ["run", "statera", "status", "--product", "${input:product}", "--period", "${input:period}"],
+      "args": ["run", "--all-groups", "statera", "status", "--product", "${input:product}", "--period", "${input:period}"],
       "problemMatcher": []
     },
     {
       "label": "statera: docs",
       "detail": "Regenerates the documentation in content/docs/",
-      "type": "process", "command": "uv", "args": ["run", "statera", "docs"], "problemMatcher": []
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "docs"], "problemMatcher": []
     },
     {
       "label": "statera: catalog",
       "detail": "Browsable, searchable catalog in content/target/static_index.html",
-      "type": "process", "command": "uv", "args": ["run", "statera", "docs", "--interactive"], "problemMatcher": []
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "docs", "--interactive"], "problemMatcher": []
     },
     {
       "label": "statera: demo",
       "detail": "Demo from scratch (synthetic data only: deletes data/ and the editions register)",
-      "type": "process", "command": "uv", "args": ["run", "statera", "demo"], "problemMatcher": []
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "demo"], "problemMatcher": []
     },
     {
       "label": "statera: clean",
       "detail": "Deletes local data and artifacts (keeps the editions register)",
-      "type": "process", "command": "uv", "args": ["run", "statera", "clean"], "problemMatcher": []
+      "type": "process", "command": "uv", "args": ["run", "--all-groups", "statera", "clean"], "problemMatcher": []
     }
   ],
   "inputs": [

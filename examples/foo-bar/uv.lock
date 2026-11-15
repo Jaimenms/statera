@@ -1568,12 +1568,9 @@ wheels = [
 
 [[package]]
 name = "statera"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "../../" }
 dependencies = [
-    { name = "copier" },
-    { name = "dbt-core" },
-    { name = "dbt-duckdb" },
     { name = "duckdb" },
     { name = "ibis-framework", extra = ["duckdb"] },
     { name = "jinja2" },
@@ -1583,34 +1580,49 @@ dependencies = [
     { name = "openpyxl" },
     { name = "packaging" },
     { name = "pandas" },
-    { name = "pyreadr" },
-    { name = "pyreadstat" },
     { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+legacy-r = [
+    { name = "pyreadr" },
+]
+legacy-spss = [
+    { name = "pyreadstat" },
+]
+produce = [
+    { name = "copier" },
+    { name = "dbt-core" },
+    { name = "dbt-duckdb" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "copier", specifier = ">=9.4" },
-    { name = "dbt-core", specifier = ">=1.10,<1.13" },
-    { name = "dbt-duckdb", specifier = ">=1.10,<1.12" },
+    { name = "copier", marker = "extra == 'produce'", specifier = ">=9.4" },
+    { name = "dbt-core", marker = "extra == 'produce'", specifier = ">=1.10,<1.13" },
+    { name = "dbt-duckdb", marker = "extra == 'produce'", specifier = ">=1.10,<1.12" },
     { name = "duckdb", specifier = ">=1.2" },
     { name = "ibis-framework", extras = ["duckdb"], specifier = ">=10.0" },
+    { name = "ibis-framework", extras = ["postgres"], marker = "extra == 'postgres'", specifier = ">=10.0" },
+    { name = "ibis-framework", extras = ["trino"], marker = "extra == 'trino'", specifier = ">=10.0" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "jsonschema", specifier = ">=4.23" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "packaging", specifier = ">=24.0" },
     { name = "pandas", specifier = ">=2.2" },
-    { name = "pyreadr", specifier = ">=0.5" },
-    { name = "pyreadstat", specifier = ">=1.2" },
+    { name = "pyreadr", marker = "extra == 'legacy-r'", specifier = ">=0.5" },
+    { name = "pyreadstat", marker = "extra == 'legacy-spss'", specifier = ">=1.2" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+provides-extras = ["produce", "legacy-r", "legacy-spss", "postgres", "trino"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.120" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "ruff", specifier = ">=0.8" },
+    { name = "statera", extras = ["produce", "legacy-r", "legacy-spss"] },
 ]
 
 [[package]]
@@ -1626,6 +1638,15 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+legacy-r = [
+    { name = "statera", extra = ["legacy-r"] },
+]
+legacy-spss = [
+    { name = "statera", extra = ["legacy-spss"] },
+]
+produce = [
+    { name = "statera", extra = ["produce"] },
+]
 
 [package.metadata]
 requires-dist = [{ name = "statera", editable = "../../" }]
@@ -1635,6 +1656,9 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "ruff", specifier = ">=0.8" },
 ]
+legacy-r = [{ name = "statera", extras = ["legacy-r"], editable = "../../" }]
+legacy-spss = [{ name = "statera", extras = ["legacy-spss"], editable = "../../" }]
+produce = [{ name = "statera", extras = ["produce"], editable = "../../" }]
 
 [[package]]
 name = "tabulate"

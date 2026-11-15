@@ -21,8 +21,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import duckdb
-
+from statera.consume import connection
 from statera.project import Project, current
 
 HEADER = re.compile(r"^(?:#|--)\s*(Recipe|Layers|Classification|Library|Authors):\s*(.+)$")
@@ -53,21 +52,20 @@ def load(project: Project | None = None) -> list[Recipe]:
     return [Recipe(a, _header(a)) for a in files]
 
 
-def run(recipe: Recipe, project: Project | None = None) -> tuple[bool, str]:
-    """Runs the recipe against the project's engine. Returns (success, output)."""
+def run(recipe: Recipe, project: Project | None = None, engine: str | None = None) -> tuple[bool, str]:
+    """Runs the recipe against the engine (statera.consume.connection). Returns (success, output)."""
     project = project or current()
     if recipe.path.suffix == ".sql":
-        con = duckdb.connect(str(project.warehouse), read_only=True)
         try:
-            return True, con.execute(recipe.path.read_text(encoding="utf-8")).df().to_string(index=False)
-        except duckdb.Error as error:
+            df = connection.fetch(recipe.path.read_text(encoding="utf-8"), project=project, engine=engine)
+        except Exception as error:  # noqa: BLE001 (any engine's error is the recipe's failure)
             return False, str(error)
-        finally:
-            con.close()
+        return True, df.to_string(index=False)
     # deprecation warnings from third-party libraries clutter the output; classification warnings are kept
     env = {
         **os.environ,
         "STATERA_PROJECT": str(project.root),
+        **({connection.ENV: engine} if engine else {}),
         "PYTHONWARNINGS": "ignore::DeprecationWarning,ignore::FutureWarning",
     }
     process = subprocess.run(

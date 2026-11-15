@@ -5,15 +5,19 @@ description = "Minimal example content repository following the statera standard
 readme = "content/README.md"
 requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
-dependencies = ["statera"]
+dependencies = ["statera"]  # reading the data: catalog, queries, metrics
 
 [tool.uv]
 package = false  # data repository: not a Python package
+default-groups = []  # production commands add the groups below by themselves
 
 [tool.uv.sources]
 statera = { path = "../..", editable = true }  # the framework in this repository
 
 [dependency-groups]
+produce = ["statera[produce]"]          # the data team: dbt and Copier
+legacy-r = ["statera[legacy-r]"]        # baz_uf_monthly_median.R, through Rscript
+legacy-spss = ["statera[legacy-spss]"]  # baz_uf_monthly.sps, through GNU PSPP
 dev = ["pytest>=8.3", "ruff>=0.8"]
 
 [tool.ruff]

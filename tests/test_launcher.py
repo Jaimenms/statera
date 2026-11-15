@@ -51,9 +51,28 @@ def test_handoff_runs_the_pinned_version_through_uv(tmp_path: Path, monkeypatch)
     monkeypatch.setattr(launcher.subprocess, "call", lambda cmd, env: calls.append((cmd, env)) or 7)
     assert launcher.handoff(["check", "--all"]) == 7
     command, env = calls[0]
-    assert command == ["/bin/uv", "run", "--quiet", "--project", str(root.resolve()), "statera", "check", "--all"]
+    project = ["/bin/uv", "run", "--quiet", "--project", str(root.resolve())]
+    assert command == [*project, "--all-groups", "statera", "check", "--all"]  # producing: every group
     assert env[launcher.ENV_HANDOFF] == "1"
     assert env[launcher.ENV_LAUNCHER] == f"{__version__};{launcher.PROTOCOL}"
+    launcher.handoff(["query", "run", "x"])
+    assert calls[1][0] == [*project, "statera", "query", "run", "x"]  # reading: the dependencies alone
+
+
+@pytest.mark.parametrize(
+    ("argv", "groups"),
+    [
+        (["query", "list"], []),
+        (["metric", "x"], []),
+        (["doctor"], []),
+        (["--help"], []),
+        (["check"], ["--all-groups"]),
+        (["run", "--product", "x"], ["--all-groups"]),
+        (["new-product", "x"], ["--all-groups"]),
+    ],
+)
+def test_only_production_commands_install_the_production_tools(argv, groups):
+    assert launcher.uv_groups(argv) == groups
 
 
 def test_required_version(monkeypatch):

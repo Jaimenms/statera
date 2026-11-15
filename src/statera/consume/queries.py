@@ -10,9 +10,9 @@ A query is a folder in `queries/<theme>/<slug>/` (cross-cutting) or in
                         var('<parameter>', <default>) for the parameters; does not become a table
     test.yaml          cases with synthetic input data and expected output
 
-Run: parameters are validated by the declared TYPE (never concatenated without validation),
-`ref()` is resolved through the dbt manifest, and the output goes through the statistical disclosure
-control declared in `output_classification` before being written with a provenance Data Package.
+Run: parameters are validated by the declared TYPE (never concatenated without validation), `ref()` is
+resolved by the same rules dbt follows (reading needs no dbt), and the output goes through the statistical
+disclosure control declared in `output_classification` before being written with a provenance Data Package.
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ import jinja2
 import numpy as np
 import pandas as pd
 
+from statera.consume import connection
 from statera.edition import now
 from statera.process import dbt
 from statera.project import Project, current, read_yaml
@@ -130,15 +131,6 @@ def render(query: Query, parameters: dict, relations: dict[str, str]) -> str:
     return environment.from_string(query.sql.read_text(encoding="utf-8")).render(ref=ref, var=var)
 
 
-def manifest_relations(project: Project | None = None) -> dict[str, str]:
-    manifest = dbt.manifest(generate=False, project=project)
-    return {
-        n["name"]: f"{n['schema']}.{n.get('alias') or n['name']}"
-        for n in manifest["nodes"].values()
-        if n["resource_type"] in ("model", "seed")
-    }
-
-
 def apply_control(df: pd.DataFrame, control: dict | None) -> tuple[pd.DataFrame, int]:
     """Statistical disclosure control on the query output (same rule as publication)."""
     from statera.analyse.disclosure_control import apply
@@ -147,23 +139,27 @@ def apply_control(df: pd.DataFrame, control: dict | None) -> tuple[pd.DataFrame,
     return result.data, result.suppressed_cells
 
 
-def run(identifier: str, values: dict | None = None, output: Path | None = None, project: Project | None = None):
-    """Runs on the engine. With `output`, writes result.csv and a provenance datapackage.json."""
+def run(
+    identifier: str,
+    values: dict | None = None,
+    output: Path | None = None,
+    project: Project | None = None,
+    engine: str | None = None,
+):
+    """Runs on the engine (`engine`: see statera.consume.connection). With `output`, writes result.csv and a
+    provenance datapackage.json."""
     project = project or current()
     query = get(identifier, project)
     parameters = validate_parameters(query, values or {})
-    sql = render(query, parameters, manifest_relations(project))
-    con = duckdb.connect(str(project.warehouse), read_only=True)
-    try:
-        df = con.execute(sql).df()
-    finally:
-        con.close()
+    sql = render(query, parameters, dbt.relations(project))
+    df = connection.fetch(sql, project=project, engine=engine)
     df, suppressed = apply_control(df, query.meta["output_classification"].get("disclosureControl"))
     provenance = {
         "query": query.id,
         "version": query.meta["version"],
         "parameters": parameters,
         "executed_at": now(),
+        "engine": connection.describe(project, engine),
         "suppressed_cells": suppressed,
         "sql_sha256": hashlib.sha256(sql.encode()).hexdigest(),
     }

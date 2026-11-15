@@ -7,6 +7,12 @@ repository and re-runs the command with `uv run --project <root> statera ...`: t
 uv brings the environment up to date first if needed. Outside a data repository (e.g. `statera init`) it
 runs itself. Same pattern as Gradle's gradlew, Node's corepack and rustup with rust-toolchain.toml.
 
+What gets installed depends on the command. The data repository's dependencies are only what READING
+the data needs (catalog, queries, metrics): someone outside the data team gets a small environment. The
+production tools (dbt, Copier, the legacy-code readers) are dependency groups of the repository
+(`produce`, `legacy-r`, `legacy-spss`, `dev`); the commands that produce (check, run, sync, docs…) are
+handed off with `--all-groups`, so uv installs them the first time the data team needs them.
+
 Because the global copy only finds the root and hands off, its own version rarely matters. The handoff
 carries a protocol number; a pinned version that needs a newer launcher says so ("run uv tool upgrade
 statera").
@@ -33,6 +39,9 @@ ENV_HANDOFF = "STATERA_HANDOFF"
 ENV_LAUNCHER = "STATERA_LAUNCHER"
 ENV_NO_HANDOFF = "STATERA_NO_HANDOFF"
 LOCAL_COMMANDS = {"init"}  # never handed off: they create a repository, they don't run inside one
+# Commands that only read: they run with the repository's dependencies alone (no production tools).
+# Every other command produces or checks, and runs with all the repository's dependency groups.
+CONSUMPTION_COMMANDS = {"doctor", "query", "metric", "recipes", "cuts", "status", "evaluate"}
 
 
 def repository_root(start: Path | None = None) -> Path | None:
@@ -75,11 +84,17 @@ def handoff(argv: list[str]) -> int | None:
         return None
     env = {**os.environ, ENV_HANDOFF: "1", ENV_LAUNCHER: f"{__version__};{PROTOCOL}"}
     env.pop("VIRTUAL_ENV", None)  # another active environment would only make uv warn
-    command = [uv, "run", "--quiet", "--project", str(root), "statera", *argv]
+    command = [uv, "run", "--quiet", "--project", str(root), *uv_groups(argv), "statera", *argv]
     try:
         return subprocess.call(command, env=env)
     except KeyboardInterrupt:
         return 130
+
+
+def uv_groups(argv: list[str]) -> list[str]:
+    """`uv run` options for the command: the production commands need every dependency group."""
+    consumption = not argv or argv[0] in CONSUMPTION_COMMANDS or argv[0].startswith("-")
+    return [] if consumption else ["--all-groups"]
 
 
 def launcher() -> tuple[str, int] | None:

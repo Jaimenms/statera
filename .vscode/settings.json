@@ -1,0 +1,6 @@
+{
+  // dbt Power User treats every dbt_project.yml in the workspace as a project to parse. The one in
+  // src/statera/dbt/ is the framework's dbt PACKAGE (macros only: no profile, no models), which dbt cannot
+  // parse on its own ("dbt configuration is invalid"). The only real dbt project here is the example's.
+  "dbt.allowListFolders": ["examples/foo-bar/content"]
+}

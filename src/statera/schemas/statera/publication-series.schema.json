@@ -67,6 +67,11 @@
       "format": "uri",
       "description": "Series page on the portal, where the public downloads the editions (dcat:landingPage)."
     },
+    "files_url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Publication storage of each edition's files, with {period} (and optionally {product}): an https:// URL or a network path. The library reads published editions from it when they are not in the local publication folder, checking each file against the hash in the register. E.g. https://data.example.org/bar/{period}/"
+    },
     "open_data_portal": {
       "type": "object",
       "required": [

@@ -10,3 +10,4 @@ dist/
 # dbt logs (generated when opening the framework's dbt package in VS Code)
 src/statera/dbt/logs/
 src/statera/dbt/target/
+src/statera/dbt/dbt_packages/

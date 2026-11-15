@@ -188,6 +188,32 @@ def _model_configs(project: Project) -> dict:
     return tree
 
 
+def relations(project: Project | None = None) -> dict[str, str]:
+    """Physical relation (`schema.name`) of each model and reference table, WITHOUT dbt: the same rules
+    the generated dbt_project.yml gives dbt (schema by layer folder; seeds in `ref`). Lets someone who only
+    reads the data run the cataloged queries without installing dbt. Validation compares it with dbt's
+    manifest, so a model that overrides its schema or alias in its own config is caught in CI."""
+    project = project or current()
+    output = {}
+    for unit in project.products():
+        for parts, model in _product_models(unit):
+            layer = DBT_LAYERS.get(parts[0]) if parts else None
+            output[model] = f"{layer['+schema'] if layer else 'main'}.{model}"
+    for ref in project.references():
+        for seed in sorted(ref.folder.glob("*.csv")):
+            output[seed.stem] = f"ref.{seed.stem}"
+    return output
+
+
+def manifest_relations(manifest: dict) -> dict[str, str]:
+    """Physical relation of each model and seed, as dbt resolved it."""
+    return {
+        n["name"]: f"{n['schema']}.{n.get('alias') or n['name']}"
+        for n in manifest["nodes"].values()
+        if n["resource_type"] in ("model", "seed")
+    }
+
+
 def generate_groups(project: Project | None = None) -> str:
     project = project or current()
     groups = [
@@ -279,10 +305,24 @@ def outdated(project: Project | None = None) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 
+class ProductionToolsMissing(RuntimeError):
+    """dbt is not in this environment (someone who only reads the data does not need it)."""
+
+
+MISSING_DBT = (
+    "dbt is not installed in this environment. Reading the data does not need it; producing does. "
+    "The production tools are the `produce` extra: in the data repository's pyproject.toml, "
+    '[dependency-groups] produce = ["statera[produce]"]; then any production command (statera check, run, '
+    "sync…) installs them, or `uv sync --all-groups`."
+)
+
+
 def run(arguments: list[str], variables: dict | None = None, project: Project | None = None):
     """Runs dbt in a subprocess (isolates dbt's DuckDB connection from the Python process's)."""
     project = project or current()
-    dbt = Path(sys.executable).parent / "dbt"
+    dbt = Path(sys.executable).parent / ("dbt.exe" if os.name == "nt" else "dbt")
+    if not dbt.exists():
+        raise ProductionToolsMissing(MISSING_DBT)
     command = [
         str(dbt),
         *arguments,

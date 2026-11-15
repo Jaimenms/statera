@@ -2,8 +2,9 @@
 
 Covers what usually breaks on a new machine: uv and git on the PATH, the Statera version (pinned,
 required by statera.toml, and the global launcher), the repository layout and environment, line endings
-and, on Windows, long paths. Legacy tools (GNU PSPP, R) are checked only when the repository has
-`.sps` or `.R` models.
+and, on Windows, long paths; where the data is read from. The production tools (dbt; GNU PSPP and R, only
+when the repository has `.sps` or `.R` models) are optional: someone who only reads the data does not
+need them, and their absence is reported as information, not as a problem.
 """
 
 from __future__ import annotations
@@ -200,30 +201,71 @@ def _windows_long_paths() -> list[Check]:
     ]
 
 
-def _engine(root: Path | None) -> list[Check]:
-    checks = []
+def _groups(root: Path | None) -> set[str] | None:
+    """Dependency groups declared in the repository's pyproject.toml (None when it cannot be read)."""
+    import tomllib
+
+    try:
+        return set(tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")).get("dependency-groups", {}))
+    except (OSError, tomllib.TOMLDecodeError, TypeError):
+        return None
+
+
+# language, model extension, dependency group, framework module, reader package, program hint
+LEGACY = [
+    ("R", "*.R", "legacy-r", "r", "pyreadr", "install R (Rscript) or set STATERA_R"),
+    ("GNU PSPP", "*.sps", "legacy-spss", "pspp", "pyreadstat", "install GNU PSPP or set STATERA_PSPP"),
+]
+
+
+def _production(root: Path | None) -> list[Check]:
+    """Production tools (dbt, legacy code). Not needed to read the data: missing is not a problem."""
+    import importlib
+
+    groups = _groups(root) if root else None
     try:
         from dbt.version import __version__ as dbt_version
-
-        checks.append(Check(OK, "dbt", dbt_version))
-    except Exception as error:  # noqa: BLE001
-        checks.append(Check(FAIL, "dbt", f"cannot import dbt ({error})", "uv sync"))
+    except Exception:  # noqa: BLE001
+        if groups is not None and "produce" not in groups:
+            return [
+                Check(
+                    WARN,
+                    "production tools",
+                    "pyproject.toml has no `produce` group: production commands will not find dbt",
+                    'add produce = ["statera[produce]"] to [dependency-groups] in pyproject.toml',
+                )
+            ]
+        return [
+            Check(
+                INFO,
+                "production tools",
+                "not installed: enough to read the data (catalog, queries, metrics)",
+                "the data team gets them with any production command (statera check, run, sync…) "
+                "or `uv sync --all-groups`",
+            )
+        ]
+    checks = [Check(OK, "dbt", dbt_version)]
     if root is None:
         return checks
     content = root / "content" if (root / "content" / "statera.toml").is_file() else root
     products = content / "products"
-    uses = {
-        "GNU PSPP": any(products.rglob("*.sps")) if products.is_dir() else False,
-        "R": any(products.rglob("*.R")) if products.is_dir() else False,
-    }
-    from statera.legacy import pspp, r
-
-    for name, module, hint in (
-        ("GNU PSPP", pspp, "install GNU PSPP or set STATERA_PSPP"),
-        ("R", r, "install R (Rscript) or set STATERA_R"),
-    ):
-        if not uses[name]:
+    for name, pattern, group, module_name, reader, hint in LEGACY:
+        if not (products.is_dir() and any(products.rglob(pattern))):
             continue
+        if groups is not None and group not in groups:
+            checks.append(
+                Check(
+                    WARN,
+                    name,
+                    f"the products have {pattern[1:]} models, but pyproject.toml has no `{group}` group",
+                    f'add {group} = ["statera[{group}]"] to [dependency-groups] in pyproject.toml',
+                )
+            )
+            continue
+        if importlib.util.find_spec(reader) is None:
+            checks.append(Check(WARN, name, f"{reader} is not installed", "uv sync --all-groups"))
+            continue
+        module = importlib.import_module(f"statera.legacy.{module_name}")
         if module.available():
             checks.append(Check(OK, name, module.version()))
         else:
@@ -231,9 +273,39 @@ def _engine(root: Path | None) -> list[Check]:
     return checks
 
 
+def _data(root: Path | None) -> list[Check]:
+    """Where `statera query`, `metric` and the catalog read the data from."""
+    if root is None:
+        return []
+    from statera.consume import connection
+    from statera.project import current
+
+    try:
+        project = current()
+    except Exception:  # noqa: BLE001 (an invalid statera.toml is reported by statera check)
+        return []
+    where = connection.describe(project)
+    if connection.is_local(project) and not project.warehouse.exists():
+        return [
+            Check(
+                WARN,
+                "data",
+                "nothing to read yet: no local engine and no shared engine declared",
+                f"to query: ask the data team for the shared engine and set {connection.ENV} "
+                "(or [consumption] engine in statera.toml); to produce: statera run",
+            )
+        ]
+    try:
+        con = connection.connect(project)
+        con.disconnect()
+    except Exception as error:  # noqa: BLE001
+        return [Check(FAIL, "data", f"{where}: cannot connect ({str(error).splitlines()[0][:160]})")]
+    return [Check(OK, "data", where)]
+
+
 def run() -> list[Check]:
     root = launcher.repository_root()
-    return [*_tools(), *_versions(root), *_repository(root), *_git(root), *_engine(root)]
+    return [*_tools(), *_versions(root), *_repository(root), *_git(root), *_data(root), *_production(root)]
 
 
 def report(checks: list[Check]) -> int:

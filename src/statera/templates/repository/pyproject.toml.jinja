@@ -3,10 +3,15 @@ name = "{{ name }}"
 version = "0.1.0"
 description = "{{ organization }} data repository following the Statera standard"
 requires-python = ">=3.11,<3.14"
+# What READING the data needs (catalog, queries, metrics, recipes): all that someone outside the data
+# team installs. The production tools are the dependency groups below.
 dependencies = ["statera"]
 
 [tool.uv]
 package = false  # data repository: not a Python package
+# `uv sync` and `uv run` install only the dependencies above. The `statera` commands that produce (check,
+# run, sync, docs…) add every group by themselves; `uv sync --all-groups` installs them all at once.
+default-groups = []
 
 [tool.uv.sources]
 # The framework, at the pinned version. To upgrade Statera: change the tag, update required_version in
@@ -14,7 +19,11 @@ package = false  # data repository: not a Python package
 statera = { git = "{{ statera_git }}", tag = "v{{ statera_version }}" }
 
 [dependency-groups]
+produce = ["statera[produce]"]  # the data team: dbt and Copier
 dev = ["pytest>=8.3", "ruff>=0.8"]
+# Legacy code in the products: uncomment the language(s) your models call (`statera doctor` tells you)
+# legacy-r = ["statera[legacy-r]"]        # R scripts (.R), through Rscript
+# legacy-spss = ["statera[legacy-spss]"]  # SPSS syntax (.sps), through GNU PSPP
 
 [tool.ruff]
 line-length = 120

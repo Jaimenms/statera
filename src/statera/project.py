@@ -211,7 +211,7 @@ class Project:
 
     @property
     def required_version(self) -> str | None:
-        """Statera versions this repository accepts (`[project] required_version`, e.g. ">=0.2,<0.3")."""
+        """Statera versions this repository accepts (`[project] required_version`, e.g. ">=0.3,<0.4")."""
         return self._section("project").get("required_version")
 
     @property
@@ -308,6 +308,11 @@ class Project:
     @property
     def engine(self) -> dict:
         return {"type": "duckdb", "path": "dbt/data/warehouse.duckdb", **self._section("engine")}
+
+    @property
+    def consumption(self) -> dict:
+        """[consumption]: where those who only read the data read it from (statera.consume.connection)."""
+        return self._section("consumption")
 
     @property
     def warehouse(self) -> Path:

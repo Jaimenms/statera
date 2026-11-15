@@ -14,6 +14,14 @@ synthetic = false
 type = "duckdb"                    # in production: postgres, trino...
 path = "dbt/data/warehouse.duckdb"
 
+[consumption]
+# Where those who only READ the data (outside the data team) read it from: a shared engine the team keeps
+# up to date. Without it, the local engine above, which only exists where `statera run` has run.
+# STATERA_ENGINE overrides it (for a URL with credentials, which never goes into git); `local` forces the
+# local engine. A DuckDB file is opened read-only: a path (network share), https:// or s3://.
+# engine = "s3://my-bucket/statistics/warehouse.duckdb"
+# engine = "postgres://reader@db.example.org/statistics"   # or any engine Ibis reads (statera[postgres], statera[trino])
+
 [conventions]
 # Names of the convention columns in YOUR data (column names belong to the content). These are the
 # defaults; change them if your tables use other names (e.g. period_column = "reference_month").

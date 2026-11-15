@@ -1,13 +1,12 @@
 [project]
 name = "statera"
-version = "0.2.0"
+version = "0.3.0"
 description = "Framework for the statera standard: validation, process-driven execution, documentation, lineage, editions register and query library for statistical products"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
 dependencies = [
-    "dbt-core>=1.10,<1.13",
-    "dbt-duckdb>=1.10,<1.12",
+    # Consumption (catalog, queries, metrics, recipes) and validation: what someone who only READS needs
     "duckdb>=1.2",
     "ibis-framework[duckdb]>=10.0",
     "pandas>=2.2",
@@ -17,16 +16,23 @@ dependencies = [
     "packaging>=24.0",
     "jsonschema>=4.23",
     "jinja2>=3.1",
-    "copier>=9.4",
-    "pyreadstat>=1.2",
-    "pyreadr>=0.5",
 ]
+
+[project.optional-dependencies]
+# Production (the data team): dbt runs the process; Copier creates repositories and products
+produce = ["dbt-core>=1.10,<1.13", "dbt-duckdb>=1.10,<1.12", "copier>=9.4"]
+# Legacy code called from dbt Python models, one extra per language (the program itself is installed apart)
+legacy-r = ["pyreadr>=0.5"]       # R scripts through Rscript (.rds files)
+legacy-spss = ["pyreadstat>=1.2"]  # SPSS syntax through GNU PSPP (.sav files)
+# Shared engines other than DuckDB, for reading the data (statera.toml [consumption] engine)
+postgres = ["ibis-framework[postgres]>=10.0"]
+trino = ["ibis-framework[trino]>=10.0"]
 
 [project.scripts]
 statera = "statera.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8.3", "hypothesis>=6.120", "ruff>=0.8"]
+dev = ["statera[produce,legacy-r,legacy-spss]", "pytest>=8.3", "hypothesis>=6.120", "ruff>=0.8"]
 
 [build-system]
 requires = ["hatchling>=1.25"]

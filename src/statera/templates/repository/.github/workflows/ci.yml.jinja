@@ -24,5 +24,6 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: GNU PSPP and R (legacy code called by Python models)
         run: sudo apt-get update -q && sudo apt-get install -y -q pspp r-base-core
-      # `uv run --locked` uses exactly the Statera version in uv.lock and fails if the lock is out of date
-      - run: uv run --locked statera check --all
+      # `uv run --locked` uses exactly the Statera version in uv.lock and fails if the lock is out of date;
+      # `--all-groups` adds the production tools (dbt, legacy code readers), which reading the data does not need
+      - run: uv run --locked --all-groups statera check --all

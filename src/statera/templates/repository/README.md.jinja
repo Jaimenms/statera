@@ -11,14 +11,40 @@ docs/           studies, technical notes and decisions (free text)
 pyproject.toml  the pinned Statera version (uv.lock fixes it exactly)
 ```
 
-## Getting started
+## Only want to query the data?
+
+You do not need the production tools (dbt, legacy-code readers): only [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync                                  # installs only what reading needs
+uv run statera doctor                    # says where the data comes from (or whom to ask)
+uv run statera query list                # cataloged queries
+uv run statera query run <id> --param uf=SP --output result/
+```
+
+In Python (notebook or script, with `uv run`):
+
+```python
+from statera.consume import catalog
+
+cat = catalog.open()
+cat.search(layer="gold")                     # what exists, with classification
+cat.table("gold.<table>").to_pandas()        # current data
+cat.edition("<product>", "2026-06")          # exactly what was published, hash checked
+```
+
+The data comes from the shared engine in `content/statera.toml` (`[consumption] engine`); if it needs
+credentials, the data team gives you a URL to put in the `STATERA_ENGINE` environment variable (never in
+git). The catalog of tables, queries and metrics is in [content/docs/](content/docs/README.md).
+
+## Getting started (data team)
 
 Requires [uv](https://docs.astral.sh/uv/), which installs Python, Statera and the other dependencies. It
 works the same on Windows, Linux and Mac.
 
 ```bash
 # once per computer
-uv tool install git+{{ statera_git }}   # the `statera` command; later: uv tool upgrade statera
+uv tool install "statera[produce] @ git+{{ statera_git }}"   # the `statera` command; later: uv tool upgrade statera
 
 # in this repository, from any folder
 statera doctor    # checks the computer and the repository, and says how to fix each problem
@@ -68,6 +94,14 @@ content/
 
 Files marked as generated (`GENERATED FILE` notice at the top) are not edited by hand: `statera sync`
 rebuilds them.
+
+## Who installs what
+
+`pyproject.toml` lists as dependencies only what reading the data needs. The production tools are
+dependency groups: `produce` (dbt, Copier), `dev` (pytest, ruff) and, when the products have legacy code,
+`legacy-r` and `legacy-spss` (uncomment them in `pyproject.toml`; `statera doctor` tells you when one is
+missing). The `statera` commands that produce install the groups by themselves; `uv sync --all-groups`
+installs them all at once.
 
 ## Updating Statera
 
