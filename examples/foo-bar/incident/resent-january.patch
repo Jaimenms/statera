@@ -1,0 +1,57 @@
+diff --git a/examples/foo-bar/content/products/bar/5-process/models/intermediate/bar/int_bar__records.sql b/examples/foo-bar/content/products/bar/5-process/models/intermediate/bar/int_bar__records.sql
+index 135deb3..397a659 100644
+--- a/examples/foo-bar/content/products/bar/5-process/models/intermediate/bar/int_bar__records.sql
++++ b/examples/foo-bar/content/products/bar/5-process/models/intermediate/bar/int_bar__records.sql
+@@ -1,4 +1,7 @@
+ -- foo records at the cut pinned by the edition (the cut filter is in the source product's staging).
++--   BR-BAR-003  a record counts once: a record the source sends again does not count again
++
++{{ config(meta={'rules': ['BR-BAR-003'], 'gsbpm': '5.4'}) }}
+ 
+ select
+     record_id,
+@@ -7,3 +10,4 @@ select
+     value,
+     cut_date
+ from {{ ref('stg_foo__records') }}
++qualify row_number() over (partition by record_id order by received_at) = 1
+diff --git a/examples/foo-bar/content/products/bar/5-process/rules/BR-BAR-003-counts-once/cases.yaml b/examples/foo-bar/content/products/bar/5-process/rules/BR-BAR-003-counts-once/cases.yaml
+new file mode 100644
+index 0000000..7081958
+--- /dev/null
++++ b/examples/foo-bar/content/products/bar/5-process/rules/BR-BAR-003-counts-once/cases.yaml
+@@ -0,0 +1,14 @@
++rule: BR-BAR-003
++model: int_bar__records
++variables: {period: "2026-02", cut_date: "2026-03-10"}
++cases:
++  - id: resent_record_counts_once
++    description: R1 is received in January and sent again in February; R2 is received once.
++    inputs:
++      stg_foo__records:
++        - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00, cut_date: "2026-03-10", received_at: "2026-01-20"}
++        - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00, cut_date: "2026-03-10", received_at: "2026-02-20"}
++        - {record_id: R2, uf_id: 35, period: "2026-01", value: 300.00, cut_date: "2026-03-10", received_at: "2026-01-25"}
++    expected:
++      - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00}
++      - {record_id: R2, uf_id: 35, period: "2026-01", value: 300.00}
+diff --git a/examples/foo-bar/content/products/bar/5-process/rules/BR-BAR-003-counts-once/rule.md b/examples/foo-bar/content/products/bar/5-process/rules/BR-BAR-003-counts-once/rule.md
+new file mode 100644
+index 0000000..d7d28f8
+--- /dev/null
++++ b/examples/foo-bar/content/products/bar/5-process/rules/BR-BAR-003-counts-once/rule.md
+@@ -0,0 +1,14 @@
++# BR-BAR-003 — A record counts once
++
++| Field | Value |
++|---|---|
++| Status | illustrative |
++| Layer | silver |
++| Implementation | `int_bar__records` (dbt) |
++| GSBPM | 5.4 Edit and impute |
++
++## Definition
++
++A record is identified by `record_id`. When the Foo System sends a record again, the record keeps its
++**first reception** and the later ones do not count. Written after the edition of February 2026 was blocked
++by control CK-01: the source had sent the whole of January a second time.

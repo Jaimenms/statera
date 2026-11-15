@@ -134,6 +134,8 @@ def test_tasks_says_what_to_do_about_a_blocked_edition_and_about_a_wait(minimal_
     assert blocked["command"] == "statera run --product sample --period 2026-01"
     assert "statera status --product sample --period 2026-01" in blocked["does"]
 
+    assert cli.main(["resume", "--product", "sample", "--period", "2026-01"]) == 1  # blocked: nothing to resume
+    assert "EDITION NOT RESUMED" in (err := capsys.readouterr().err) and "run it again: statera run" in err
     assert cli.main(["tasks", "--role", "team-x"]) == 0
     assert "statera run --product sample --period 2026-01" in capsys.readouterr().out
     with pytest.raises(SystemExit):  # a role is one of governance/roles.yaml

@@ -2257,7 +2257,7 @@ wheels = [
 
 [[package]]
 name = "statera"
-version = "0.9.1"
+version = "0.9.2"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },

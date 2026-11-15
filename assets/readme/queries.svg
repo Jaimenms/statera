@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 888 374" width="888" height="374" role="img" aria-label="statera query — the catalog, and the SQL a query runs">
+<style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono",monospace;font-size:13px}
+@media (prefers-reduced-motion: reduce){text{animation:none!important}}
+</style>
+<rect width="100%" height="100%" rx="10" fill="#1b1f27"/>
+<path d="M0 10a10 10 0 0 1 10-10h868a10 10 0 0 1 10 10v24h-888z" fill="#272c37"/>
+<circle cx="20" cy="17" r="6" fill="#ee6a5f"/><circle cx="40" cy="17" r="6" fill="#f5bd4f"/><circle cx="60" cy="17" r="6" fill="#61c454"/>
+<text x="444" y="22" fill="#8b95a7" text-anchor="middle" style="animation:none">statera query — the catalog, and the SQL a query runs</text>
+<text class="l1" x="18.0" y="66.2" fill="#a3d9a5" font-weight="600" xml:space="preserve">$</text>
+<text class="l2" x="33.6" y="66.2" fill="#d8dee9" font-weight="600" xml:space="preserve">statera</text>
+<text class="l3" x="96.2" y="66.2" fill="#d8dee9" font-weight="600" xml:space="preserve">query</text>
+<text class="l4" x="143.1" y="66.2" fill="#d8dee9" font-weight="600" xml:space="preserve">list</text>
+<text class="l5" x="18.0" y="85.2" fill="#d8dee9" xml:space="preserve">org.example.foo-bar.query.mean-value-by-uf                   cataloged   Mean value series for a UF</text>
+<text class="l6" x="18.0" y="104.2" fill="#d8dee9" xml:space="preserve">org.example.foo-bar.query.uf-series                          cataloged   Series of records and value for a UF</text>
+<text class="l7" x="18.0" y="142.2" fill="#a3d9a5" font-weight="600" xml:space="preserve">$</text>
+<text class="l8" x="33.6" y="142.2" fill="#d8dee9" font-weight="600" xml:space="preserve">statera query show uf-series --param uf=SP</text>
+<text class="l9" x="18.0" y="161.2" fill="#8b95a7" xml:space="preserve">-- org.example.foo-bar.query.uf-series 0.1.0 · parameters: uf=SP</text>
+<text class="l10" x="18.0" y="180.2" fill="#8b95a7" xml:space="preserve">-- Recurring query org.example.foo-bar.query.uf-series (metadata in query.yaml).</text>
+<text class="l11" x="18.0" y="199.2" fill="#d8dee9" xml:space="preserve">select</text>
+<text class="l12" x="18.0" y="218.2" fill="#d8dee9" xml:space="preserve">    period,</text>
+<text class="l13" x="18.0" y="237.2" fill="#d8dee9" xml:space="preserve">    uf_abbr,</text>
+<text class="l14" x="18.0" y="256.2" fill="#d8dee9" xml:space="preserve">    records,</text>
+<text class="l15" x="18.0" y="275.2" fill="#d8dee9" xml:space="preserve">    total_value,</text>
+<text class="l16" x="18.0" y="294.2" fill="#d8dee9" xml:space="preserve">    cut_date</text>
+<text class="l17" x="18.0" y="313.2" fill="#d8dee9" xml:space="preserve">from gold.bar_uf_monthly</text>
+<text class="l18" x="18.0" y="332.2" fill="#d8dee9" xml:space="preserve">where uf_abbr = 'SP'</text>
+<text class="l19" x="18.0" y="351.2" fill="#d8dee9" xml:space="preserve">order by period</text>
+</svg>

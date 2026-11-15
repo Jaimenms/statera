@@ -40,6 +40,8 @@ From any folder of `examples/foo-bar/` (with `statera` installed globally, or pr
 statera doctor                 # environment, pinned version, legacy tools
 statera check                  # validation, lint and tests (what CI runs)
 statera demo                   # synthetic data, 2 editions of bar (each first releases the foo cut it needs)
+statera synthetic --fault resent-january   # the source sends January twice: bar's control CK-01 blocks 2026-02
+                                           # (the correction, as a rule with its case: ../incident/resent-january.patch)
 statera conformance            # level of each product and what is missing for the next one
 statera rules test             # rule cases in Python models (the baz ones require PSPP and R)
 statera docs --interactive     # browsable catalog at content/target/static_index.html

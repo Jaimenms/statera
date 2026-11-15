@@ -81,10 +81,15 @@ def _cmd_run(args) -> int:
 
 def _cmd_resume(args) -> int:
     from statera import execution
+    from statera.edition import EditionFailure
 
     key = args.period or args.cut_date
     decision = "rejected" if args.reject else "approved"
-    ed = execution.resume(args.product, key, decision, args.approve, acknowledgement=args.acknowledge_alerts)
+    try:
+        ed = execution.resume(args.product, key, decision, args.approve, acknowledgement=args.acknowledge_alerts)
+    except EditionFailure as error:  # nothing to resume (blocked, done), or alerts nobody acknowledged
+        print(f"\n[statera] EDITION NOT RESUMED\n{error}", file=sys.stderr)
+        return 1
     return _edition_result(ed)
 
 

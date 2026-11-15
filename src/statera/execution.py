@@ -290,7 +290,8 @@ def resume(
     unit = current().product(product)
     ed = Edition.load(unit, period)
     if ed.status != "waiting" or not ed.pending:
-        raise EditionFailure(f"{ed.label} is not awaiting a human task or an event (status: {ed.status})")
+        again = " Once its failures are dealt with, run it again: statera run" if ed.status == "blocked" else ""
+        raise EditionFailure(f"{ed.label} is not awaiting a human task or an event (status: {ed.status}).{again}")
     proc = processes.load(unit.process)
     element = next(e for e in proc["elements"] if e["id"] == ed.pending)
     ed.status = "running"

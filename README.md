@@ -25,6 +25,370 @@ DATA            <org>/content/               products · references · queries �
 REPOSITORY      <org>/publications/          register of published editions
 ```
 
+**In this page:** [what it gives you](#what-it-gives-you) ·
+[one edition, from the cut-off date to publication](#one-edition-from-the-cut-off-date-to-publication) ·
+[why a standard inside a framework](#why-a-standard-inside-a-framework) ·
+[installing](#installing) · [only reading the data](#only-reading-the-data) ·
+[asking in plain language](#asking-in-plain-language-optional) · [starting a repository](#starting-a-data-repository) ·
+[example](#example) · [command line](#command-line) · [library](#library) · [extending](#extending)
+
+## What it gives you
+
+Every image below comes from the example repository in [`examples/foo-bar/`](examples/foo-bar/content/README.md):
+the diagrams are the files the framework generates there, and the terminals show what the commands printed.
+
+### A process you can read, and that is what runs
+
+Each product has one process, written in YAML that mirrors BPMN 2.0 (`2-design/process.yaml`). From it the
+framework generates the `.bpmn` (it opens in Camunda Modeler or bpmn.io), this diagram and a viewer; and
+`statera run` executes **that same process**: the automatic tasks run, the gateways follow the outcome, and
+the edition stops at each human task until someone completes it. Every task carries its GSBPM sub-process
+and its expected duration, so the diagram also says how much human work an edition takes.
+
+<p align="center">
+  <img src="examples/foo-bar/content/products/bar/2-design/process.svg" alt="BPMN diagram of the monthly production of the product bar: a pipeline lane with the automatic tasks (compute the tables with dbt, check contracts and controls, generate the package) and a team lane with the human tasks (investigate a failure, review and approve the release, publish the package), each task with its GSBPM sub-process and duration." width="100%">
+</p>
+
+### Knowing who has to do what
+
+The process stops at a human task and waits, even for days and on another computer. `statera status` says
+where every product's edition is and which edition the calendar expects next; `statera tasks` is the work
+list: the human tasks of every open edition, the role each belongs to, since when it waits, and the command
+that takes it on.
+
+<p align="center">
+  <img src="assets/readme/tasks.svg" alt="Terminal: statera tasks lists the human tasks of the open edition bar 2026-02 (review and approve the release: waiting; publish the package: not reached), the role bar-team, and under To do now the command statera resume --product bar --period 2026-02." width="100%">
+</p>
+
+### Lineage, and what a change reaches
+
+The lineage is not drawn by hand: it comes from the contracts, the dbt models and the declared consumers,
+with the layer and the classification of every table. `statera lineage --impact` answers the question that
+comes before a change: which products are downstream, and which team to tell.
+
+<p align="center">
+  <img src="examples/foo-bar/content/docs/lineage.svg" alt="Data lineage by layer of the example: the source system Foo System, the bronze table, the silver models, the reference table of UFs, the gold tables of the products bar and baz, and their consumers (the monthly release and two cataloged queries); each table shows its classification and whether it has an ODCS contract." width="86%">
+</p>
+<p align="center">
+  <img src="assets/readme/impact.svg" alt="Terminal: statera lineage --impact foo lists the two products affected by a change in foo (bar and baz), their tables by layer, their consumers, and the team to notify." width="72%">
+</p>
+
+### Documentation generated from the repository
+
+`statera docs` writes the documentation from the metadata the repository already has: catalog, lineage,
+processes, rules, series, queries, metrics, recipes and the conformance level of each product
+([the example's](examples/foo-bar/content/docs/README.md)). `statera docs --interactive` adds a browsable,
+searchable catalog in one page, where every table shows its layer, product, contract, URN, classification
+and owner next to its columns and code.
+
+<p align="center">
+  <img src="assets/readme/catalog.png" alt="The browsable catalog: the page of the table bar_uf_monthly, with its layer (gold), product, ODCS contract, URN, classification (broad, aggregated), business rules, owner, description and columns." width="92%">
+</p>
+
+### A catalog of queries, with the SQL at hand
+
+The questions people ask again and again become **cataloged queries**. Each one is a folder in
+`queries/<theme>/<name>/` ([the example's](examples/foo-bar/content/queries/)) with its metadata
+(`query.yaml`: what it returns, its parameters, its limitations, the classification of its output, its
+owner), a test, and the SQL, written once over the products' tables and with the parameters as variables:
+
+```sql
+-- examples/foo-bar/content/queries/foo/uf-series/uf_series.sql
+select
+    period,
+    uf_abbr,
+    records,
+    total_value,
+    cut_date
+from {{ ref('bar_uf_monthly') }}
+where uf_abbr = '{{ var("uf", "SP") }}'
+order by period
+```
+
+`statera query list` shows the catalog, and `statera query show <id> --param name=value` prints the SQL
+**filled in**: the table resolved to where it really is and the parameters in place, ready to read, review
+or paste into any SQL client.
+
+<p align="center">
+  <img src="assets/readme/queries.svg" alt="Terminal: statera query list shows the two cataloged queries of the example; statera query show uf-series --param uf=SP prints the SQL with the table gold.bar_uf_monthly and the filter uf_abbr = 'SP' filled in." width="96%">
+</p>
+
+`statera query show <id> --help` describes a query (parameters, limitations, classification, owner), and
+`statera query run <id> --param name=value` runs it; with `--output <folder>` it also writes the result and
+its provenance (query version, parameters, engine, hash of the SQL).
+
+### Asking in plain language
+
+The command line grew with the standard. With the optional copilot, someone who knows the question and not
+the command asks in their own words; a language model **running on their own computer** finds the cataloged
+query or writes the SQL, which is checked before anyone sees it, explained on request and run only after a
+yes ([more below](#asking-in-plain-language-optional)).
+
+<p align="center">
+  <img src="assets/readme/copilot.svg" alt="Terminal animation: statera copilot is asked how many records São Paulo had in 2026; it sets aside a cataloged query that does not answer, writes a SQL query over the gold table, lists what it assumed and what it reads, explains the query when asked, and after a yes prints the result, 412." width="100%">
+</p>
+
+### And, under all of it
+
+- **Contracts for every table** (ODCS), checked against the data at every edition.
+- **Information classification on every asset** and an open publication gate: a table is only published
+  openly when its classification allows it, with statistical disclosure control (cell suppression,
+  k-anonymity) applied where the table declares it.
+- **Immutable cuts and a register of every published edition**: what was read, with which code version, and
+  the hash of each file, so any published number can be reproduced and verified.
+- **Business rules with executable cases**, in SQL and Python, and legacy SPSS and R code brought under the
+  same process.
+- **Quality indicators per edition**, with alerts that a person must acknowledge before approving.
+- **A library to read it all** (Ibis): the catalog, the published editions, the cuts, and official metrics
+  defined once.
+
+## One edition, from the cut-off date to publication
+
+This follows the February 2026 edition of the product `bar`, of the example, through every task of its
+process: the machine's part, the two moments in which a person decides, and the publication. The outputs
+are what the commands printed (`…` shortens a folder of this computer).
+
+<p align="center">
+  <img src="examples/foo-bar/content/products/bar/2-design/process.svg" alt="The process of the product bar: in the pipeline lane, the calendar cut-off date, the wait for the cut of foo, compute the product tables, check contracts and controls, generate the package; in the team lane, investigate the failure (the exception), review and approve the release, publish the package, edition published." width="100%">
+</p>
+<p align="center">
+  <img src="assets/readme/edition.svg" alt="Terminal animation of the whole edition: statera run releases the cut of foo, computes the tables of bar, checks contracts and controls (one warns that January was revised), generates the package and stops at the human task Review and approve the release; a first statera resume approves it and the process stops at Publish the package; a second statera resume publishes it and the edition is done." width="100%">
+</p>
+
+| In the diagram | Who | What happens |
+|---|---|---|
+| Calendar cut-off date | — | the edition starts: `statera run`, by a person or by the organization's scheduler |
+| foo cut available | pipeline | the edition waits for the cut of the product it reads and pins it; with `--with-dependencies`, that cut is released first (extract, check the bronze contract, mark the cut) |
+| Compute the product tables | pipeline | `dbt build`: the models and their tests |
+| Check contracts and controls across editions | pipeline | the ODCS contracts against the data, then the product's controls; a failure takes the other way out of the gateway |
+| Generate xlsx, summary and Data Package | pipeline | the edition package, with disclosure control applied |
+| Review and approve the release | **a person** of `bar-team` | the process stops and waits for the decision |
+| Publish the package | **a person** of `bar-team` | completing the task runs the publication and records the edition |
+| Investigate the failure | **a person** of `bar-team` | only when a control fails: the edition is blocked there |
+
+**1. The edition is started, and the machine goes as far as it can.**
+
+```
+$ statera run --product bar --period 2026-02 --with-dependencies
+[statera] Edition bar 2026-02 — cut-off date 2026-03-10 — process products/bar/2-design/process.yaml
+[statera]   cut 2026-03-10 pinned: foo (run 339f3fd0)
+[statera] Task_Transform — Compute the product tables (dbt build)
+[statera]   dbt build: PASS=11 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=11
+[statera] Task_Controls — Check contracts and controls across editions
+[statera]   ODCS contracts: 19 checks on 3 contracts, at cut 2026-03-10
+[statera]   [warning] CK-01 Revision of already released reference months: 6 key(s) revised beyond tolerance: records 34 -> 38 (11.8%); records 103 -> 123 (19.4%); records 23 -> 31 (34.8%)
+[statera]   [ok] CK-02 No records lost between editions: 7 key(s) released before: none lost records
+[statera] Task_Package — Generate xlsx, summary and Data Package
+[statera]   package: …/data/products/bar/7-disseminate/2026-02 (version 1.0.0; 0 cells suppressed)
+[statera] Awaiting 'Review and approve the release' (bar-team). Complete it with: statera resume
+```
+
+It stops at the first human task and saves its state: nothing is published yet, and the review can happen
+tomorrow, on another computer. (The lines of the cut of `foo`, released first, are in the animation.)
+
+**2. The team sees it is its turn, and looks at what was produced.** `statera tasks` lists the task for
+`bar-team` with the command that completes it ([above](#knowing-who-has-to-do-what)); `statera status` says
+how the edition got there, and the control that warned is what the reviewer has to judge:
+
+```
+$ statera status --product bar --period 2026-02
+bar 2026-02 (cut-off date 2026-03-10): waiting, pending: Task_Approve
+  Event_Cut              ok
+  Task_Transform         ok
+  Task_Controls          warning
+  Task_Package           ok
+```
+
+The package to review is in the folder the run printed: `bar-2026-02.xlsx`, `by-uf.csv`,
+`change-by-uf.csv`, `summary.md`, and its metadata, `datapackage.json` and `ckan.json`.
+
+**3. A person approves.**
+
+```
+$ statera resume --product bar --period 2026-02
+[statera] Task_Approve — Review and approve the release: approved
+[statera] Awaiting 'Publish the package' (bar-team). Complete it with: statera resume
+```
+
+`statera resume --reject` records a rejection instead, and the process follows the "no" of the gateway,
+back to the review. When the edition's evaluation has indicators in alert, approving requires
+`--acknowledge-alerts "<why the edition goes on>"`, and the note is published with the edition.
+
+**4. A person publishes.** The last task is semi-automatic: the person decides, the framework does it.
+
+```
+$ statera resume --product bar --period 2026-02
+[statera] Task_Publish — Publish the package: approved
+[statera]   registry: …/registry/bar/2026-02.datapackage.json (series page: …/registry/bar/README.md)
+[statera] Edition bar 2026-02: done (Edition published).
+```
+
+**What is left.** The edition is in the editions register (in a data repository, the `publications/`
+folder: [the example's](examples/foo-bar/publications/bar/)): its Data Package, with the hash of every
+file, the cut it read and the version of the code that produced it; a line in the series index; and the
+series page. `statera tasks --all` keeps what each human task decided, and when:
+
+```
+$ statera tasks --all --product bar
+product  edition  task                                           role      state     when (UTC)
+-------  -------  ---------------------------------------------  --------  --------  ----------------
+bar      2026-01  Review and approve the release (Task_Approve)  bar-team  approved  2026-11-15 19:32
+bar      2026-01  Publish the package (Task_Publish)             bar-team  approved  2026-11-15 19:32
+bar      2026-02  Review and approve the release (Task_Approve)  bar-team  approved  2026-11-15 19:43
+bar      2026-02  Publish the package (Task_Publish)             bar-team  approved  2026-11-15 19:43
+```
+
+### When the analysis stops the edition
+
+The path above is the one in which everything goes well. The controls of phase 6 (Analyse) exist for the
+other one. In the example, the synthetic source can reproduce an incident: the source system sends the
+whole of January a second time, after the first edition was published.
+
+```
+$ statera synthetic --fault resent-january
+Synthetic source foo/FooSystem: foo_records=1838 (injected fault: resent-january)
+```
+
+Nothing in the extraction or in the contracts can tell: the rows are valid. What notices is the control of
+`bar` that compares each edition with the previous one (`CK-01`, in `6-analyse/controls.yaml`): January,
+already published, would more than double.
+
+<p align="center">
+  <img src="assets/readme/blocked.svg" alt="Terminal animation: statera run for the edition bar 2026-02 releases the cut of foo and computes the tables, then the control CK-01, revision of already released reference months, fails with 7 keys revised beyond tolerance (records 55 to 118, 34 to 77, 103 to 246), and the edition is blocked awaiting Investigate the failure, of bar-team." width="100%">
+</p>
+
+The gateway "Controls OK?" takes the "no": the package is not generated, the review is not reached, nothing
+is published. The edition stays `blocked` at the exception task, with the failure recorded:
+
+```
+$ statera status --product bar --period 2026-02
+bar 2026-02 (cut-off date 2026-03-10): blocked, pending: Task_Investigate
+  Event_Cut              ok
+  Task_Transform         ok
+  Task_Controls          failed
+
+Failures:
+  - control CK-01 Revision of already released reference months: 7 key(s) revised beyond tolerance: records 55 -> 118 (114.5%); records 34 -> 77 (126.5%); records 103 -> 246 (138.8%)
+```
+
+and `statera tasks` puts the investigation on the team's list, ahead of the two tasks the edition did not
+reach:
+
+```
+$ statera tasks
+product  edition  task                                           role      state        when (UTC)
+-------  -------  ---------------------------------------------  --------  -----------  -----------------------------
+bar      2026-02  Investigate the failure (Task_Investigate)     bar-team  blocked      since 2026-11-15 19:51, 0 min
+bar      2026-02  Review and approve the release (Task_Approve)  bar-team  not reached
+bar      2026-02  Publish the package (Task_Publish)             bar-team  not reached
+
+To do now:
+  bar-team — Bar technical team, @org-example/bar-team
+    statera run --product bar --period 2026-02
+        Investigate the failure: runs it again, once what `statera status --product bar --period 2026-02` lists is fixed
+```
+
+A blocked edition cannot be approved around the control: `statera resume` refuses it.
+
+```
+$ statera resume --product bar --period 2026-02
+[statera] EDITION NOT RESUMED
+Edition bar 2026-02 is not awaiting a human task or an event (status: blocked). Once its failures are dealt with, run it again: statera run
+```
+
+**The correction is a change in the repository.** Batches and cuts are immutable, so the delivery that
+came wrong is not erased: the team writes down what to do with it, as a business rule of the product
+(`BR-BAR-003`, "a record counts once") with a case that proves it, implemented in the product's model:
+
+```diff
+ -- products/bar/5-process/models/intermediate/bar/int_bar__records.sql
++--   BR-BAR-003  a record counts once: a record the source sends again does not count again
++
++{{ config(meta={'rules': ['BR-BAR-003'], 'gsbpm': '5.4'}) }}
+ 
+ select
+     record_id,
+     uf_id,
+     period,
+     value,
+     cut_date
+ from {{ ref('stg_foo__records') }}
++qualify row_number() over (partition by record_id order by received_at) = 1
+```
+
+```yaml
+# products/bar/5-process/rules/BR-BAR-003-counts-once/cases.yaml
+rule: BR-BAR-003
+model: int_bar__records
+variables: {period: "2026-02", cut_date: "2026-03-10"}
+cases:
+  - id: resent_record_counts_once
+    description: R1 is received in January and sent again in February; R2 is received once.
+    inputs:
+      stg_foo__records:
+        - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00, cut_date: "2026-03-10", received_at: "2026-01-20"}
+        - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00, cut_date: "2026-03-10", received_at: "2026-02-20"}
+        - {record_id: R2, uf_id: 35, period: "2026-01", value: 300.00, cut_date: "2026-03-10", received_at: "2026-01-25"}
+    expected:
+      - {record_id: R1, uf_id: 35, period: "2026-01", value: 100.00}
+      - {record_id: R2, uf_id: 35, period: "2026-01", value: 300.00}
+```
+
+`statera sync` turns the case into a test that runs with the model, `statera check` validates the
+repository with the new rule, and the change is reviewed like any other. The example is kept as it was
+before this change, so that the incident can be reproduced; the whole change (the model, the rule and its
+case) is in [`examples/foo-bar/incident/resent-january.patch`](examples/foo-bar/incident/resent-january.patch),
+for `git apply`.
+
+**Then the edition is run again**, from the start, through the same controls:
+
+<p align="center">
+  <img src="assets/readme/recovered.svg" alt="Terminal animation: with the rule in place, statera run for the edition bar 2026-02 computes the tables with one more test passing, the control CK-01 only warns about the usual revision of January, the package is generated and the edition stops at Review and approve the release; a first statera resume approves it, a second one publishes it, and the edition is done." width="100%">
+</p>
+
+The build now has one more test passing (the case of the new rule), `CK-01` is back to the warning any
+edition gets (January is revised by what arrived late, as in the first path), and from there the edition is
+like any other: it waits for the review, a person approves it, a person publishes it.
+
+## Why a standard inside a framework
+
+Statistical production already has good standards; what is usually missing is having them **together, in
+one place, checked by a machine**. Statera invents no format where a standard exists: it adopts the
+standard and defines only a profile on top of it.
+
+| For… | Statera adopts | and adds, as a profile |
+|---|---|---|
+| the contract of every table | [ODCS](https://bitol-io.github.io/open-data-contract-standard/) v3.1 | layer, URN, classification, the dbt node that builds the table |
+| the description of every product | [ODPS](https://bitol-io.github.io/open-data-product-standard/) v1.0 | alignment, visibility, authorized consumers, target conformance level |
+| the production process | BPMN 2.0 | a YAML mirror that is also the execution plan; the type, GSBPM sub-process and duration of each task |
+| the phases of the work | GSBPM 5.1 | the folders of every product (`1-specify` … `8-evaluate`) and the sub-process of every task |
+| the transformations | [dbt](https://www.getdbt.com/) | the project and the tests of the business rules, generated from the products |
+| what ran, on what | [OpenLineage](https://openlineage.io/) | the edition and the cut of every run |
+| every published edition | [Data Package](https://datapackage.org/) 2.0 | the editions register: version, correction, hashes, code version |
+| who answers for what | CODEOWNERS | generated from the roles and owners the repository declares |
+| reading the data | [Ibis](https://ibis-project.org/) | one catalog over DuckDB, PostgreSQL, Trino, Athena and others |
+
+What that buys:
+
+- **One way of doing it, for every product.** A new product starts from a template, and someone who knows
+  one product of the organization finds their way in any other: same folders, same files, same commands.
+- **Checked, not promised.** `statera check` validates every product against the standard in CI, without
+  data: contracts, classification, processes, rules, lineage. What the standard asks for is either there
+  or the build says what is missing.
+- **Adopted gradually.** Four conformance levels (catalogued, reproducible, controlled, evaluated) let a
+  team start by describing what it publishes today, even a hand-built spreadsheet, and `statera conformance`
+  says what is left for the next level.
+- **Generated instead of kept by hand.** The dbt project, the tests of the business rules, the BPMN, the
+  CODEOWNERS, the calendars of internal products and the documentation are generated from the same
+  metadata, so they do not drift apart; for the first four, CI fails when the file is out of date.
+- **An improvement reaches everyone.** The rules live in the framework, not copied into each repository:
+  a repository pins a Statera version and gets the next one by upgrading it.
+- **Standard files, other tools.** A contract, a process, a run event and an edition are files in open
+  formats, which the tools made for those formats can read without Statera.
+- **People's decisions stay people's, and recorded.** Approving and rejecting are tasks of the process,
+  recorded with the decision and when it was made; an alert of the evaluation has to be acknowledged by
+  someone, with a note, before an edition is approved. The automation never takes these over.
+
 ## Installing
 
 Requires [uv](https://docs.astral.sh/uv/) and read access to this repository. Works the same on Windows,
@@ -235,3 +599,8 @@ available, the SPSS syntax (GNU PSPP) and the R scripts.
 
 [specification/](specification/README.md): file formats, ODCS and ODPS profiles, namespace,
 classification, processes, controls, consumption, conformance levels and internal products.
+
+## License
+
+[MIT](LICENSE). The JSON Schemas of the adopted standards in `src/statera/schemas/standards/` are copies of
+the official ones and keep their own licenses.
