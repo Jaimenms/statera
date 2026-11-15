@@ -63,6 +63,20 @@ def test_the_next_edition_comes_from_the_calendar_not_from_the_runs(minimal_proj
     assert capsys.readouterr().out.count(", cut-off ") == 1
 
 
+def test_the_next_edition_is_never_before_the_latest_one(minimal_project):
+    from statera import release_calendar
+
+    release_calendar.sync(minimal_project)
+    consumer, base = minimal_project.product("consumer"), minimal_project.product("base-data")
+    execution.run("base-data", cut_date="2026-03-20")  # a later cut than the one the calendar requests
+    execution.run("consumer", "2026-02")  # 2026-01 was never run: the product started at 2026-02
+    after = date(2026, 4, 1)
+    assert execution.next_expected(consumer, after) is None  # not 2026-01: the calendar has nothing after 2026-02
+    assert execution.next_expected(base, after) is None  # not the cut of 2026-02-20
+    rows = {r["product"]: r for r in execution.overview(today=after)}
+    assert (rows["consumer"]["edition"], rows["consumer"]["next"]) == ("2026-02", None)
+
+
 def test_an_edition_in_the_register_is_not_expected_again(minimal_project, monkeypatch):
     from statera.disseminate import registry
 

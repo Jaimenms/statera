@@ -333,34 +333,37 @@ def _step(unit, ed: Edition) -> tuple[str, str]:
 
 
 def next_expected(unit, today: date | None = None) -> dict | None:
-    """The next edition the product's calendar expects and nobody started: the first one, in the order of
-    `1-specify/calendar.yaml`, with no run and not in the editions register (in an internal product: the
-    first cut its consumers request, with no run and not released). So it does not depend on the runs
-    alone, which `statera clean` deletes.
+    """The next edition the product's calendar expects: the first one of `1-specify/calendar.yaml` AFTER
+    the latest edition the product has, by run or in the editions register (in an internal product: the
+    first cut its consumers request after its latest cut, run or released). The register counts, so it
+    does not depend on the runs alone, which `statera clean` deletes; and an earlier edition that has no
+    run (the product started later, or its runs were not kept) is not what comes next.
 
     `state` places it against today: `scheduled` before its cut-off date, `due` from then on (it can be
     run) and, in a dissemination product, `late` after its release date. None when the product has no
-    calendar or the calendar has nothing left to start."""
+    calendar or the calendar has nothing after the latest edition."""
     calendar = unit.read("1-specify/calendar.yaml") or {}
-    today_, started = (today or date.today()).isoformat(), set(editions(unit))
+    today_, have = (today or date.today()).isoformat(), set(editions(unit))
     if unit.internal:
         from statera.collect import released_cuts
 
-        started |= set(released_cuts(unit))
-        for cut in calendar.get("cuts") or []:
-            if (key := str(cut["cut_date"])) not in started:
+        latest = max(have | set(released_cuts(unit)), default="")
+        for key in sorted(str(cut["cut_date"]) for cut in calendar.get("cuts") or []):
+            if key > latest:
                 state = "due" if key <= today_ else "scheduled"
                 return {"edition": key, "cut_date": key, "release": None, "state": state}
         return None
     from statera.disseminate import registry
 
-    registered = unit.has("7-disseminate/series.yaml")
-    for e in calendar.get("editions") or []:
+    expected = sorted(calendar.get("editions") or [], key=lambda e: str(e["period"]))
+    if unit.has("7-disseminate/series.yaml"):
+        have |= {str(e["period"]) for e in expected if registry.is_published(unit, str(e["period"]))}
+    latest = max(have, default="")
+    for e in expected:
         key, cut_date, release = str(e["period"]), str(e["cut_date"]), str(e.get("release") or "")
-        if key in started or (registered and registry.is_published(unit, key)):
-            continue
-        state = "late" if release and release < today_ else "due" if cut_date <= today_ else "scheduled"
-        return {"edition": key, "cut_date": cut_date, "release": release or None, "state": state}
+        if key > latest:
+            state = "late" if release and release < today_ else "due" if cut_date <= today_ else "scheduled"
+            return {"edition": key, "cut_date": cut_date, "release": release or None, "state": state}
     return None
 
 

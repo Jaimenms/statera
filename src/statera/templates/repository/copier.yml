@@ -21,4 +21,4 @@ statera_git:
   default: ssh://git@github.com/Jaimenms/statera.git
 statera_version:
   type: str
-  default: "0.9.0"
+  default: "0.9.1"

@@ -137,7 +137,7 @@ def _status_overview(rows: list[dict]) -> int:
         print(f"{len(waiting)} edition(s) need someone: statera tasks says who, and the command that takes each on")
     due = [r for r in rows if r.get("next") and r["next"]["state"] != "scheduled"]
     if due:
-        print("\nDue by the calendar (the cut-off date has passed and nobody started it):")
+        print("\nDue by the calendar (the cut-off date has passed and it was not started):")
     for r in due:
         key = "--cut-date" if r["internal"] else "--period"
         print(f"  statera run --product {r['product']} {key} {r['next']['edition']}")

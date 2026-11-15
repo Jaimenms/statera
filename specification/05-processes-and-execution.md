@@ -57,10 +57,12 @@ lists where every product's latest edition (or cut) is: the pending BPMN element
 and the evaluation alerts; `--product` lists every edition of one product.
 
 The last column is the **next edition the calendar expects**: the first edition of the product's
-`1-specify/calendar.yaml`, in its order, that nobody started (no run) and that is not in the editions
-register; in an internal product, the first cut its consumers request with no run and not released. It is
-read from the calendar and the register, not from the runs alone, so a product whose runs were deleted
-(`statera clean`) still says what comes next. It is marked `due` from its cut-off date on and, in a
+`1-specify/calendar.yaml` after the latest edition the product has, by run or in the editions register;
+in an internal product, the first cut its consumers request after its latest cut, run or released. It is
+never earlier than the edition on the same line: an earlier edition of the calendar with no run (the
+product started later, or its runs were not kept) is not what comes next. It is read from the calendar
+and the register, not from the runs alone, so a product whose runs were deleted (`statera clean`) still
+says what comes next. It is marked `due` from its cut-off date on and, in a
 dissemination product, `late` after its release date; for these `statera status` prints the `statera run`
 that starts them. `—` means the calendar has nothing left to start.
 
