@@ -36,6 +36,7 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
       <bpmn:lane id="Lane_Pipeline" name="Pipeline (statera run)" statera:role="data-team">
         <bpmn:flowNodeRef>Start_CutDate</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Event_Cut</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Join_Task_Transform</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Transform</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Controls</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_Controls</bpmn:flowNodeRef>
@@ -43,6 +44,7 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
       </bpmn:lane>
       <bpmn:lane id="Lane_Team" name="Bar technical team" statera:role="bar-team">
         <bpmn:flowNodeRef>Task_Investigate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Join_Task_Approve</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Approve</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_Approved</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Publish</bpmn:flowNodeRef>
@@ -58,9 +60,13 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
       <bpmn:messageEventDefinition id="Def_Event_Cut" />
     </bpmn:intermediateCatchEvent>
-    <bpmn:serviceTask id="Task_Transform" name="Compute the product tables (dbt build)" statera:type="automatic" statera:gsbpm="5.3-5.7" statera:durationMin="1" statera:implementation="DbtBuild" statera:models="stg_foo__records,int_bar__records,bar_uf_monthly,bar_uf_monthly_change">
+    <bpmn:exclusiveGateway id="Join_Task_Transform">
       <bpmn:incoming>Flow_2</bpmn:incoming>
       <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_Join_Task_Transform</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_Transform" name="Compute the product tables (dbt build)" statera:type="automatic" statera:gsbpm="5.3-5.7" statera:durationMin="1" statera:implementation="DbtBuild" statera:models="stg_foo__records,int_bar__records,bar_uf_monthly,bar_uf_monthly_change">
+      <bpmn:incoming>Flow_Join_Task_Transform</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:serviceTask id="Task_Controls" name="Check contracts and controls across editions" statera:type="automatic" statera:gsbpm="6.2" statera:durationMin="1" statera:implementation="Gate" statera:checks="CK-01,CK-02">
@@ -80,9 +86,13 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
       <bpmn:incoming>Flow_6</bpmn:incoming>
       <bpmn:outgoing>Flow_7</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:userTask id="Task_Approve" name="Review and approve the release" statera:type="manual" statera:gsbpm="6.5" statera:durationMin="30">
+    <bpmn:exclusiveGateway id="Join_Task_Approve">
       <bpmn:incoming>Flow_8</bpmn:incoming>
       <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_Join_Task_Approve</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_Approve" name="Review and approve the release" statera:type="manual" statera:gsbpm="6.5" statera:durationMin="30">
+      <bpmn:incoming>Flow_Join_Task_Approve</bpmn:incoming>
       <bpmn:outgoing>Flow_9</bpmn:outgoing>
     </bpmn:userTask>
     <bpmn:exclusiveGateway id="Gateway_Approved" name="Approved?">
@@ -98,7 +108,7 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
       <bpmn:incoming>Flow_12</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_CutDate" targetRef="Event_Cut" />
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="Event_Cut" targetRef="Task_Transform" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Event_Cut" targetRef="Join_Task_Transform" />
     <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Transform" targetRef="Task_Controls" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_Controls" targetRef="Gateway_Controls" />
     <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_Controls" targetRef="Task_Package" name="yes">
@@ -107,27 +117,29 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
     <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_Controls" targetRef="Task_Investigate" name="no">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${status == 'failed'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Investigate" targetRef="Task_Transform" />
-    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_Package" targetRef="Task_Approve" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Investigate" targetRef="Join_Task_Transform" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_Package" targetRef="Join_Task_Approve" />
     <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_Approve" targetRef="Gateway_Approved" />
     <bpmn:sequenceFlow id="Flow_10" sourceRef="Gateway_Approved" targetRef="Task_Publish" name="yes">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${status == 'approved'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_11" sourceRef="Gateway_Approved" targetRef="Task_Approve" name="no">
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Gateway_Approved" targetRef="Join_Task_Approve" name="no">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${status == 'rejected'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_Publish" targetRef="End_Published" />
+    <bpmn:sequenceFlow id="Flow_Join_Task_Transform" sourceRef="Join_Task_Transform" targetRef="Task_Transform" />
+    <bpmn:sequenceFlow id="Flow_Join_Task_Approve" sourceRef="Join_Task_Approve" targetRef="Task_Approve" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="Diagram_Process_Bar">
     <bpmndi:BPMNPlane id="Plane_Process_Bar" bpmnElement="Collab_Process_Bar">
       <bpmndi:BPMNShape id="Pool_Process_Bar_di" bpmnElement="Pool_Process_Bar" isHorizontal="true">
-        <dc:Bounds x="20" y="80" width="1900" height="300" />
+        <dc:Bounds x="20" y="80" width="2250" height="300" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Pipeline_di" bpmnElement="Lane_Pipeline" isHorizontal="true">
-        <dc:Bounds x="50" y="80" width="1870" height="150" />
+        <dc:Bounds x="50" y="80" width="2220" height="150" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Team_di" bpmnElement="Lane_Team" isHorizontal="true">
-        <dc:Bounds x="50" y="230" width="1870" height="150" />
+        <dc:Bounds x="50" y="230" width="2220" height="150" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Start_CutDate_di" bpmnElement="Start_CutDate">
         <dc:Bounds x="162" y="137" width="36" height="36" />
@@ -137,35 +149,43 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
         <dc:Bounds x="337" y="137" width="36" height="36" />
         <bpmndi:BPMNLabel><dc:Bounds x="305" y="177" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Transform_di" bpmnElement="Task_Transform">
-        <dc:Bounds x="480" y="115" width="100" height="80" />
+      <bpmndi:BPMNShape id="Join_Task_Transform_di" bpmnElement="Join_Task_Transform" isMarkerVisible="true">
+        <dc:Bounds x="505" y="130" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="480" y="184" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Controls_di" bpmnElement="Task_Controls">
+      <bpmndi:BPMNShape id="Task_Transform_di" bpmnElement="Task_Transform">
         <dc:Bounds x="655" y="115" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Controls_di" bpmnElement="Task_Controls">
+        <dc:Bounds x="830" y="115" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_Controls_di" bpmnElement="Gateway_Controls" isMarkerVisible="true">
-        <dc:Bounds x="855" y="130" width="50" height="50" />
-        <bpmndi:BPMNLabel><dc:Bounds x="830" y="99" width="100" height="27" /></bpmndi:BPMNLabel>
+        <dc:Bounds x="1030" y="130" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1005" y="99" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_Package_di" bpmnElement="Task_Package">
-        <dc:Bounds x="1005" y="115" width="100" height="80" />
+        <dc:Bounds x="1180" y="115" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_Investigate_di" bpmnElement="Task_Investigate">
-        <dc:Bounds x="1005" y="265" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Approve_di" bpmnElement="Task_Approve">
         <dc:Bounds x="1180" y="265" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_Approved_di" bpmnElement="Gateway_Approved" isMarkerVisible="true">
+      <bpmndi:BPMNShape id="Join_Task_Approve_di" bpmnElement="Join_Task_Approve" isMarkerVisible="true">
         <dc:Bounds x="1380" y="280" width="50" height="50" />
-        <bpmndi:BPMNLabel><dc:Bounds x="1355" y="249" width="100" height="27" /></bpmndi:BPMNLabel>
+        <bpmndi:BPMNLabel><dc:Bounds x="1355" y="334" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Publish_di" bpmnElement="Task_Publish">
+      <bpmndi:BPMNShape id="Task_Approve_di" bpmnElement="Task_Approve">
         <dc:Bounds x="1530" y="265" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Approved_di" bpmnElement="Gateway_Approved" isMarkerVisible="true">
+        <dc:Bounds x="1730" y="280" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1705" y="249" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Publish_di" bpmnElement="Task_Publish">
+        <dc:Bounds x="1880" y="265" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="End_Published_di" bpmnElement="End_Published">
-        <dc:Bounds x="1737" y="287" width="36" height="36" />
-        <bpmndi:BPMNLabel><dc:Bounds x="1705" y="327" width="100" height="27" /></bpmndi:BPMNLabel>
+        <dc:Bounds x="2087" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2055" y="327" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
         <di:waypoint x="198" y="155" />
@@ -173,58 +193,67 @@ Source: <code>products/bar/2-design/process.bpmn</code></div>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
         <di:waypoint x="373" y="155" />
-        <di:waypoint x="480" y="155" />
+        <di:waypoint x="505" y="155" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
-        <di:waypoint x="580" y="155" />
-        <di:waypoint x="655" y="155" />
+        <di:waypoint x="755" y="155" />
+        <di:waypoint x="830" y="155" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
-        <di:waypoint x="755" y="155" />
-        <di:waypoint x="855" y="155" />
+        <di:waypoint x="930" y="155" />
+        <di:waypoint x="1030" y="155" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
-        <di:waypoint x="905" y="155" />
-        <di:waypoint x="1005" y="155" />
-        <bpmndi:BPMNLabel><dc:Bounds x="911" y="137" width="30" height="14" /></bpmndi:BPMNLabel>
+        <di:waypoint x="1080" y="155" />
+        <di:waypoint x="1180" y="155" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1086" y="137" width="30" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
-        <di:waypoint x="880" y="180" />
-        <di:waypoint x="880" y="305" />
-        <di:waypoint x="1005" y="305" />
-        <bpmndi:BPMNLabel><dc:Bounds x="886" y="184" width="30" height="14" /></bpmndi:BPMNLabel>
+        <di:waypoint x="1055" y="180" />
+        <di:waypoint x="1055" y="305" />
+        <di:waypoint x="1180" y="305" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1061" y="184" width="30" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
-        <di:waypoint x="1055" y="345" />
-        <di:waypoint x="1055" y="370" />
-        <di:waypoint x="550" y="370" />
-        <di:waypoint x="550" y="195" />
+        <di:waypoint x="1280" y="305" />
+        <di:waypoint x="1305" y="305" />
+        <di:waypoint x="1305" y="367" />
+        <di:waypoint x="530" y="367" />
+        <di:waypoint x="530" y="180" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
-        <di:waypoint x="1105" y="155" />
-        <di:waypoint x="1142" y="155" />
-        <di:waypoint x="1142" y="305" />
-        <di:waypoint x="1180" y="305" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
-        <di:waypoint x="1280" y="305" />
+        <di:waypoint x="1280" y="155" />
+        <di:waypoint x="1330" y="155" />
+        <di:waypoint x="1330" y="305" />
         <di:waypoint x="1380" y="305" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1630" y="305" />
+        <di:waypoint x="1730" y="305" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
-        <di:waypoint x="1430" y="305" />
-        <di:waypoint x="1530" y="305" />
-        <bpmndi:BPMNLabel><dc:Bounds x="1436" y="287" width="30" height="14" /></bpmndi:BPMNLabel>
+        <di:waypoint x="1780" y="305" />
+        <di:waypoint x="1880" y="305" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1786" y="287" width="30" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="1755" y="330" />
+        <di:waypoint x="1755" y="352" />
+        <di:waypoint x="1405" y="352" />
         <di:waypoint x="1405" y="330" />
-        <di:waypoint x="1405" y="367" />
-        <di:waypoint x="1230" y="367" />
-        <di:waypoint x="1230" y="345" />
-        <bpmndi:BPMNLabel><dc:Bounds x="1411" y="334" width="30" height="14" /></bpmndi:BPMNLabel>
+        <bpmndi:BPMNLabel><dc:Bounds x="1761" y="334" width="30" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_12_di" bpmnElement="Flow_12">
-        <di:waypoint x="1630" y="305" />
-        <di:waypoint x="1737" y="305" />
+        <di:waypoint x="1980" y="305" />
+        <di:waypoint x="2087" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Join_Task_Transform_di" bpmnElement="Flow_Join_Task_Transform">
+        <di:waypoint x="555" y="155" />
+        <di:waypoint x="655" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Join_Task_Approve_di" bpmnElement="Flow_Join_Task_Approve">
+        <di:waypoint x="1430" y="305" />
+        <di:waypoint x="1530" y="305" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

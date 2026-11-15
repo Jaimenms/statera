@@ -14,6 +14,7 @@ elements:
     lane: Lane_Pipeline
     event: message
     statera: {awaits: PinCut}
+  - {id: Join_Task_Transform, type: exclusiveGateway, lane: Lane_Pipeline}
   - id: Task_Transform
     type: serviceTask
     name: Compute the product tables (dbt build)
@@ -40,6 +41,7 @@ elements:
     name: Investigate the failure
     lane: Lane_Team
     statera: {type: manual, gsbpm: '5.3', durationMin: 60, exception: true}
+  - {id: Join_Task_Approve, type: exclusiveGateway, lane: Lane_Team}
   - id: Task_Approve
     type: userTask
     name: Review and approve the release
@@ -55,14 +57,16 @@ elements:
 
 flows:
   - {id: Flow_1, from: Start_CutDate, to: Event_Cut}
-  - {id: Flow_2, from: Event_Cut, to: Task_Transform}
+  - {id: Flow_2, from: Event_Cut, to: Join_Task_Transform}
   - {id: Flow_3, from: Task_Transform, to: Task_Controls}
   - {id: Flow_4, from: Task_Controls, to: Gateway_Controls}
   - {id: Flow_5, from: Gateway_Controls, to: Task_Package, name: 'yes', condition: ok}
   - {id: Flow_6, from: Gateway_Controls, to: Task_Investigate, name: 'no', condition: failed}
-  - {id: Flow_7, from: Task_Investigate, to: Task_Transform}
-  - {id: Flow_8, from: Task_Package, to: Task_Approve}
+  - {id: Flow_7, from: Task_Investigate, to: Join_Task_Transform}
+  - {id: Flow_8, from: Task_Package, to: Join_Task_Approve}
   - {id: Flow_9, from: Task_Approve, to: Gateway_Approved}
   - {id: Flow_10, from: Gateway_Approved, to: Task_Publish, name: 'yes', condition: approved}
-  - {id: Flow_11, from: Gateway_Approved, to: Task_Approve, name: 'no', condition: rejected}
+  - {id: Flow_11, from: Gateway_Approved, to: Join_Task_Approve, name: 'no', condition: rejected}
   - {id: Flow_12, from: Task_Publish, to: End_Published}
+  - {id: Flow_Join_Task_Transform, from: Join_Task_Transform, to: Task_Transform}
+  - {id: Flow_Join_Task_Approve, from: Join_Task_Approve, to: Task_Approve}

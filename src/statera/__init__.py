@@ -16,5 +16,5 @@ Package layout by GSBPM 5.1 phase:
     execution.py  runs the product's process, task by task
 """
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 SPECIFICATION = "0.1"

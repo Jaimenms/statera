@@ -22,3 +22,14 @@ def test_effort_summary_ignores_exception_tasks(tmp_path):
     file.write_text(processes.generate_xml(yaml.safe_load(PROCESS), "to-be.yaml"), encoding="utf-8")
     r = bpmn.summary(bpmn.read(file))
     assert r["manual_h"] == 0.5  # Approve (30 min); Investigate is an exception
+
+
+def test_flows_never_join_on_a_task(minimal_project):
+    from statera import validation
+
+    path = minimal_project.root / "products/sample/2-design/process.yaml"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace("from: T_X, to: J_B", "from: T_X, to: T_B"), encoding="utf-8")  # implicit join
+    findings = validation.check_processes(minimal_project, {"nodes": {}, "sources": {}, "exposures": {}})
+    assert any("T_B has 2 incoming flows: join them in an exclusiveGateway" in f.message for f in findings)
+    assert not any("J_B" in f.message and not f.ok for f in findings)  # a join needs no `condition`

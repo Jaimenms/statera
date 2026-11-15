@@ -19,23 +19,27 @@ lanes:
 elements:
   - {id: Start, type: startEvent, name: Start, lane: L1}
   - {id: T_A, type: serviceTask, name: A, lane: L1, statera: {type: automatic, gsbpm: '4.3', durationMin: 1, implementation: 'py:testing_steps.record'}}
+  - {id: J_B, type: exclusiveGateway, lane: L1}
   - {id: T_B, type: serviceTask, name: B, lane: L1, statera: {type: automatic, gsbpm: '6.2', durationMin: 1, implementation: 'py:testing_steps.decide'}}
   - {id: G, type: exclusiveGateway, name: 'OK?', lane: L1}
   - {id: T_X, type: userTask, name: Investigate, lane: L2, statera: {type: manual, gsbpm: '5.3', durationMin: 60, exception: true}}
+  - {id: J_H, type: exclusiveGateway, lane: L2}
   - {id: T_H, type: userTask, name: Approve, lane: L2, statera: {type: manual, gsbpm: '6.5', durationMin: 30}}
   - {id: G2, type: exclusiveGateway, name: 'Approved?', lane: L2}
   - {id: T_P, type: userTask, name: Publish, lane: L2, statera: {type: semi-automatic, gsbpm: '7.3', durationMin: 10, implementation: 'py:testing_steps.publish'}}
   - {id: End, type: endEvent, name: End, lane: L2}
 flows:
   - {id: F1, from: Start, to: T_A}
-  - {id: F2, from: T_A, to: T_B}
+  - {id: F2, from: T_A, to: J_B}
+  - {id: F2b, from: J_B, to: T_B}
   - {id: F3, from: T_B, to: G}
-  - {id: F4, from: G, to: T_H, name: 'yes', condition: ok}
+  - {id: F4, from: G, to: J_H, name: 'yes', condition: ok}
+  - {id: F4b, from: J_H, to: T_H}
   - {id: F5, from: G, to: T_X, name: 'no', condition: failed}
-  - {id: F6, from: T_X, to: T_B}
+  - {id: F6, from: T_X, to: J_B}
   - {id: F7, from: T_H, to: G2}
   - {id: F8, from: G2, to: T_P, name: 'yes', condition: approved}
-  - {id: F9, from: G2, to: T_H, name: 'no', condition: rejected}
+  - {id: F9, from: G2, to: J_H, name: 'no', condition: rejected}
   - {id: F10, from: T_P, to: End}
 """
 

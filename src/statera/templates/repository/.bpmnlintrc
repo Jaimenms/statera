@@ -1,0 +1,9 @@
+{
+  "extends": [
+    "bpmnlint:recommended",
+    "plugin:@miragon/rules/recommended-for-modeling"
+  ],
+  "rules": {
+    "@miragon/rules/flow-target-alignment": "off"
+  }
+}

@@ -7,6 +7,7 @@ lanes:
 
 elements:
   - {id: Start_Cut, type: startEvent, name: Cut-off date requested by consumers, lane: Lane_Data, event: timer}
+  - {id: Join_Task_Extract, type: exclusiveGateway, lane: Lane_Data}
   - id: Task_Extract
     type: serviceTask
     name: Extract the increment received since the last load
@@ -35,10 +36,11 @@ data:
   - {id: Store_Bronze, type: dataStoreReference, name: Bronze (immutable batches), asset: bronze-foo-records}
 
 flows:
-  - {id: Flow_1, from: Start_Cut, to: Task_Extract}
+  - {id: Flow_1, from: Start_Cut, to: Join_Task_Extract}
   - {id: Flow_2, from: Task_Extract, to: Task_Validate}
   - {id: Flow_3, from: Task_Validate, to: Gateway_Ok}
   - {id: Flow_4, from: Gateway_Ok, to: Task_MarkCut, name: 'yes', condition: ok}
   - {id: Flow_5, from: Gateway_Ok, to: Task_Investigate, name: 'no', condition: failed}
-  - {id: Flow_6, from: Task_Investigate, to: Task_Extract}
+  - {id: Flow_6, from: Task_Investigate, to: Join_Task_Extract}
   - {id: Flow_7, from: Task_MarkCut, to: End_Cut}
+  - {id: Flow_Join_Task_Extract, from: Join_Task_Extract, to: Task_Extract}

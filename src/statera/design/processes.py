@@ -195,21 +195,23 @@ def _position(proc: dict, columns: dict[str, int], back_flow_targets: set[str]) 
 
 
 def _loopback_route(a: tuple, b: tuple, from_gateway: bool) -> list[Point]:
-    """Flow back to an earlier element: always underneath, entering through the target's bottom."""
+    """Flow back to an earlier element (a join gateway: flows never join on a task). An activity always
+    exits to the right, with a straight stub, before turning (BPMN modeling conventions); a gateway may leave
+    through a vertex. The flow passes underneath and enters the target through its bottom (or top, when the
+    target is in a lane below)."""
     ax, ay, aw, ah = a
     bx, by, bw, bh = b
-    acx, bcx = ax + aw / 2, bx + bw / 2
-    if abs((ay + ah / 2) - (by + bh / 2)) < 1:  # same lane: passes underneath both
-        background = max(ay + ah, by + bh) + 22
-        return [(acx, ay + ah), (acx, background), (bcx, background), (bcx, by + bh)]
-    if by > ay:  # target in a lane below: enters from the top
-        return [(acx, ay + ah), (acx, by - 20), (bcx, by - 20), (bcx, by)]
-    input_ = bx + bw - 30 if bh > 50 else bcx  # right of the bottom, leaving the center for data
-    if from_gateway:  # leaves through the top vertex
-        height = by + bh + 28
-        return [(acx, ay), (acx, height), (input_, height), (input_, by + bh)]
-    height = ay + ah + 25  # task: leaves from the bottom, so as not to cross its own entry
-    return [(acx, ay + ah), (acx, height), (input_, height), (input_, by + bh)]
+    acx, acy, bcx = ax + aw / 2, ay + ah / 2, bx + bw / 2
+    stub = ax + aw + 25  # an activity's exit to the right
+    if by > ay + ah:  # target in a lane below: comes from above it, entering through the top
+        above = by - 20
+        if from_gateway:
+            return [(acx, ay + ah), (acx, above), (bcx, above), (bcx, by)]
+        return [(ax + aw, acy), (stub, acy), (stub, above), (bcx, above), (bcx, by)]
+    below = max(ay + ah, by + bh) + 22  # underneath the source and the target
+    if from_gateway:
+        return [(acx, ay + ah), (acx, below), (bcx, below), (bcx, by + bh)]
+    return [(ax + aw, acy), (stub, acy), (stub, below), (bcx, below), (bcx, by + bh)]
 
 
 def _forward_route(a: tuple, b: tuple, from_gateway: bool) -> list[Point]:
@@ -522,7 +524,7 @@ def to_dict(path: Path) -> dict:
                 | ({"asset": el.attrs["asset"]} if "asset" in el.attrs else {})
             )
             continue
-        item: dict = {"id": el.id, "type": el.tag, "name": el.name, "lane": el.lane}
+        item: dict = {"id": el.id, "type": el.tag, **({"name": el.name} if el.name else {}), "lane": el.lane}
         if el.timer:
             item["event"] = "timer"
         elif el.message:

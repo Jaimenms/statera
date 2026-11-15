@@ -35,6 +35,7 @@ Source: <code>products/foo/2-design/process.bpmn</code></div>
     <bpmn:laneSet id="LaneSet_Process_Foo">
       <bpmn:lane id="Lane_Data" name="Data team (statera run)" statera:role="data-team">
         <bpmn:flowNodeRef>Start_Cut</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Join_Task_Extract</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Extract</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Validate</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_Ok</bpmn:flowNodeRef>
@@ -47,9 +48,13 @@ Source: <code>products/foo/2-design/process.bpmn</code></div>
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
       <bpmn:timerEventDefinition id="Def_Start_Cut" />
     </bpmn:startEvent>
-    <bpmn:serviceTask id="Task_Extract" name="Extract the increment received since the last load" statera:type="automatic" statera:gsbpm="4.3" statera:durationMin="1" statera:implementation="Extract">
+    <bpmn:exclusiveGateway id="Join_Task_Extract">
       <bpmn:incoming>Flow_1</bpmn:incoming>
       <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_Join_Task_Extract</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Task_Extract" name="Extract the increment received since the last load" statera:type="automatic" statera:gsbpm="4.3" statera:durationMin="1" statera:implementation="Extract">
+      <bpmn:incoming>Flow_Join_Task_Extract</bpmn:incoming>
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
       <bpmn:dataOutputAssociation id="DataOut_Task_Extract_1"><bpmn:targetRef>Store_Bronze</bpmn:targetRef></bpmn:dataOutputAssociation>
     </bpmn:serviceTask>
@@ -73,7 +78,7 @@ Source: <code>products/foo/2-design/process.bpmn</code></div>
     <bpmn:endEvent id="End_Cut" name="Cut available">
       <bpmn:incoming>Flow_7</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Cut" targetRef="Task_Extract" />
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Cut" targetRef="Join_Task_Extract" />
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Extract" targetRef="Task_Validate" />
     <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Validate" targetRef="Gateway_Ok" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_Ok" targetRef="Task_MarkCut" name="yes">
@@ -82,81 +87,91 @@ Source: <code>products/foo/2-design/process.bpmn</code></div>
     <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_Ok" targetRef="Task_Investigate" name="no">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${status == 'failed'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Investigate" targetRef="Task_Extract" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Investigate" targetRef="Join_Task_Extract" />
     <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_MarkCut" targetRef="End_Cut" />
+    <bpmn:sequenceFlow id="Flow_Join_Task_Extract" sourceRef="Join_Task_Extract" targetRef="Task_Extract" />
     <bpmn:dataStoreReference id="Store_Bronze" name="Bronze (immutable batches)" statera:asset="bronze-foo-records" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="Diagram_Process_Foo">
     <bpmndi:BPMNPlane id="Plane_Process_Foo" bpmnElement="Collab_Process_Foo">
       <bpmndi:BPMNShape id="Pool_Process_Foo_di" bpmnElement="Pool_Process_Foo" isHorizontal="true">
-        <dc:Bounds x="20" y="80" width="1375" height="230" />
+        <dc:Bounds x="20" y="80" width="1550" height="230" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Data_di" bpmnElement="Lane_Data" isHorizontal="true">
-        <dc:Bounds x="50" y="80" width="1345" height="230" />
+        <dc:Bounds x="50" y="80" width="1520" height="230" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Start_Cut_di" bpmnElement="Start_Cut">
         <dc:Bounds x="162" y="132" width="36" height="36" />
         <bpmndi:BPMNLabel><dc:Bounds x="130" y="172" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Extract_di" bpmnElement="Task_Extract">
-        <dc:Bounds x="305" y="110" width="100" height="80" />
+      <bpmndi:BPMNShape id="Join_Task_Extract_di" bpmnElement="Join_Task_Extract" isMarkerVisible="true">
+        <dc:Bounds x="330" y="125" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="305" y="179" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Validate_di" bpmnElement="Task_Validate">
+      <bpmndi:BPMNShape id="Task_Extract_di" bpmnElement="Task_Extract">
         <dc:Bounds x="480" y="110" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Validate_di" bpmnElement="Task_Validate">
+        <dc:Bounds x="655" y="110" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_Ok_di" bpmnElement="Gateway_Ok" isMarkerVisible="true">
-        <dc:Bounds x="680" y="125" width="50" height="50" />
-        <bpmndi:BPMNLabel><dc:Bounds x="655" y="179" width="100" height="27" /></bpmndi:BPMNLabel>
+        <dc:Bounds x="855" y="125" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="830" y="179" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_MarkCut_di" bpmnElement="Task_MarkCut">
-        <dc:Bounds x="830" y="110" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_Investigate_di" bpmnElement="Task_Investigate">
         <dc:Bounds x="1005" y="110" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Investigate_di" bpmnElement="Task_Investigate">
+        <dc:Bounds x="1180" y="110" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="End_Cut_di" bpmnElement="End_Cut">
-        <dc:Bounds x="1212" y="132" width="36" height="36" />
-        <bpmndi:BPMNLabel><dc:Bounds x="1180" y="172" width="100" height="27" /></bpmndi:BPMNLabel>
+        <dc:Bounds x="1387" y="132" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1355" y="172" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Store_Bronze_di" bpmnElement="Store_Bronze">
-        <dc:Bounds x="295" y="235" width="50" height="50" />
-        <bpmndi:BPMNLabel><dc:Bounds x="270" y="289" width="100" height="27" /></bpmndi:BPMNLabel>
+        <dc:Bounds x="505" y="235" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="480" y="289" width="100" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
         <di:waypoint x="198" y="150" />
-        <di:waypoint x="305" y="150" />
+        <di:waypoint x="330" y="150" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
-        <di:waypoint x="405" y="150" />
-        <di:waypoint x="480" y="150" />
+        <di:waypoint x="580" y="150" />
+        <di:waypoint x="655" y="150" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
-        <di:waypoint x="580" y="150" />
-        <di:waypoint x="680" y="150" />
+        <di:waypoint x="755" y="150" />
+        <di:waypoint x="855" y="150" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
-        <di:waypoint x="730" y="150" />
-        <di:waypoint x="830" y="150" />
-        <bpmndi:BPMNLabel><dc:Bounds x="736" y="132" width="30" height="14" /></bpmndi:BPMNLabel>
+        <di:waypoint x="905" y="150" />
+        <di:waypoint x="1005" y="150" />
+        <bpmndi:BPMNLabel><dc:Bounds x="911" y="132" width="30" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
-        <di:waypoint x="730" y="150" />
-        <di:waypoint x="1005" y="150" />
-        <bpmndi:BPMNLabel><dc:Bounds x="736" y="132" width="30" height="14" /></bpmndi:BPMNLabel>
+        <di:waypoint x="905" y="150" />
+        <di:waypoint x="1180" y="150" />
+        <bpmndi:BPMNLabel><dc:Bounds x="911" y="132" width="30" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
-        <di:waypoint x="1055" y="190" />
-        <di:waypoint x="1055" y="212" />
+        <di:waypoint x="1280" y="150" />
+        <di:waypoint x="1305" y="150" />
+        <di:waypoint x="1305" y="212" />
         <di:waypoint x="355" y="212" />
-        <di:waypoint x="355" y="190" />
+        <di:waypoint x="355" y="175" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
-        <di:waypoint x="930" y="150" />
-        <di:waypoint x="1212" y="150" />
+        <di:waypoint x="1105" y="150" />
+        <di:waypoint x="1387" y="150" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Join_Task_Extract_di" bpmnElement="Flow_Join_Task_Extract">
+        <di:waypoint x="380" y="150" />
+        <di:waypoint x="480" y="150" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="DataOut_Task_Extract_1_di" bpmnElement="DataOut_Task_Extract_1">
-        <di:waypoint x="320" y="190" />
-        <di:waypoint x="320" y="235" />
+        <di:waypoint x="530" y="190" />
+        <di:waypoint x="530" y="235" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

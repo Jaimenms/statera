@@ -746,10 +746,20 @@ def check_processes(project: Project, manifest: dict) -> list[Finding]:
         for f in proc["flows"]:
             outgoing.setdefault(f["from"], []).append(f)
         executable = any((e.get("statera") or {}).get("implementation") for e in proc["elements"])
+        incoming: dict[str, int] = {}
+        for f in proc["flows"]:
+            incoming[f["to"]] = incoming.get(f["to"], 0) + 1
         for gid, kind in kinds.items():
-            if executable and kind == "exclusiveGateway" and any(not f.get("condition") for f in outgoing.get(gid, [])):
+            out = outgoing.get(gid, [])
+            is_split = len(out) > 1  # a gateway with one way out is a join
+            if executable and kind == "exclusiveGateway" and is_split and any(not f.get("condition") for f in out):
                 errors.append(
                     f"gateway {gid} has an outgoing flow without `condition` (the executor would not know the path)"
+                )
+            if "Gateway" not in kind and incoming.get(gid, 0) > 1:
+                errors.append(
+                    f"{gid} has {incoming[gid]} incoming flows: join them in an exclusiveGateway with one outgoing "
+                    "flow (BPMN implicit join, bpmnlint fake-join)"
                 )
         findings += [Finding("processes", False, f"{project.rel(source)}: {e}", 3) for e in errors]
     for unit in project.units:  # statera 0.6: one process per product, 2-design/process.yaml

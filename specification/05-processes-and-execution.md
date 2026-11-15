@@ -11,6 +11,11 @@ its `to-be.yaml`, but validation fails on every file of the old `2-design/proces
 moves to `2-design/process.yaml` (its old `.bpmn` is deleted and regenerated), and an `as-is.yaml` leaves
 the product (e.g. to the documentation) or is merged into the process.
 
+The generated diagram uses the default BPMN sizes (tasks 100×80) and flows that run at least 20px straight
+out of and into each shape, so it passes the layout rules of BPMN editors' linters. A data repository has a
+`.bpmnlintrc` (created by `statera init`) that keeps the modeling defaults and turns off one layout hint,
+`flow-target-alignment`: a flow from one lane to another always changes height, because each lane is a band.
+
 Element types use the names from the OMG specification (`startEvent`, `serviceTask`, `userTask`,
 `exclusiveGateway`, `dataStoreReference`…); what belongs to the standard goes in the `statera` block of
 each task:

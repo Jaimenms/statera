@@ -5,7 +5,9 @@ event, following the flows:
 
   - automatic task         runs the `implementation` (py:<module>.<function> or dbt:build) and keeps
                            the returned status ("ok" or "failed"); emits OpenLineage and records the duration;
-  - exclusive gateway      follows the flow whose `condition` equals the status of the last task;
+  - exclusive gateway      follows the flow whose `condition` equals the status of the last task; a gateway
+                           with one outgoing flow and no condition is a JOIN (several paths meet) and is
+                           passed through. Flows never join on a task or event (BPMN implicit join);
   - wait event             (intermediateCatchEvent with `statera.awaits`) calls the function; while
                            it returns false, the edition stays "waiting" (e.g. the cut of the input
                            internal product has not been released yet); `statera resume` re-evaluates;
@@ -117,6 +119,8 @@ def _run_task(ed: Edition, proc: dict, e: dict) -> str:
 def _next_node(outputs: dict, e: dict, status: str) -> str:
     flows = outputs[e["id"]]
     if e["type"] in bpmn.GATEWAYS:
+        if len(flows) == 1 and not flows[0].get("condition"):  # a join: the paths meet, one way out
+            return flows[0]["to"]
         chosen = [f for f in flows if f.get("condition") == status]
         if not chosen and status == "warning":  # a gate warned, and the process models no `warning` path
             chosen = [f for f in flows if f.get("condition") == "ok"]
