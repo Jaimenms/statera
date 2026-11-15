@@ -11,7 +11,10 @@
     ],
     ".venv/lib/python3.12/site-packages/statera/schemas/statera/roles.schema.json": "content/governance/roles.yaml",
     ".venv/lib/python3.12/site-packages/statera/schemas/statera/calendar.schema.json": "content/products/*/1-specify/calendar.yaml",
-    ".venv/lib/python3.12/site-packages/statera/schemas/statera/process.schema.json": ["content/*/*/2-design/process.yaml", "content/governance/processes/*.yaml"],
+    ".venv/lib/python3.12/site-packages/statera/schemas/statera/process.schema.json": [
+      "content/*/*/2-design/process.yaml",
+      "content/governance/processes/*.yaml"
+    ],
     ".venv/lib/python3.12/site-packages/statera/schemas/statera/rule-cases.schema.json": "content/*/*/5-process/rules/*/cases.yaml",
     ".venv/lib/python3.12/site-packages/statera/schemas/statera/metrics.schema.json": "content/*/*/5-process/metrics.yaml",
     ".venv/lib/python3.12/site-packages/statera/schemas/statera/controls.schema.json": "content/products/*/6-analyse/controls.yaml",
@@ -42,7 +45,9 @@
     "content/dbt_project.yml": true,
     "content/dbt/generated/*.yml": true,
     "content/docs/**": true,
-    ".github/CODEOWNERS": true
+    ".github/CODEOWNERS": true,
+    "content/*/*/2-design/process.svg": true,
+    "content/*/*/2-design/process.html": true
   },
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"

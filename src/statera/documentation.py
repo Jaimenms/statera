@@ -555,13 +555,14 @@ def generate_processes(project: Project) -> list[Path]:
     ]
     for p in processes:
         svg = bpmn.svg_destination(p)
+        image = os.path.relpath(svg, project.docs).replace(os.sep, "/")
         parts += [
             f"## {p.name}",
             "",
             f"Source: {_link(project, p.path.with_suffix('.yaml'))} · generated: {_link(project, p.path)} · "
-            f"[interactive viewer](processes/{svg.with_suffix('.html').name})",
+            f"{_link(project, svg.with_suffix('.html'), 'interactive viewer')}",
             "",
-            f"![{p.name}](processes/{svg.name})",
+            f"![{p.name}]({image})",
             "",
             _table(
                 ["Task", "Lane (role)", "Kind", "GSBPM", "Duration", "Implementation", ""],

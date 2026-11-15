@@ -141,7 +141,7 @@ that apply to it.
 | Phase | File | Schema |
 |---|---|---|
 | 1 | `product.odps.yaml`; `classification.yaml`; `owners.yaml`; `calendar.yaml` (dissemination products) | ODPS 1.0 (profile 04); `classification`, `owners`, `calendar` |
-| 2 | `process.yaml`, the product's single process (and the generated `process.bpmn`); the `processes/` folder of 0.5 fails validation | `process` (05) |
+| 2 | `process.yaml`, the product's single process, and next to it what is generated from it: `process.bpmn`, the diagram `process.svg` and the viewer `process.html`; the `processes/` folder of 0.5 fails validation | `process` (05) |
 | 3 | tests; `synthetic.py` with the `SyntheticSource` classes (from 0.6, 05) | — |
 | 4 | `contracts/*.odcs.yaml` (bronze) | ODCS 3.1 (profile 04) |
 | 5 | `contracts/*.odcs.yaml`, `models/` (dbt: `.sql`, or `.py` with pandas; legacy `.sps` or `.R` called by a `.py`), `rules/<RN>/{rule.md,cases.yaml}`, `macros/`, `metrics.yaml` | ODCS; `rule-cases`; `metrics` |
@@ -223,8 +223,9 @@ stays where `statera.toml` says.
 They are not edited by hand; CI **must** fail if they are out of date:
 `dbt_project.yml`, `dbt/generated/*.yml`, the `calendar.yaml` of internal products,
 `**/2-design/*.bpmn`, `.github/CODEOWNERS` (at the repository root,
-`[project] repository_root`). The documentation in `content/docs/` is also generated
-(`statera docs`); `statera sync` regenerates the rest.
+`[project] repository_root`). The diagram and viewer next to each process (`2-design/process.svg` and
+`.html`) and the documentation in `content/docs/` are also generated, but not checked by CI;
+`statera sync` regenerates them all except the documentation (`statera docs`).
 
 Each generated file **must** start with the framework notice (`statera.generated`), as a comment in the
 format's syntax. The notice says that the file is generated, by which command, from which sources

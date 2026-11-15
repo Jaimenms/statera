@@ -33,3 +33,18 @@ def test_flows_never_join_on_a_task(minimal_project):
     findings = validation.check_processes(minimal_project, {"nodes": {}, "sources": {}, "exposures": {}})
     assert any("T_B has 2 incoming flows: join them in an exclusiveGateway" in f.message for f in findings)
     assert not any("J_B" in f.message and not f.ok for f in findings)  # a join needs no `condition`
+
+
+def test_diagram_and_viewer_are_generated_next_to_the_process(minimal_project):
+    from statera import generated
+
+    old = minimal_project.docs / "processes"
+    old.mkdir(parents=True)
+    (old / "sample__to-be.svg").write_text(f"<!-- {generated.MARKER} -->\n<svg/>", encoding="utf-8")
+    (old / "notes.md").write_text("hand-written: stays", encoding="utf-8")
+    processes.sync()
+    written = bpmn.render_all()
+    folder = minimal_project.root / "products/sample/2-design"
+    assert folder / "process.svg" in written and folder / "process.html" in written
+    assert not (old / "sample__to-be.svg").exists()  # what 0.6.1 generated there is removed
+    assert (old / "notes.md").exists()  # anything else is not

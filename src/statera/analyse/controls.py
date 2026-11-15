@@ -74,12 +74,20 @@ def _outlier(c: dict, ins: Inputs) -> tuple[list[Result], None]:
 TYPES: dict[str, Callable] = {"revision-between-editions": _revision, "outlier": _outlier}
 
 
+CHECK_TYPES = {"RevisionBetweenEditions": "revision-between-editions", "Outlier": "outlier"}
+
+
 def run(definitions: list[dict], control_inputs: Inputs) -> tuple[list[Result], dict[str, list[dict]]]:
-    """Runs the declared controls. Returns the results and the revision tables per control."""
+    """Runs the declared controls of the framework's two types (`type:`, or the 0.6 `check:` form naming
+    RevisionBetweenEditions or Outlier). Returns the results and the revision tables per control. Product
+    checks run through the Gate (statera.extend), not here."""
     results, tables = [], {}
     for definition in definitions:
         try:
-            output, table = TYPES[definition["type"]](definition, control_inputs)
+            kind = definition.get("type") or CHECK_TYPES.get(definition.get("check", ""))
+            if kind is None:
+                raise KeyError(f"{definition.get('check')} is a product check: it runs through the Gate")
+            output, table = TYPES[kind](definition, control_inputs)
         except (duckdb.Error, KeyError) as error:  # e.g. table not built because dbt failed earlier
             name = f"{definition['id']} {definition['name']}"
             output, table = [Result("control", name, False, f"not run: {str(error).splitlines()[0]}")], None

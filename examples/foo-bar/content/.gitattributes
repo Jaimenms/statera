@@ -2,5 +2,7 @@
 dbt_project.yml                            linguist-generated=true
 dbt/generated/*.yml                  linguist-generated=true
 *.bpmn                                     linguist-generated=true
+**/2-design/process.svg                    linguist-generated=true
+**/2-design/process.html                   linguist-generated=true
 docs/**                                    linguist-generated=true
 products/foo/1-specify/calendar.yaml linguist-generated=true

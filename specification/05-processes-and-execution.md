@@ -3,8 +3,8 @@
 ## Format
 
 Each product has **one process**, `<product>/2-design/process.yaml`: a YAML file mirroring BPMN 2.0
-one-to-one (schema `process`), from which `statera sync` generates `2-design/process.bpmn` and the
-diagrams in `docs/processes/<product>.svg` and `.html`. There is no separate as-is and to-be: the process
+one-to-one (schema `process`), from which `statera sync` generates, next to it, `2-design/process.bpmn`,
+the diagram `process.svg` and the interactive viewer `process.html` (the documentation links to them). There is no separate as-is and to-be: the process
 in the repository is the one the executor runs; the history of how it was done before is in git. A
 repository of statera 0.5 (`2-design/processes/to-be.yaml`, with or without an `as-is.yaml`) still runs
 its `to-be.yaml`, but validation fails on every file of the old `2-design/processes/` folder: `to-be.yaml`

@@ -482,13 +482,24 @@ Source: <code>{origin}</code></div>
 
 
 def svg_destination(p: Process) -> Path:
-    project = current()
-    unit = project.unit_of(p.path)
-    name = unit.name if unit else f"governance__{p.path.stem}"  # one process per product
-    return project.docs / "processes" / f"{name}.svg"
+    """The diagram next to the process that generated it: <product>/2-design/process.svg (and .html)."""
+    return p.path.with_suffix(".svg")
+
+
+def _remove_old_renderings() -> None:
+    """statera 0.6.1 and earlier rendered the diagrams to docs/processes/: remove what it generated there."""
+    folder = current().docs / "processes"
+    if not folder.is_dir():
+        return
+    for old in [*folder.glob("*.svg"), *folder.glob("*.html")]:
+        if generated.MARKER in old.read_text(encoding="utf-8", errors="ignore")[:2000]:
+            old.unlink()
+    if not any(folder.iterdir()):
+        folder.rmdir()
 
 
 def render_all() -> list[Path]:
+    _remove_old_renderings()
     generated_files = []
     for p in all_():
         svg = svg_destination(p)

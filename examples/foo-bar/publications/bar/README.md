@@ -6,8 +6,8 @@ Series index: [editions.csv](editions.csv).
 
 | Period | Version | Cut-off date | Published on | Corrects | Record |
 |---|---|---|---|---|---|
-| 2026-01 | 1.0.0 | 2026-02-10 | 2026-11-15T12:02:00+00:00 |  | [2026-01.datapackage.json](2026-01.datapackage.json) |
-| 2026-02 | 1.0.0 | 2026-03-10 | 2026-11-15T12:02:03+00:00 |  | [2026-02.datapackage.json](2026-02.datapackage.json) |
+| 2026-01 | 1.0.0 | 2026-02-10 | 2026-11-15T12:06:25+00:00 |  | [2026-01.datapackage.json](2026-01.datapackage.json) |
+| 2026-02 | 1.0.0 | 2026-03-10 | 2026-11-15T12:06:28+00:00 |  | [2026-02.datapackage.json](2026-02.datapackage.json) |
 
 ## Revisions between editions 2026-01 and 2026-02
 
@@ -25,11 +25,11 @@ Port `by-uf`, cut-off dates 2026-02-10 and 2026-03-10 (control CK-01).
 
 ## Lineage per version — edition 2026-02 (version 1.0.0)
 
-Cut-off date **2026-03-10**, OpenLineage run `8785c2b9-ca4d-4893-ba56-8b5af1cd1ef8`, code `67e79f6`. Each published file is traceable to the exact bronze batches:
+Cut-off date **2026-03-10**, OpenLineage run `798d9b41-9ff4-4d2f-8829-78a6e30b57e1`, code `eebee1a`. Each published file is traceable to the exact bronze batches:
 
 | Input internal product | Cut | Run that released the cut |
 |---|---|---|
-| foo | 2026-03-10 | `a31c081c-1815-455c-9803-402bd3c9a975` |
+| foo | 2026-03-10 | `c42b70c7-cb6d-4c73-a416-465f52a0b35d` |
 
 | Extraction (bronze) | Source system | Cut-off date | Up to batch | Rows | SHA-256 |
 |---|---|---|---|---|---|
@@ -43,7 +43,7 @@ Cut-off date **2026-03-10**, OpenLineage run `8785c2b9-ca4d-4893-ba56-8b5af1cd1e
 |---|---|---|
 | by-uf.csv | gold-bar-uf-monthly | `551b0f6cf9151077…` |
 | change-by-uf.csv | gold-bar-uf-monthly-change | `c4baa2d96f9d2e23…` |
-| bar-2026-02.xlsx |  | `310cf735300d6a5e…` |
+| bar-2026-02.xlsx |  | `d0e21627ac1a235b…` |
 | summary.md |  | `5a334ad88afae1ec…` |
 
 ## Observed duration of the automatic tasks
@@ -54,4 +54,4 @@ From the process run log, to compare with the duration modeled in BPMN.
 |---|---|---|---|
 | Task_Controls | 1 | 0.1 | 0.1 |
 | Task_Package | 2 | 0.1 | 0.1 |
-| Task_Transform | 2 | 2.4 | 2.4 |
+| Task_Transform | 2 | 2.4 | 2.5 |

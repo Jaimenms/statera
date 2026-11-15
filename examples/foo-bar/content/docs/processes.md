@@ -18,9 +18,9 @@ Modeled durations (`statera:durationMin`), on the normal path, without exception
 
 ## Bar monthly production
 
-Source: [process.yaml](../products/bar/2-design/process.yaml) · generated: [process.bpmn](../products/bar/2-design/process.bpmn) · [interactive viewer](processes/bar.html)
+Source: [process.yaml](../products/bar/2-design/process.yaml) · generated: [process.bpmn](../products/bar/2-design/process.bpmn) · [interactive viewer](../products/bar/2-design/process.html)
 
-![Bar monthly production](processes/bar.svg)
+![Bar monthly production](../products/bar/2-design/process.svg)
 
 | Task | Lane (role) | Kind | GSBPM | Duration | Implementation |  |
 |---|---|---|---|---|---|---|
@@ -33,9 +33,9 @@ Source: [process.yaml](../products/bar/2-design/process.yaml) · generated: [pro
 
 ## Foo System extraction
 
-Source: [process.yaml](../products/foo/2-design/process.yaml) · generated: [process.bpmn](../products/foo/2-design/process.bpmn) · [interactive viewer](processes/foo.html)
+Source: [process.yaml](../products/foo/2-design/process.yaml) · generated: [process.bpmn](../products/foo/2-design/process.bpmn) · [interactive viewer](../products/foo/2-design/process.html)
 
-![Foo System extraction](processes/foo.svg)
+![Foo System extraction](../products/foo/2-design/process.svg)
 
 | Task | Lane (role) | Kind | GSBPM | Duration | Implementation |  |
 |---|---|---|---|---|---|---|

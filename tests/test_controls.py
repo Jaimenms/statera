@@ -39,3 +39,18 @@ def test_without_previous_edition_the_control_passes():
     }
     results, tables = run([definition], Inputs("2026-01", lambda p: current, lambda p: None))
     assert results[0].ok and tables == {}
+
+
+def test_controls_run_accepts_the_check_form():
+    import pandas as pd
+
+    from statera.analyse import controls
+
+    current = pd.DataFrame({"period": ["2026-01"], "uf": ["SP"], "hires": [110]})
+    previous = pd.DataFrame({"period": ["2026-01"], "uf": ["SP"], "hires": [100]})
+    definition = {"id": "CK-01", "name": "revision", "check": "RevisionBetweenEditions", "port": "p",
+                  "key": ["period", "uf"], "measures": ["hires"], "relative_base": "hires",
+                  "warning_threshold": 0.05, "error_threshold": 0.5}  # fmt: skip
+    inputs = controls.Inputs("2026-02", lambda _: current, lambda _: previous)
+    results, tables = controls.run([definition], inputs)
+    assert "CK-01" in tables and results[0].severity == "warning"  # 10% revision: above the warning threshold
