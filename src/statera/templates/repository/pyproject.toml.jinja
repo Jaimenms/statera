@@ -21,6 +21,9 @@ statera = { git = "{{ statera_git }}", tag = "v{{ statera_version }}" }
 [dependency-groups]
 produce = ["statera[produce]"]  # the data team: dbt and Copier
 dev = ["pytest>=8.3", "ruff>=0.8"]
+# Optional: `statera copilot`, questions in plain language answered by a model that runs on each person's
+# computer, through Ollama (https://ollama.com). Installed only when someone runs `statera copilot`.
+copilot = ["statera[copilot]"]
 # Legacy code in the products: uncomment the language(s) your models call (`statera doctor` tells you)
 # legacy-r = ["statera[legacy-r]"]        # R scripts (.R), through Rscript
 # legacy-spss = ["statera[legacy-spss]"]  # SPSS syntax (.sps), through GNU PSPP

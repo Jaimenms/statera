@@ -24,6 +24,17 @@ uv run statera query show <id> --param uf=SP           # the plain SQL it runs (
 uv run statera query run <id> --param uf=SP --output result/
 ```
 
+Not sure which command? Ask in plain language (optional; a model that runs **on your computer**, through
+[Ollama](https://ollama.com): `ollama serve`, and once `ollama pull qwen2.5-coder:7b`):
+
+```bash
+uv run --group copilot statera copilot "how many <things> in <year> that are <something>?"
+```
+
+It answers with the command to run (a cataloged query, a metric) or, when nothing cataloged answers, with
+the SQL; it shows what it assumed and asks before running. It is a small model and gets things wrong: read
+what it assumed.
+
 In Python (notebook or script, with `uv run`):
 
 ```python

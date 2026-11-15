@@ -4,7 +4,8 @@ Covers what usually breaks on a new machine: uv and git on the PATH, the Statera
 required by statera.toml, and the global launcher), the repository layout and environment, line endings
 and, on Windows, long paths; where the data is read from. The production tools (dbt; GNU PSPP and R, only
 when the repository has `.sps` or `.R` models) are optional: someone who only reads the data does not
-need them, and their absence is reported as information, not as a problem.
+need them, and their absence is reported as information, not as a problem. The same goes for the copilot
+(`statera copilot`): optional, and what its local model still needs is a warning at most.
 """
 
 from __future__ import annotations
@@ -306,9 +307,60 @@ def _data(root: Path | None) -> list[Check]:
     return [Check(OK, "data", where)]
 
 
+def _copilot(root: Path | None) -> list[Check]:
+    """`statera copilot` is optional: reported when the repository declares its group (or the extra is
+    installed), with what the local model still needs. Never a problem."""
+    import importlib.util
+    import json
+    import urllib.request
+
+    from statera.copilot import llm
+
+    declared = "copilot" in (_groups(root) or set()) if root else False
+    if not declared and importlib.util.find_spec("httpx") is None:
+        how = (
+            'add copilot = ["statera[copilot]"] to [dependency-groups] in pyproject.toml'
+            if root
+            else 'uv tool install --force "statera[copilot] @ git+ssh://git@github.com/Jaimenms/statera.git"'
+        )
+        return [Check(INFO, "copilot", "not enabled (optional: questions in plain language, local model)", how)]
+    try:
+        from statera.project import current
+
+        config = current().config.get("copilot")
+    except Exception:  # noqa: BLE001 (outside a repository, or an invalid statera.toml)
+        config = None
+    chosen = llm.settings(config)
+    if not llm.is_local(chosen["url"]):
+        return [Check(WARN, "copilot", f"{chosen['url']} is not this computer", f"use {llm.DEFAULT_URL}")]
+    try:
+        with urllib.request.urlopen(f"{chosen['url'].rstrip('/')}/api/tags", timeout=3) as response:  # noqa: S310
+            models = [m["name"] for m in json.load(response).get("models", [])]
+    except (OSError, ValueError):
+        return [
+            Check(
+                WARN,
+                "copilot",
+                f"Ollama is not running at {chosen['url']}",
+                "install it (https://ollama.com/download) and start it: ollama serve",
+            )
+        ]
+    if chosen["model"] not in models and f"{chosen['model']}:latest" not in models:
+        return [Check(WARN, "copilot", f"model {chosen['model']} not downloaded", f"ollama pull {chosen['model']}")]
+    return [Check(OK, "copilot", f"{chosen['model']}, on this computer ({chosen['url']})")]
+
+
 def run() -> list[Check]:
     root = launcher.repository_root()
-    return [*_tools(), *_versions(root), *_repository(root), *_git(root), *_data(root), *_production(root)]
+    return [
+        *_tools(),
+        *_versions(root),
+        *_repository(root),
+        *_git(root),
+        *_data(root),
+        *_production(root),
+        *_copilot(root),
+    ]
 
 
 def report(checks: list[Check]) -> int:

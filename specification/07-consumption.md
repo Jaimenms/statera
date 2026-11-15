@@ -166,6 +166,67 @@ They **must** be run in CI against synthetic data.
 The library **must** show the classification and warn when reading what is not broad; it is not a
 security boundary. An R library (dbplyr) would follow the same logic.
 
+## Copilot (optional)
+
+`statera copilot "<question>"` answers a question in plain language with what to run. It is a convenience
+over everything above, not another way to compute a number: it is installed apart (extra and dependency
+group `copilot`) and nothing else depends on it.
+
+**The model runs on the person's computer.** It is served by [Ollama](https://ollama.com) on a loopback
+address; an address that is not local is refused, and the framework has no client for a hosted model. The
+catalog and the values of the data that the model sees therefore never leave the computer.
+
+```toml
+[copilot]                            # all optional
+model = "qwen2.5-coder:7b"           # any model the local Ollama has (STATERA_COPILOT_MODEL, --model)
+url = "http://localhost:11434"       # loopback only (STATERA_COPILOT_URL)
+context = 8192                       # context window, in tokens
+```
+
+**What it answers with**: a cataloged query (`statera query run`) or an official metric (`statera metric`)
+when one returns exactly what was asked; another command (status, run, validation…) when the request is
+about operating the repository; and, when nothing cataloged returns what was asked, a SQL query of its own
+over the cataloged tables. It may also ask back, or explain what a card says.
+
+**What it knows** is built from the repository at each start, with nothing to index or keep up to date: one
+card per command (from the command line itself), per table (its contract: purpose, columns, classification,
+the grain of a row), per cataloged query, per metric and per product.
+
+**How it decides**: in small steps, each one held by the model server to a JSON schema built from the
+repository, so that a small local model cannot write what does not exist:
+
+1. it **chooses** what answers, among the ids of the cards (a repository too big to list is first searched
+   by the words of the question, and the model may ask for another search);
+2. it **fills in** only what it chose, seeing only that card: the parameters a query declares, the dimensions
+   a metric's sources allow, the options the command has, or the SQL. It also says whether the query really
+   returns what was asked (if not, it chooses again without it), and a flag it turned on is kept only when,
+   asked again, the request asks for what the flag does;
+3. the result is **checked** before a person sees it; what fails goes back to the model with the reason:
+
+| Proposal | Must |
+|---|---|
+| a command | be accepted by the real command line; name a query, a metric and a product that exist, with parameters valid by their declared type |
+| SQL | be one statement, a `SELECT` with nothing that writes and no function that reads files; read only tables with a contract that the role may read (`authorizedConsumers`, as in the catalog); be accepted by the engine (`EXPLAIN`: it binds columns and types without reading the data); filter by values the column has |
+
+To check that last point the copilot looks a value up in its column, and tells the model what the column
+holds when the value is not there (the code that goes with a name, for instance). It never looks at a
+personal column, and in a table that is not for broad sharing it only shows values that several rows share.
+
+SQL that counts the rows of an aggregated table (`count(*)` where a row is a group) is valid and usually
+not what was asked: the model is asked once whether it means it. An answer in SQL names the tables read
+and repeats their classification warning, as `cat.table` does; it does **not** go through disclosure
+control (as raw SQL in the library does not): a number that will be shared belongs in a cataloged query.
+
+**What it may run**:
+
+| The command… | Examples | Runs |
+|---|---|---|
+| only reads | `query`, `metric`, `status`, `validate`, SQL (the engine is opened read-only) | after a yes; `--yes` gives it in advance |
+| produces or changes | `run`, `sync`, `docs`, `new-product` | after a yes, asked every time; never without a terminal |
+| records a person's decision, or deletes | `resume`, `--approve`, `--force`, `clean`, `demo` | never: shown for the person to run |
+
+The human tasks of a process stay human: the copilot can say how to approve an edition, never approve it.
+
 ## Contribution and authorship
 
 Consumption evolves with contributions from people outside the data team (InnerSource model):

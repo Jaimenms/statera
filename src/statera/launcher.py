@@ -11,7 +11,8 @@ What gets installed depends on the command. The data repository's dependencies a
 the data needs (catalog, queries, metrics): someone outside the data team gets a small environment. The
 production tools (dbt, Copier, the legacy-code readers) are dependency groups of the repository
 (`produce`, `legacy-r`, `legacy-spss`, `dev`); the commands that produce (check, run, sync, docs…) are
-handed off with `--all-groups`, so uv installs them the first time the data team needs them.
+handed off with `--all-groups`, so uv installs them the first time the data team needs them. `statera
+copilot` is handed off with the repository's `copilot` group alone, when it declares one.
 
 Because the global copy only finds the root and hands off, its own version rarely matters. The handoff
 carries a protocol number; a pinned version that needs a newer launcher says so ("run uv tool upgrade
@@ -42,6 +43,8 @@ LOCAL_COMMANDS = {"init"}  # never handed off: they create a repository, they do
 # Commands that only read: they run with the repository's dependencies alone (no production tools).
 # Every other command produces or checks, and runs with all the repository's dependency groups.
 CONSUMPTION_COMMANDS = {"doctor", "query", "metric", "recipes", "cuts", "status", "evaluate"}
+COPILOT_COMMAND = "copilot"  # reads too, plus its own optional dependencies (extra and group `copilot`)
+COPILOT_GROUP = "copilot"
 
 
 def repository_root(start: Path | None = None) -> Path | None:
@@ -84,17 +87,35 @@ def handoff(argv: list[str]) -> int | None:
         return None
     env = {**os.environ, ENV_HANDOFF: "1", ENV_LAUNCHER: f"{__version__};{PROTOCOL}"}
     env.pop("VIRTUAL_ENV", None)  # another active environment would only make uv warn
-    command = [uv, "run", "--quiet", "--project", str(root), *uv_groups(argv), "statera", *argv]
     try:
-        return subprocess.call(command, env=env)
+        return subprocess.call(pinned_command(uv, root, argv), env=env)
     except KeyboardInterrupt:
         return 130
 
 
-def uv_groups(argv: list[str]) -> list[str]:
-    """`uv run` options for the command: the production commands need every dependency group."""
+def pinned_command(uv: str, root: Path, argv: list[str]) -> list[str]:
+    """The command that runs `statera <argv>` with the version the repository pins, and the dependency
+    groups that command needs."""
+    return [uv, "run", "--quiet", "--project", str(root), *uv_groups(argv, root), "statera", *argv]
+
+
+def uv_groups(argv: list[str], root: Path | None = None) -> list[str]:
+    """`uv run` options for the command: the production commands need every dependency group; the copilot,
+    its own group, when the repository declares it (if not, the command says how to)."""
+    if argv and argv[0] == COPILOT_COMMAND:
+        return ["--group", COPILOT_GROUP] if root and COPILOT_GROUP in dependency_groups(root) else []
     consumption = not argv or argv[0] in CONSUMPTION_COMMANDS or argv[0].startswith("-")
     return [] if consumption else ["--all-groups"]
+
+
+def dependency_groups(root: Path) -> set[str]:
+    """Dependency groups declared in the repository's pyproject.toml (empty when it cannot be read)."""
+    import tomllib
+
+    try:
+        return set(tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")).get("dependency-groups", {}))
+    except (OSError, tomllib.TOMLDecodeError, TypeError):
+        return set()
 
 
 def launcher() -> tuple[str, int] | None:

@@ -22,6 +22,9 @@ Consumption (needs no production tools; reads the shared engine, or --engine loc
     statera query list | run <id> --param uf=SP | test
     statera metric balance --by region --period 2026-06
     statera recipes test
+Copilot (optional: extra `copilot`; a model that runs on this computer, through Ollama):
+    statera copilot "how many records did SP have in 2026?"   # finds the command or writes the SQL; asks before running
+    statera copilot                      # a conversation
 Demo:
     statera synthetic [--product foo] [--fault F]   # the products' synthetic sources
     statera demo                         # from scratch: synthetic data, editions, documentation
@@ -444,6 +447,12 @@ def _cmd_recipes(args) -> int:
     return 1 if failures else 0
 
 
+def _cmd_copilot(args) -> int:
+    from statera.copilot import console
+
+    return console.main(args)
+
+
 # --- maintenance and demo ----------------------------------------------------------------------
 
 
@@ -591,7 +600,7 @@ def _cmd_demo(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    from statera import __version__, launcher
+    from statera import launcher
 
     if argv is None:  # the console command; programmatic calls (tests, other code) never hand off
         handed_off = launcher.handoff(sys.argv[1:])
@@ -608,6 +617,31 @@ def main(argv: list[str] | None = None) -> int:
             print(error, file=sys.stderr)
             return 2
         return 0
+
+    args = parse(raw)
+    problem = None if args.command in ("init", "doctor") else launcher.launcher_problem() or _version_problem()
+    if problem:
+        print(f"[statera] {problem}", file=sys.stderr)
+        return 2
+    try:
+        return args.func(args)
+    except _expected_errors() as error:
+        print(f"[statera] {error}", file=sys.stderr)
+        return 1
+    except ModuleNotFoundError as error:
+        if error.name in COPILOT_MODULES:
+            print(f"[statera] {MISSING_COPILOT.format(module=error.name)}", file=sys.stderr)
+            return 1
+        if error.name not in PRODUCTION_MODULES:
+            raise
+        print(f"[statera] {MISSING_PRODUCTION.format(module=error.name)}", file=sys.stderr)
+        return 1
+
+
+def parser() -> argparse.ArgumentParser:
+    """Every command and its options. Also what the copilot reads to know the commands and to check the
+    ones it proposes (statera.copilot)."""
+    from statera import __version__
 
     p = argparse.ArgumentParser(
         prog="statera", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -643,7 +677,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--approve", dest="approve", action="store_true", help="simulates the human tasks (demo)")
     s.set_defaults(func=_cmd_run)
 
-    s = sub.add_parser("resume", help="completes the pending human task (or re-evaluates the wait) and resumes")
+    s = sub.add_parser(
+        "resume",
+        help="completes the pending human task (approves it, or rejects with --reject; or re-evaluates the wait) "
+        "and resumes",
+    )
     s.add_argument("--product", dest="product", default=product)
     s.add_argument("--period", dest="period")
     s.add_argument("--cut-date", dest="cut_date", help="for an internal product, the run key")
@@ -792,37 +830,57 @@ def main(argv: list[str] | None = None) -> int:
         func=_cmd_demo
     )
 
+    s = sub.add_parser(
+        "copilot",
+        help="ask in plain language: a local model finds the command (or writes the SQL) and runs it if you agree",
+    )
+    s.add_argument("question", nargs="*", help="the question; without it, a conversation starts")
+    s.add_argument(
+        "--yes", dest="yes", action="store_true", help="runs what only reads (queries, status…) without asking"
+    )
+    s.add_argument("--model", dest="model", help="local Ollama model (default: [copilot] model, else qwen2.5-coder:7b)")
+    s.add_argument("--output", dest="output", help="folder for result.csv and query.sql of an ad hoc SQL answer")
+    s.add_argument("--engine", dest="engine", help=ENGINE_HELP)
+    s.add_argument("--verbose", dest="verbose", action="store_true", help="shows the model's reasoning at each step")
+    s.set_defaults(func=_cmd_copilot)
+
+    return p
+
+
+def parse(argv: list[str]) -> argparse.Namespace:
+    """The command's arguments, checked. A problem ends as argparse ends it: the message on stderr and
+    SystemExit(2)."""
+    p = parser()
     args = p.parse_args(argv)
-    problem = None if args.command in ("init", "doctor") else launcher.launcher_problem() or _version_problem()
-    if problem:
-        print(f"[statera] {problem}", file=sys.stderr)
-        return 2
     if getattr(args, "product", "x") == "" and args.command in ("run", "resume", "evaluate"):
-        p.error("give --product")
+        names = ", ".join(u.name for u in _products())
+        p.error("give --product" + (f" (products in this repository: {names})" if names else ""))
     if args.command == "resume" and not (args.period or args.cut_date):
         p.error("give --period (or --cut-date, for an internal product)")
     if args.command == "query" and args.action in ("run", "show") and not args.id:
         p.error("give the query id")
     if args.command == "status" and (args.period or args.cut_date) and not args.product:
         p.error("give --product with --period or --cut-date")
-    if args.command in ("run", "resume", "evaluate") and not args.product:
-        names = ", ".join(u.name for u in _project().products())
-        print(f"give --product (products in this repository: {names})", file=sys.stderr)
-        return 2
+    return args
+
+
+def _products() -> list:
     try:
-        return args.func(args)
-    except _expected_errors() as error:
-        print(f"[statera] {error}", file=sys.stderr)
-        return 1
-    except ModuleNotFoundError as error:
-        if error.name not in PRODUCTION_MODULES:
-            raise
-        print(f"[statera] {MISSING_PRODUCTION.format(module=error.name)}", file=sys.stderr)
-        return 1
+        return _project().products()
+    except Exception:  # outside a content repository
+        return []
 
 
 ENGINE_HELP = "where to read the data: `local`, a DuckDB file or URL, or an engine URL (default: statera.toml)"
 PRODUCTION_MODULES = {"copier", "dbt"}
+COPILOT_MODULES = {"httpx"}
+MISSING_COPILOT = (
+    "`{module}` is not installed: `statera copilot` is optional (extra `copilot`). In a data repository, declare "
+    'copilot = ["statera[copilot]"] in [dependency-groups] of pyproject.toml and run `statera copilot` again '
+    "(with uv alone: `uv run --group copilot statera copilot`). "
+    'Outside one: uv tool install --force "statera[copilot] @ git+ssh://git@github.com/Jaimenms/statera.git". '
+    "The model runs on this computer, through Ollama (https://ollama.com); nothing is sent anywhere else."
+)
 MISSING_PRODUCTION = (
     "`{module}` is not installed: this command needs the production tools (extra `produce`). In a data "
     'repository, declare produce = ["statera[produce]"] in [dependency-groups] of pyproject.toml and run the '

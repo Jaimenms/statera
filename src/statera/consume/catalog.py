@@ -230,15 +230,26 @@ class Catalog:
         )
 
     # --- reading --------------------------------------------------------------------------------
-    def _warn(self, table: str, c: dict) -> None:
+    def _caution(self, table: str, c: dict) -> str | None:
         dims = classification.of_table(c)
         if dims.get("sharing") != "broad" or dims.get("nature") in ("personal", "sensitive-personal"):
-            warnings.warn(
+            return (
                 f"{table} is {classification.summary(dims)}: internal use, under the contract's rules; "
-                "aggregate and apply disclosure control before sharing any result.",
-                ClassificationWarning,
-                stacklevel=3,
+                "aggregate and apply disclosure control before sharing any result."
             )
+        return None
+
+    def _warn(self, table: str, c: dict) -> None:
+        if caution := self._caution(table, c):
+            warnings.warn(caution, ClassificationWarning, stacklevel=3)
+
+    def check_access(self, name: str) -> str | None:
+        """What `table` checks before reading, for someone who writes their own SQL (`sql`): the table has a
+        contract and the role may read it (else KeyError, AccessDenied). Returns the classification
+        caution, when the table is not for broad sharing."""
+        c = self._contract(name)
+        self._authorize(name)
+        return self._caution(name, c)
 
     def _authorize(self, table: str) -> None:
         """With a role (someone outside the owner team), reading an internal product requires a valid authorization."""

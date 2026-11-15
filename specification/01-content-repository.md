@@ -40,11 +40,13 @@ are **dependency groups**, with `default-groups = []` so that `uv sync` leaves t
 | `legacy-r` | `statera[legacy-r]` | products with `.R` models (reads and writes `.rds`; R itself is installed apart) |
 | `legacy-spss` | `statera[legacy-spss]` | products with `.sps` models (reads and writes `.sav`; GNU PSPP is installed apart) |
 | `dev` | — | pytest and ruff, for `statera check` |
+| `copilot` | `statera[copilot]` | optional: `statera copilot` (07); the model runs on each person's computer, through Ollama, installed apart |
 
 The legacy groups are declared only by repositories whose products use that language; `statera doctor`
 says when one is missing. The global `statera` hands the commands that produce or check (check, run, sync,
 docs…) off with `--all-groups`, so the data team gets every group the first time it needs it; the commands
-that only read (doctor, query, metric, recipes, status, cuts, evaluate) run with the dependencies alone.
+that only read (doctor, query, metric, recipes, status, cuts, evaluate) run with the dependencies alone;
+`statera copilot`, with the `copilot` group, when the repository declares it.
 A shared engine other than DuckDB needs its Ibis backend: `statera[postgres]`, `statera[trino]` or
 `statera[athena]`; any other source is a connector of the repository or of a package (07).
 

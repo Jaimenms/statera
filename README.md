@@ -37,10 +37,12 @@ Linux and Mac. What you install depends on what you do:
 | keep products with legacy **R** code | `statera[legacy-r]` | reading and writing `.rds` (R itself is installed apart) |
 | keep products with legacy **SPSS** code | `statera[legacy-spss]` | reading and writing `.sav` (GNU PSPP is installed apart) |
 | read a shared PostgreSQL, Trino or Amazon Athena engine | `statera[postgres]`, `statera[trino]`, `statera[athena]` | the Ibis backend |
+| want to **ask in plain language** instead of remembering commands | `statera[copilot]` | `statera copilot`, with a model that runs on your computer ([Ollama](https://ollama.com), installed apart) |
 
 In a data repository you rarely choose: its `pyproject.toml` lists only what reading needs, and the
 production tools as dependency groups (`produce`, `legacy-r`, `legacy-spss`) that the commands which produce
-install by themselves. Someone who clones the repository to query it never downloads dbt.
+install by themselves. Someone who clones the repository to query it never downloads dbt. The copilot is a
+group too (`copilot`), installed the first time someone runs `statera copilot`.
 
 The global command (optional) is installed once per computer; the data team, who creates repositories,
 installs it with the production tools:
@@ -78,6 +80,58 @@ Published editions are read from the series' publication storage (`files_url`: a
 itself; S3 and others through a **reader**, the same kind of extension), with every file checked against
 the hash in the register. See [specification 07](specification/07-consumption.md).
 
+## Asking in plain language (optional)
+
+The command line grew with the standard. `statera copilot` is a way in for someone who knows the question
+and not the command: a language model **running on your own computer** looks up the repository's catalog
+and answers with the command to run, or, when nothing cataloged answers, with the SQL.
+
+```bash
+brew install ollama && ollama serve          # once: https://ollama.com/download (Windows: the installer)
+ollama pull qwen2.5-coder:7b                 # once: the model, 4.7 GB
+statera copilot "how many records did São Paulo have in 2026?"
+statera copilot                              # a conversation: "and by month?", "now for Minas Gerais"
+```
+
+```
+$ statera copilot "how many records did São Paulo have in 2026?"
+  · choose: query:uf-series
+  · query: {"uf": "SP"}
+      ✘ it does not return what was asked (the query returns a monthly series for a UF; it has no year…)
+  · choose: table:gold.bar_uf_monthly
+
+  SELECT
+    SUM(records) AS total_records
+  FROM gold.bar_uf_monthly
+  WHERE
+    uf_abbr = 'SP' AND period LIKE '2026-%'
+  · assumed: 2026 is every reference period starting with '2026-'
+  · assumed: São Paulo is 'SP' in the uf_abbr column
+  · reads: gold.bar_uf_monthly (ad hoc SQL: no cataloged query or metric answers this)
+  Run it? [Y/n]
+
+ total_records
+           412
+```
+
+- **Nothing leaves the computer.** The model is served by Ollama on `localhost`; Statera has no client for a
+  hosted model and refuses an address that is not local.
+- **What it proposes is checked, not trusted.** A command must be accepted by the real command line (the
+  query, the metric and the product exist, the parameters are valid); SQL must be one read-only `SELECT` over
+  cataloged tables you may read, accepted by the engine, filtering by values the data has. What fails goes
+  back to the model, not to you.
+- **It cannot name what does not exist.** The model chooses among the repository's own queries, metrics,
+  tables and commands, and fills in only the parameters and options they declare.
+- **It prefers what is cataloged**: a recurring query (reviewed, tested, with disclosure control) or an
+  official metric when one returns exactly what was asked, SQL of its own otherwise.
+- **It asks before running.** What only reads runs after a yes (`--yes` gives it in advance); what produces
+  or changes asks every time; what records a person's decision (`resume`, `--approve`) or deletes (`clean`,
+  `demo`) it shows and never runs.
+
+It is a small model: it gets things wrong, which is why it shows what it assumed and what it read. A larger
+local model answers better (`--model`, or `[copilot] model` in `statera.toml`). See
+[specification 07](specification/07-consumption.md#copilot-optional).
+
 ## Starting a data repository
 
 ```bash
@@ -114,12 +168,13 @@ uv run statera demo
 | 8 | `evaluate` | Quality indicators and action plan; alerts acknowledged before approval, or blocking |
 | — | `extend` | The public extension API: `Task`, `Check`, `Await` and `SyntheticSource`, the classes every process step extends (the framework's and the products') |
 | — | `consume` | Library (Ibis): catalog, published editions, cuts, metrics, queries, recipes |
+| — | `copilot` | Optional: plain-language questions answered with a checked command or SQL, by a local model |
 
 ## Command line
 
 `statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
 cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
-clean`. See `statera --help`. Commands work from any folder of a data repository.
+clean | copilot`. See `statera --help`. Commands work from any folder of a data repository.
 
 `statera status` shows, for every product, where its latest edition (or cut) is in the BPMN process,
 the role that has to act and the evaluation alerts; `--product x` lists every edition of one product,

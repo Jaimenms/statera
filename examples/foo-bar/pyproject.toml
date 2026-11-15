@@ -18,6 +18,7 @@ statera = { path = "../..", editable = true }  # the framework in this repositor
 produce = ["statera[produce]"]          # the data team: dbt and Copier
 legacy-r = ["statera[legacy-r]"]        # baz_uf_monthly_median.R, through Rscript
 legacy-spss = ["statera[legacy-spss]"]  # baz_uf_monthly.sps, through GNU PSPP
+copilot = ["statera[copilot]"]          # statera copilot: questions in plain language, local model (Ollama)
 dev = ["pytest>=8.3", "ruff>=0.8"]
 
 [tool.ruff]
