@@ -152,6 +152,28 @@ THE CARDS:
 """
 )
 
+DESCRIBE = (
+    ROLE
+    + """
+Your task now: the person made the request below and was proposed the {what} below. Before running it, \
+they ask what it does. Explain it to them, part by part, using ONLY what the cards below say.
+
+  {{"language": "<the language THE REQUEST is written in>",
+    "say": "<the explanation, in that language: what it reads or changes, then one short line per part>"}}
+
+- A part is each option or parameter of a command, each table, filter, grouping and calculation of a SQL \
+query. Say what each one means HERE, with its value.
+- Do not answer the request and do not propose anything else: explain this {what}, as it is written.
+- Say nothing the cards do not say.
+
+THE {title}:
+{text}
+
+THE CARDS:
+{card}
+"""
+)
+
 FLAG = (
     ROLE
     + """
@@ -222,11 +244,12 @@ class Agent:
     def __init__(self, model, knowledge: Knowledge, catalog=None, on_step: Callable[[Step], None] | None = None):
         self.model, self.knowledge, self.catalog, self.on_step = model, knowledge, catalog, on_step
         self.conversation: list[str] = []  # what was asked, answered and run, a line each
+        self.request = ""  # the last thing the person asked
         self.steps: list[Step] = []
 
     def ask(self, question: str) -> Outcome:
         """One turn: the person's request (or reply) in, an outcome out."""
-        self.steps = []
+        self.steps, self.request = [], question
         outcome = self._turn(question)
         outcome.steps = self.steps
         self.conversation.append(f"Person: {question}")
@@ -237,6 +260,54 @@ class Agent:
     def note(self, text: str) -> None:
         """Records what happened after a turn (what ran, what it printed), for the next request."""
         self.conversation.append(f"Then: {text}")
+
+    # --- a proposal the person edits or asks about -----------------------------------------------------
+
+    def edited(self, outcome: Outcome, text: str) -> Outcome:
+        """The proposal as the person rewrote it, held to the checks the model's was held to (Invalid says
+        which one it fails). What is only a doubt about the model's SQL is, in the person's, a caution:
+        the person decides."""
+        if outcome.kind == "sql":
+            try:
+                checked = sql_.check(text, self.catalog)
+            except sql_.SqlError as error:
+                raise Invalid(str(error)) from error
+            checked.cautions += [*sql_.unknown_values(checked, self.catalog), *checked.doubts]
+            new = Outcome("sql", checked.sql, checked=checked)
+        else:
+            try:
+                argv = shlex.split(text)
+            except ValueError as error:
+                raise Invalid(f"the command line does not parse: {error}") from error
+            new = self._checked_command(argv[1:] if argv[:1] == ["statera"] else argv, {})
+        self.note(f"the person changed what was proposed to: {' '.join(new.text.split())}")
+        return new
+
+    def describe(self, outcome: Outcome) -> str:
+        """What a proposal does, part by part, said from the cards of what it names, in the language of
+        the request (the model names that language first: left alone, a small model explains English
+        commands and SQL in English). Empty when the model does not say."""
+        if outcome.kind == "sql":
+            ids = [f"table:{table}" for table in outcome.checked.tables]
+        else:
+            ids = [f"command:{outcome.argv[0]}", *self._named(outcome.argv)]
+        cards = [card for card in map(self.knowledge.get, ids) if card]
+        what = "SQL query" if outcome.kind == "sql" else "command"
+        system = DESCRIBE.format(
+            what=what, title=what.upper(), text=outcome.text, card="\n\n".join(c.detail() for c in cards)
+        )
+        reply = self._call(system, self.request, {"language": TEXT, "say": TEXT}, [])
+        return str((reply or {}).get("say") or "").strip()
+
+    @staticmethod
+    def _named(argv: list[str]) -> list[str]:
+        """The cards of what a command names: its query, its metric, its product."""
+        from statera import cli
+
+        args = cli.parse(argv)
+        ids = [f"query:{args.id}"] if args.command == "query" and args.id else []
+        ids += [f"metric:{args.name}"] if args.command == "metric" else []
+        return ids + ([f"product:{args.product}"] if getattr(args, "product", None) else [])
 
     # --- 1. choose -------------------------------------------------------------------------------------
 
@@ -451,6 +522,8 @@ class Agent:
         """The command, after the real command line and the catalog accepted it."""
         from statera import cli
 
+        if not argv:
+            raise Invalid("there is no command: write one, as in `statera status`")
         errors = io.StringIO()
         try:
             with contextlib.redirect_stderr(errors), contextlib.redirect_stdout(io.StringIO()):

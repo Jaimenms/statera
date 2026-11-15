@@ -519,6 +519,66 @@ def test_a_yes_in_the_terminal_runs_what_changes_and_never_a_persons_decision(re
     assert len(ran) == 1
 
 
+def _typing(monkeypatch, *lines: str) -> None:
+    """What the person types at the terminal, in order."""
+    typed = iter(lines)
+    monkeypatch.setattr("builtins.input", lambda prompt: next(typed))
+
+
+def test_the_person_edits_the_command_and_the_edit_is_checked(repository, monkeypatch, capsys):
+    c, ran = _console(repository, monkeypatch, *STATUS, *STATUS, *STATUS)
+    c.interactive = True
+    _typing(monkeypatch, "e", "statera status --product sample", "y")
+    c.turn("where are the editions?")
+    assert ran == [["status", "--product", "sample"]]  # what the person wrote, not what the model did
+    assert "$ statera status --product sample" in capsys.readouterr().out  # shown again before the question
+    assert "Then: the person changed what was proposed to: statera status --product sample" in c.agent.conversation
+
+    _typing(monkeypatch, "e", "status --nothing", "status --product nobody", "", "n")  # refused twice, given up
+    c.turn("again")
+    out = capsys.readouterr().out
+    assert "✘ statera: error: unrecognized arguments: --nothing" in out and "nobody" in out.split("✘")[2]
+    assert len(ran) == 1
+
+    _typing(monkeypatch, "e", "resume --product sample --period 2026-01")  # an edit does not change who may run
+    c.turn("and again")
+    assert "yours to run" in capsys.readouterr().out and len(ran) == 1
+
+
+def test_the_person_edits_the_sql_and_the_edit_is_checked(repository, monkeypatch, capsys):
+    c, _ = _console(repository, monkeypatch, choose("sql", "table:gold.sample_by_uf"), fill(sql=SUM_SP))
+    c.interactive = True
+    _typing(monkeypatch, "e", "delete from gold.sample_by_uf", "select count(*) as n from gold.sample_by_uf where uf = 'XX'", "y")  # fmt: skip
+    c.turn("how many records did São Paulo have?")
+    out = capsys.readouterr().out
+    assert "✘ only a SELECT is allowed" in out
+    cautions = [line for line in out.splitlines() if line.startswith("  ! ")]  # the person decides, knowing
+    assert any("'XX'" in line for line in cautions) and any("aggregated" in line for line in cautions)
+    assert out.endswith("\n n\n 0\n")  # it ran, as the person wrote it
+    assert "the SQL ran: 1 row(s)" in c.agent.conversation[-1]
+
+
+def test_a_proposal_is_explained_from_the_cards_of_what_it_names(repository, monkeypatch, capsys):
+    query = (choose("query", "query:by-uf"), fill(answers="yes", parameters={"uf": "SP", "since": ""}))
+    c, ran = _console(repository, monkeypatch, *query, json.dumps({"say": "It reads the series of SP.\nuf=SP: the UF."}),
+                      choose("sql", "table:gold.sample_by_uf"), fill(sql=SUM_SP), "not json")  # fmt: skip
+    c.interactive = True
+    _typing(monkeypatch, "?", "n")
+    c.turn("série de São Paulo")
+    out = capsys.readouterr().out
+    assert "  It reads the series of SP.\n  uf=SP: the UF.\n" in out and ran == []  # explained, asked again
+    shown = c.agent.model.shown[-1]
+    assert "THE COMMAND:\nstatera query run by-uf --param uf=SP\n" in shown["system"]
+    assert "Monthly records of one UF" in shown["system"]  # the card of the query, with the card of the command
+    assert "THE REQUEST: série de São Paulo" in shown["user"] and list(c.agent.model.schemas[-1]) == ["language", "say"]
+
+    _typing(monkeypatch, "?", "n")
+    c.turn("and how many in all?")
+    assert "I could not explain it" in capsys.readouterr().out  # the model said nothing usable
+    assert "THE SQL QUERY:\nSELECT" in c.agent.model.shown[-1]["system"]
+    assert "One row per reference month and UF" in c.agent.model.shown[-1]["system"]  # the card of the table
+
+
 def test_sql_answer_runs_and_is_written(repository, monkeypatch, capsys, tmp_path):
     c, _ = _console(repository, monkeypatch, choose("sql", "table:gold.sample_by_uf"),
                     fill(sql=SUM_SP.replace("sum(records)", "sum(records) * 1.0"), assumptions=["SP is São Paulo"]),

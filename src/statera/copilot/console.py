@@ -10,6 +10,10 @@ What the copilot may run, by what the command does (`policy`):
              by the copilot. It shows the command; the person runs it.
 
 Without a terminal (a script, a pipe) nothing that changes runs, and what reads runs only with `--yes`.
+
+Where it asks "Run it?", the person may also reply `?`, to have the proposal explained part by part, or
+`e`, to edit it. What the person writes is checked as what the model writes is (the real command line, the
+catalog, sql.py) and shown again as what it now is: an edit that makes it a person's decision is not run.
 """
 
 from __future__ import annotations
@@ -22,7 +26,7 @@ from pathlib import Path
 
 from statera import launcher
 from statera.copilot import sql as sql_
-from statera.copilot.agent import Agent, Outcome, Step
+from statera.copilot.agent import Agent, Invalid, Outcome, Step
 from statera.copilot.knowledge import build
 from statera.copilot.llm import CopilotError, Ollama, settings
 
@@ -33,6 +37,9 @@ PERSON_COMMANDS = {"resume", "clean", "demo"}
 PERSON_OPTIONS = {"--approve", "--force", "--registry"}
 ROWS_SHOWN = 50
 BYE = {"exit", "quit", "sair", ":q"}
+YES = {"y", "yes", "s", "sim"}
+EDIT = {"e", "edit", "editar"}
+EXPLAIN = {"?", "explain", "explicar"}
 
 
 def policy(argv: list[str]) -> str:
@@ -64,6 +71,19 @@ def execute(argv: list[str]) -> tuple[int, str]:
             print(line, end="", flush=True)
             lines.append(line)
     return process.returncode, "".join(lines)
+
+
+def rewritten(text: str) -> str:
+    """The line as the person rewrites it. It is put in the history of the terminal's line editor, so ↑
+    brings it to be changed (starting the line already written does not work in every readline: not in
+    libedit, which macOS and the Pythons uv installs use). Where there is no line editor (Windows) it is
+    written again. An empty reply leaves it as it is."""
+    try:
+        import readline
+    except ImportError:
+        return input("  write it as it should be (Enter: leave it as it is)> ")
+    readline.add_history(text)
+    return input("  ↑ brings it, to change (Enter: leave it as it is)> ")
 
 
 class Console:
@@ -101,7 +121,11 @@ class Console:
             print("  This one is yours to run: it records a person's decision or deletes data; the copilot does not.")
             self.agent.note(f"the person was shown `{outcome.text}`; the copilot does not run it")
             return
-        if not self._agreed(kind, "It changes the repository or the data. Run it?" if kind == CHANGE else "Run it?"):
+        question = "It changes the repository or the data. Run it?" if kind == CHANGE else "Run it?"
+        reply = self._asked(kind, question, outcome)
+        if isinstance(reply, Outcome):  # edited: shown and asked about again, as what it now is
+            return self._command(reply)
+        if not reply:
             self.agent.note(f"the person was shown `{outcome.text}` and it was not run")
             return
         print()
@@ -119,7 +143,10 @@ class Console:
             print("  There is no data to read here, so this was not checked against the engine (statera doctor).")
             self.agent.note("the SQL was shown; there is no engine here to run it")
             return
-        if not self._agreed(READ, "Run it?"):
+        reply = self._asked(READ, "Run it?", outcome)
+        if isinstance(reply, Outcome):
+            return self._sql(reply)
+        if not reply:
             self.agent.note("the SQL was shown and not run")
             return
         try:
@@ -144,7 +171,8 @@ class Console:
             print(f"written: {folder / 'result.csv'}, {folder / 'query.sql'}")
         self.agent.note(f"the SQL ran: {len(df)} row(s). First rows:\n{df.head(10).to_string(index=False)}")
 
-    def _agreed(self, kind: str, question: str) -> bool:
+    def _asked(self, kind: str, question: str, outcome: Outcome) -> bool | Outcome:
+        """A yes or a no; or the proposal as the person edited it, to show and ask about again."""
         if kind == READ and self.yes:
             return True
         if not self.interactive:
@@ -152,12 +180,37 @@ class Console:
             print(f"  Not run: {reason}")
             return False
         default = kind == READ
-        try:
-            reply = input(f"  {question} [{'Y/n' if default else 'y/N'}] ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return False
-        return default if not reply else reply in ("y", "yes", "s", "sim")
+        while True:
+            try:
+                reply = input(f"  {question} [{'Y/n' if default else 'y/N'}, e: edit, ?: explain] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return False
+            if reply in EXPLAIN:
+                said = self.agent.describe(outcome) or "I could not explain it from what the catalog says."
+                print("\n" + "\n".join(f"  {line}" for line in said.splitlines()) + "\n")
+            elif reply in EDIT:
+                if edited := self._edited(outcome):
+                    return edited
+            else:
+                return default if not reply else reply in YES
+
+    def _edited(self, outcome: Outcome) -> Outcome | None:
+        """The proposal rewritten by the person and accepted by the checks; what they refuse is said, to
+        fix. None when the person gives up (an empty line)."""
+        text = " ".join(outcome.text.split())  # a SQL query is edited in one line
+        while True:
+            try:
+                text = rewritten(text).strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return None
+            if not text:
+                return None
+            try:
+                return self.agent.edited(outcome, text)
+            except Invalid as error:
+                print(f"  ✘ {error}")
 
     # --- the conversation ------------------------------------------------------------------------------
 

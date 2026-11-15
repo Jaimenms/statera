@@ -108,7 +108,7 @@ $ statera copilot "how many records did São Paulo have in 2026?"
   · assumed: 2026 is every reference period starting with '2026-'
   · assumed: São Paulo is 'SP' in the uf_abbr column
   · reads: gold.bar_uf_monthly (ad hoc SQL: no cataloged query or metric answers this)
-  Run it? [Y/n]
+  Run it? [Y/n, e: edit, ?: explain]
 
  total_records
            412
@@ -127,6 +127,9 @@ $ statera copilot "how many records did São Paulo have in 2026?"
 - **It asks before running.** What only reads runs after a yes (`--yes` gives it in advance); what produces
   or changes asks every time; what records a person's decision (`resume`, `--approve`) or deletes (`clean`,
   `demo`) it shows and never runs.
+- **You may ask what it does, or change it.** At that question, `?` explains the proposal part by part (each
+  option, each filter) and `e` lets you edit it (↑ brings the line). What you write goes through the same
+  checks, and an edit does not change who may run it.
 
 It is a small model: it gets things wrong, which is why it shows what it assumed and what it read. A larger
 local model answers better (`--model`, or `[copilot] model` in `statera.toml`). See

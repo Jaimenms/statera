@@ -26,7 +26,9 @@ How it works (no agent framework: the agent is `agent.py`, a few short calls to 
                    back to the model as an error, to fix) and the values it filters by (which must exist).
     llm.py         the model: an Ollama server ON THIS COMPUTER. The address must be a loopback one; there
                    is no client for a hosted model, by design: the catalog and the data never leave.
-    console.py     the terminal: shows what was chosen and why, asks before running, runs.
+    console.py     the terminal: shows what was chosen and why, asks before running, runs. At that
+                   question the person may also have the proposal explained (`?`) or edit it (`e`); an
+                   edit goes through the same checks.
 
 What it proposes is checked, not trusted: a command must be accepted by the real command line (and name a
 query, a metric and a product that exist, with valid parameters) and a SQL query must pass `sql.py`;
@@ -42,7 +44,7 @@ Configuration, all optional, in statera.toml:
     context = 8192                     # context window, in tokens
 """
 
-from statera.copilot.agent import Agent, Outcome
+from statera.copilot.agent import Agent, Invalid, Outcome
 from statera.copilot.llm import CopilotError, Ollama
 
-__all__ = ["Agent", "CopilotError", "Ollama", "Outcome"]
+__all__ = ["Agent", "CopilotError", "Invalid", "Ollama", "Outcome"]

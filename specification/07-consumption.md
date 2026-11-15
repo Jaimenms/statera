@@ -225,6 +225,13 @@ control (as raw SQL in the library does not): a number that will be shared belon
 | produces or changes | `run`, `sync`, `docs`, `new-product` | after a yes, asked every time; never without a terminal |
 | records a person's decision, or deletes | `resume`, `--approve`, `--force`, `clean`, `demo` | never: shown for the person to run |
 
+Where it asks, the person may also reply `?`, to have the proposal explained part by part from the cards
+of what it names (the command and its query, metric or product; the tables of a SQL query), or `e`, to
+edit it. An edited command or SQL query goes through the checks above and is shown again as what it now
+is, under the same table: an edit that turns a query into `resume` is not run. Two of those checks become
+cautions in SQL the person wrote, who decides knowing them: a value the data does not have, and the count
+of the rows of an aggregated table.
+
 The human tasks of a process stay human: the copilot can say how to approve an edition, never approve it.
 
 ## Contribution and authorship
