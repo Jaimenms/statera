@@ -49,6 +49,7 @@ def test_failing_python_case_shows_the_difference(minimal_project):
 
 def test_case_requiring_missing_pspp(minimal_project, monkeypatch):
     monkeypatch.setenv("STATERA_PSPP", "nonexistent-command")
+    monkeypatch.delenv("STATERA_REQUIRE", raising=False)  # the CI sets it for the whole job
     _rule(minimal_project.root, "[{value: 2, double: 4}, {value: 5, double: 10}]", requires="requires: [pspp]\n")
     assert rules.run_python_cases(current())[0].status == "not-run"
     monkeypatch.setenv("STATERA_REQUIRE", "pspp")  # in the CI: tool required
