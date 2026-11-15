@@ -48,7 +48,7 @@ flowchart LR
   classDef silver fill:#EDEDED,stroke:#6B6B6B,color:#1F1F1F
   class n_model_statera_foo_bar_int_bar__records,n_model_statera_foo_bar_stg_foo__records silver
   classDef gold fill:#FBF0C9,stroke:#9A7B0A,color:#1F1F1F
-  class n_model_statera_foo_bar_bar_uf_monthly_change,n_model_statera_foo_bar_bar_uf_monthly gold
+  class n_model_statera_foo_bar_bar_uf_monthly,n_model_statera_foo_bar_bar_uf_monthly_change gold
   classDef consumer fill:#EAE2F5,stroke:#5E3C99,color:#1F1F1F
   class n_analysis_statera_foo_bar_uf_series,n_exposure_statera_foo_bar_bar_monthly_release consumer
 ```

@@ -346,7 +346,7 @@ def to_mermaid(g: Graph, focus: str | None = None) -> str:
     ]
     for layer, (background, border) in COLORS.items():
         lines.append(f"  classDef {layer} fill:{background},stroke:{border},color:#1F1F1F")
-        ids = [_mid(n.id) for n in g.nodes.values() if n.layer == layer]
+        ids = sorted(_mid(n.id) for n in g.nodes.values() if n.layer == layer)
         if ids:
             lines.append(f"  class {','.join(ids)} {layer}")
     return "\n".join(lines)

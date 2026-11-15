@@ -201,26 +201,14 @@ def compute(ed: Edition) -> list[dict]:
                 "formatted_value": _format_value(value, definition["unit"]),
                 "alert_text": f"{alert['operator']} {alert['value']}" if alert else "—",
                 "in_alert": in_alert,
+                "blocking": bool(alert and alert.get("blocking")),
             }
         )
     return output
 
 
-def evaluate(ed: Edition) -> Path:
-    """Computes the indicators and writes JSON and the report to <product>/8-evaluate/data/<period>/."""
-    results = compute(ed)
-    context = {
-        "product": ed.product,
-        "period": ed.period,
-        "cut_date": ed.cut_date,
-        "version": ed.publication.get("version", ""),
-        "run": ed.run_id,
-        "indicators": results,
-        "alerts": [r for r in results if r["in_alert"]],
-        "actions": [a for a in indicators(ed.unit).get("action_plan", []) if a["status"] != "done"],
-        "synthetic": ed.project.synthetic,
-    }
-    folder = ed.data_folder(8)
+def _write(folder: Path, context: dict) -> Path:
+    """evaluation.json (without the action plan, which lives in indicators.yaml) and the evaluation.md report."""
     folder.mkdir(parents=True, exist_ok=True)
     data = {k: v for k, v in context.items() if k != "actions"}
     (folder / "evaluation.json").write_text(
@@ -236,6 +224,54 @@ def evaluate(ed: Edition) -> Path:
     report = folder / "evaluation.md"
     report.write_text(environment.get_template("evaluation-template.md.j2").render(**context), encoding="utf-8")
     return report
+
+
+def _open_actions(unit: Unit) -> list[dict]:
+    return [a for a in indicators(unit).get("action_plan", []) if a["status"] != "done"]
+
+
+def evaluate(ed: Edition) -> Path:
+    """Computes the indicators, writes JSON and the report to <product>/8-evaluate/data/<period>/ and keeps
+    the alerts in the edition: a human task cannot approve it until someone acknowledges them."""
+    results = compute(ed)
+    alerts = [r for r in results if r["in_alert"]]
+    ed.alerts = [{k: r[k] for k in ("id", "name", "formatted_value", "alert_text", "blocking")} for r in alerts]
+    ed.acknowledgement = None  # a new evaluation needs a new acknowledgement
+    context = {
+        "product": ed.product,
+        "period": ed.period,
+        "cut_date": ed.cut_date,
+        "version": ed.publication.get("version", ""),
+        "run": ed.run_id,
+        "indicators": results,
+        "alerts": alerts,
+        "acknowledgement": None,
+        "actions": _open_actions(ed.unit),
+        "synthetic": ed.project.synthetic,
+    }
+    return _write(ed.data_folder(8), context)
+
+
+def acknowledge(ed: Edition, note: str, by: str, task: str, simulated: bool = False) -> dict:
+    """Records who took note of the edition's alerts and why it goes on, in the edition and in its
+    evaluation (which is published with the edition)."""
+    from datetime import UTC, datetime
+
+    ed.acknowledgement = {
+        "note": note,
+        "by": by,
+        "task": task,
+        "at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "simulated": simulated,
+        "alerts": [a["id"] for a in ed.alerts],
+    }
+    folder = ed.data_folder(8)
+    path = folder / "evaluation.json"
+    if path.exists():
+        context = json.loads(path.read_text(encoding="utf-8"))
+        context.update(acknowledgement=ed.acknowledgement, actions=_open_actions(ed.unit))
+        _write(folder, context)
+    return ed.acknowledgement
 
 
 def history(unit: Unit) -> pd.DataFrame:

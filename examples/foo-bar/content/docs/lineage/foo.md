@@ -51,9 +51,9 @@ flowchart LR
   class n_source_statera_foo_bar_foo_foo_records bronze
   classDef ref fill:#E1ECF7,stroke:#2F6497,color:#1F1F1F
   classDef silver fill:#EDEDED,stroke:#6B6B6B,color:#1F1F1F
-  class n_model_statera_foo_bar_int_bar__records,n_model_statera_foo_bar_stg_foo__records,n_model_statera_foo_bar_int_baz__records silver
+  class n_model_statera_foo_bar_int_bar__records,n_model_statera_foo_bar_int_baz__records,n_model_statera_foo_bar_stg_foo__records silver
   classDef gold fill:#FBF0C9,stroke:#9A7B0A,color:#1F1F1F
-  class n_model_statera_foo_bar_bar_uf_monthly_change,n_model_statera_foo_bar_baz_uf_monthly,n_model_statera_foo_bar_baz_uf_monthly_median,n_model_statera_foo_bar_bar_uf_monthly gold
+  class n_model_statera_foo_bar_bar_uf_monthly,n_model_statera_foo_bar_bar_uf_monthly_change,n_model_statera_foo_bar_baz_uf_monthly,n_model_statera_foo_bar_baz_uf_monthly_median gold
   classDef consumer fill:#EAE2F5,stroke:#5E3C99,color:#1F1F1F
   class n_analysis_statera_foo_bar_mean_value_by_uf,n_analysis_statera_foo_bar_uf_series,n_exposure_statera_foo_bar_bar_monthly_release consumer
 ```

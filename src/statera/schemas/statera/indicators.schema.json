@@ -67,6 +67,11 @@
               },
               "value": {
                 "type": "number"
+              },
+              "blocking": {
+                "type": "boolean",
+                "default": false,
+                "description": "true: an alert makes the evaluation task fail, so the edition follows the exception path modeled after the task (or is blocked). false (default): the alert is shown, and approving the edition requires acknowledging it."
               }
             }
           },

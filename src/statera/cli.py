@@ -78,13 +78,16 @@ def _cmd_resume(args) -> int:
     from statera import execution
 
     key = args.period or args.cut_date
-    ed = execution.resume(args.product, key, "rejected" if args.reject else "approved", args.approve)
+    decision = "rejected" if args.reject else "approved"
+    ed = execution.resume(args.product, key, decision, args.approve, acknowledgement=args.acknowledge_alerts)
     return _edition_result(ed)
 
 
 def _cmd_status(args) -> int:
     from statera import execution
 
+    if not (args.period or args.cut_date):
+        return _status_overview(execution.overview(args.product, latest_only=not args.product))
     ed = execution.state(args.product, args.period or args.cut_date)
     print(
         f"{ed.product} {ed.period} (cut-off date {ed.cut_date}): {ed.status}"
@@ -92,6 +95,44 @@ def _cmd_status(args) -> int:
     )
     for h in ed.history:
         print(f"  {h['task']:<22} {h['status']}{' (simulated)' if h.get('simulated') else ''}")
+    if ed.alerts:
+        print(f"\nEvaluation: {len(ed.alerts)} indicator(s) in alert")
+        for a in ed.alerts:
+            blocking = " — BLOCKING" if a.get("blocking") else ""
+            print(f"  ⚠ {a['id']} {a['name']}: {a['formatted_value']} (alert {a['alert_text']}){blocking}")
+        if ack := ed.acknowledgement:
+            simulated = " (simulated)" if ack.get("simulated") else ""
+            print(f"  acknowledged by {ack['by']} at {ack['at']} in {ack['task']}{simulated}: {ack['note']}")
+        else:
+            print('  not acknowledged: approve with statera resume --acknowledge-alerts "<why the edition goes on>"')
+    if ed.failures and ed.status == "blocked":
+        print("\nFailures:")
+        for f in ed.failures[:15]:
+            print(f"  - {f}")
+    return 0
+
+
+def _status_overview(rows: list[dict]) -> int:
+    """One line per edition: where it is in the BPMN process and who has to act."""
+    table = [("product", "edition", "status", "step", "role", "alerts")]
+    for r in rows:
+        if r["edition"] is None:
+            table.append((r["product"], "—", "no runs", "", "", ""))
+            continue
+        alerts = ""
+        if r["alerts"]:
+            state = "blocking" if r["blocking"] else ("acknowledged" if r["acknowledged"] else "not acknowledged")
+            alerts = f"{r['alerts']} ⚠ {state}"
+        table.append((r["product"], r["edition"], r["status"], r["step"], r["role"], alerts))
+    widths = [max(len(str(line[i])) for line in table) for i in range(len(table[0]))]
+    for i, line in enumerate(table):
+        print("  ".join(str(v).ljust(w) for v, w in zip(line, widths, strict=True)).rstrip())
+        if i == 0:
+            print("  ".join("-" * w for w in widths))
+    waiting = [r for r in rows if r.get("status") in ("waiting", "blocked")]
+    if waiting:
+        print()
+        print(f"{len(waiting)} edition(s) need someone: statera status --product <p> --period <edition> for details")
     return 0
 
 
@@ -580,12 +621,19 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--cut-date", dest="cut_date", help="for an internal product, the run key")
     s.add_argument("--reject", dest="reject", action="store_true", help="records the decision as rejected")
     s.add_argument("--approve", dest="approve", action="store_true", help="simulates the following human tasks")
+    s.add_argument(
+        "--acknowledge-alerts", dest="acknowledge_alerts", metavar="NOTE",
+        help="acknowledges the evaluation's alerts (required to approve when there are any): why the edition goes on",
+    )  # fmt: skip
     s.set_defaults(func=_cmd_resume)
 
-    s = sub.add_parser("status", help="status of an edition and completed tasks")
-    s.add_argument("--product", dest="product", default=product)
-    s.add_argument("--period", dest="period")
-    s.add_argument("--cut-date", dest="cut_date")
+    s = sub.add_parser(
+        "status",
+        help="where the editions are: all products (latest edition), one product (every edition), or one edition",
+    )
+    s.add_argument("--product", dest="product", help="without it: every product, latest edition or cut")
+    s.add_argument("--period", dest="period", help="with --product: one edition in detail (tasks, alerts)")
+    s.add_argument("--cut-date", dest="cut_date", help="with --product: one cut of an internal product")
     s.set_defaults(func=_cmd_status)
 
     s = sub.add_parser("cuts", help="cuts released by the internal products")
@@ -715,13 +763,15 @@ def main(argv: list[str] | None = None) -> int:
     if problem:
         print(f"[statera] {problem}", file=sys.stderr)
         return 2
-    if getattr(args, "product", "x") == "" and args.command in ("run", "resume", "status", "evaluate"):
+    if getattr(args, "product", "x") == "" and args.command in ("run", "resume", "evaluate"):
         p.error("give --product")
-    if args.command in ("resume", "status") and not (args.period or args.cut_date):
+    if args.command == "resume" and not (args.period or args.cut_date):
         p.error("give --period (or --cut-date, for an internal product)")
     if args.command == "query" and args.action == "run" and not args.id:
         p.error("give the query id")
-    if args.command in ("run", "resume", "status", "evaluate") and not args.product:
+    if args.command == "status" and (args.period or args.cut_date) and not args.product:
+        p.error("give --product with --period or --cut-date")
+    if args.command in ("run", "resume", "evaluate") and not args.product:
         names = ", ".join(u.name for u in _project().products())
         print(f"give --product (products in this repository: {names})", file=sys.stderr)
         return 2

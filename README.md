@@ -111,7 +111,7 @@ uv run statera demo
 | 5 | `process` | dbt project generated from the products; rules with cases (SQL and Python); legacy code (SPSS via PSPP, R) |
 | 6 | `analyse` | Contracts checked against the engine; controls; statistical disclosure control (cell suppression, k-anonymity) |
 | 7 | `disseminate` | Edition package (CSV, xlsx, summary, Data Package, CKAN) and editions register |
-| 8 | `evaluate` | Quality indicators and action plan |
+| 8 | `evaluate` | Quality indicators and action plan; alerts acknowledged before approval, or blocking |
 | — | `consume` | Library (Ibis): catalog, published editions, cuts, metrics, queries, recipes |
 
 ## Command line
@@ -119,6 +119,10 @@ uv run statera demo
 `statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
 cuts | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
 clean`. See `statera --help`. Commands work from any folder of a data repository.
+
+`statera status` shows, for every product, where its latest edition (or cut) is in the BPMN process,
+the role that has to act and the evaluation alerts; `--product x` lists every edition of one product,
+and `--product x --period y` details one edition.
 
 ## Library
 

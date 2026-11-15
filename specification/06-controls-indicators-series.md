@@ -31,6 +31,32 @@ same file; each indicator's `dimension` is one of the quality dimensions (`relev
 `coherence-and-comparability`, `efficiency`). The evaluation goes to the editions register together
 with the approved edition.
 
+### What an alert does
+
+The evaluation task (`py:statera.evaluate.step`) runs in every edition, before the human review. An
+indicator in alert:
+
+- **does not stop the edition** by default. The alerts are kept in the edition, shown by
+  `statera status` and listed in `evaluation.md`; the next human task **cannot approve** the edition
+  until someone **acknowledges** them with a note: `statera resume --acknowledge-alerts "<why the
+  edition goes on>"` (rejecting needs no acknowledgement). The acknowledgement (note, who, when, which
+  task) goes to the edition's state and to its `evaluation.json`/`.md`, which are published with the
+  edition; a new evaluation needs a new acknowledgement. `statera demo` acknowledges as simulated.
+- **stops the edition** when the alert is declared `blocking: true`. The evaluation task then
+  returns `failed`: the edition follows the exception path modeled after it (a gateway with
+  `condition: failed`), or is `blocked`, with the alert among its failures.
+
+```yaml
+- id: QI-03
+  name: Late declarations in the period
+  unit: "%"
+  alert: {operator: ">", value: 10}                  # shown; approving requires acknowledging it
+- id: QI-07
+  name: Published files in open formats
+  unit: "%"
+  alert: {operator: "<", value: 100, blocking: true}  # the edition does not go on
+```
+
 ## Series (`7-disseminate/series.yaml`)
 
 They describe what **every** edition publishes: file names (`files_per_edition`, with `{port}` and

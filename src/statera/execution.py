@@ -10,8 +10,9 @@ event, following the flows:
                            it returns false, the edition stays "waiting" (e.g. the cut of the input
                            internal product has not been released yet); `statera resume` re-evaluates;
   - human task             stops and saves the state ("waiting"); `statera resume` completes the
-                           task (approving or rejecting) and resumes from there. In the demo,
-                           `--approve` simulates the human decisions;
+                           task (approving or rejecting) and resumes from there. Approving after an
+                           evaluation with alerts requires acknowledging them (`--acknowledge-alerts`).
+                           In the demo, `--approve` simulates the human decisions;
   - exception task         (statera.exception: true) the edition becomes "blocked", with the failures;
   - end event              the edition is "done".
 
@@ -22,7 +23,9 @@ generated from the same YAML documents exactly what runs (see specification,
 
 from __future__ import annotations
 
+import getpass
 import importlib
+import os
 from collections import defaultdict
 
 from statera import openlineage
@@ -155,9 +158,31 @@ def _role(proc: dict, e: dict) -> str:
     return next((r["role"] for r in proc["lanes"] if r["id"] == e["lane"]), "?")
 
 
-def _complete_human_task(ed: Edition, e: dict, decision: str, simulated: bool = False) -> str:
+def _check_acknowledgement(ed: Edition, e: dict, decision: str, simulated: bool, note: str | None) -> None:
+    """Approving a human task after an evaluation with alerts requires someone to acknowledge them, with a
+    note; the acknowledgement goes to the edition's evaluation, which is published with it."""
+    if decision != "approved" or not ed.alerts or ed.acknowledgement:
+        return
+    if not note and not simulated:
+        alerts = "; ".join(f"{a['id']} {a['name']} = {a['formatted_value']} ({a['alert_text']})" for a in ed.alerts)
+        raise EditionFailure(
+            f"{ed.label}: the evaluation has {len(ed.alerts)} indicator(s) in alert ({alerts}). "
+            f"Read {ed.project.rel(ed.data_folder(8) / 'evaluation.md')} and acknowledge them to approve: "
+            f'statera resume --acknowledge-alerts "<why the edition goes on>" (or --reject)'
+        )
+    from statera.evaluate import evaluation
+
+    by = os.environ.get("STATERA_ROLE") or getpass.getuser()
+    evaluation.acknowledge(ed, note or "simulated approval (demo)", by, e["id"], simulated=simulated)
+    ed.log(f"  alerts acknowledged by {by}: {ed.acknowledgement['note']}")
+
+
+def _complete_human_task(
+    ed: Edition, e: dict, decision: str, simulated: bool = False, acknowledgement: str | None = None
+) -> str:
     """Completes a human task. If it has an implementation (semi-automatic), runs it."""
     ext = e.get("statera", {})
+    _check_acknowledgement(ed, e, decision, simulated, acknowledgement)
     ed.log(f"{e['id']} — {e['name']}: {decision}{' (simulated)' if simulated else ''}")
     if ext.get("implementation") and decision == "approved":
         ed.ctx = {}
@@ -214,8 +239,15 @@ def run(
     return _walk(ed, proc, start, "ok", approve)
 
 
-def resume(product: str, period: str, decision: str = "approved", approve: bool = False) -> Edition:
-    """Completes the pending human task (approved | rejected), or re-evaluates the wait event, and resumes."""
+def resume(
+    product: str,
+    period: str,
+    decision: str = "approved",
+    approve: bool = False,
+    acknowledgement: str | None = None,
+) -> Edition:
+    """Completes the pending human task (approved | rejected), or re-evaluates the wait event, and resumes.
+    `acknowledgement`: note acknowledging the evaluation's alerts, required to approve when there are any."""
     unit = current().product(product)
     ed = Edition.load(unit, period)
     if ed.status != "waiting" or not ed.pending:
@@ -231,7 +263,7 @@ def resume(product: str, period: str, decision: str = "approved", approve: bool 
             return ed
         status = "ok"
     else:
-        status = _complete_human_task(ed, element, decision)
+        status = _complete_human_task(ed, element, decision, acknowledgement=acknowledgement)
     outputs: dict[str, list[dict]] = defaultdict(list)
     for f in proc["flows"]:
         outputs[f["from"]].append(f)
@@ -240,6 +272,47 @@ def resume(product: str, period: str, decision: str = "approved", approve: bool 
 
 def state(product: str, period: str) -> Edition:
     return Edition.load(current().product(product), period)
+
+
+def editions(unit) -> list[str]:
+    """Periods (or, in an internal product, cut-off dates) with a run of the product, oldest first."""
+    folder = unit.runs_folder
+    return sorted(p.name.removesuffix(".state.json") for p in folder.glob("*.state.json")) if folder.is_dir() else []
+
+
+def _step(unit, ed: Edition) -> tuple[str, str]:
+    """(step, role) where the edition is: the pending element, or the last task run."""
+    task = ed.pending or (ed.history[-1]["task"] if ed.history and ed.status not in ("done",) else None)
+    if not task:
+        return "—", "—"
+    try:
+        proc = processes.load(unit.to_be_process)
+    except Exception:  # noqa: BLE001 - process changed or missing: show the id
+        return task, "?"
+    element = next((e for e in proc["elements"] if e["id"] == task), None)
+    return (f"{element['name']} ({task})", _role(proc, element)) if element else (task, "?")
+
+
+def overview(product: str | None = None, latest_only: bool = True) -> list[dict]:
+    """One row per edition: status, the BPMN step it is at, the role that has to act, and the alerts.
+    All products (the latest edition of each), or every edition of one product."""
+    project = current()
+    units = [project.product(product)] if product else project.products()
+    rows = []
+    for unit in units:
+        keys = editions(unit)
+        if not keys:
+            rows.append({"product": unit.name, "internal": unit.internal, "edition": None, "status": "no runs"})
+            continue
+        for key in keys[-1:] if latest_only else keys:
+            ed = Edition.load(unit, key)
+            step, role = _step(unit, ed)
+            rows.append({
+                "product": unit.name, "internal": unit.internal, "edition": key, "status": ed.status,
+                "step": step, "role": role, "alerts": len(ed.alerts),
+                "acknowledged": bool(ed.acknowledgement), "blocking": any(a.get("blocking") for a in ed.alerts),
+            })  # fmt: skip
+    return rows
 
 
 def ensure_dependencies(unit, cut_date: str, approve: bool = False) -> None:

@@ -31,10 +31,14 @@ The product's to-be process (`2-design/processes/to-be.yaml`) is the execution p
 | `startEvent` | Starts the edition (OpenLineage run of the edition) |
 | Automatic task | Runs the implementation, which returns the status (`ok` or `failed`); records duration and events |
 | `exclusiveGateway` | Follows the flow whose `condition` is the status of the last task |
-| Human task (manual or semi-automatic) | Stops and saves the state (`waiting`); `statera resume` completes it with `approved` (or `rejected`, with `--reject`); a semi-automatic task runs its implementation when completed |
+| Human task (manual or semi-automatic) | Stops and saves the state (`waiting`); `statera resume` completes it with `approved` (or `rejected`, with `--reject`); a semi-automatic task runs its implementation when completed. Approving after an evaluation with alerts requires `--acknowledge-alerts "<note>"` (06) |
 | Intermediate event with `awaits` | Calls the function; if it is not yet time, the edition stays `waiting` on it, and `statera resume` re-evaluates |
 | Task with `exception: true` | The edition becomes `blocked`, with the failures recorded |
 | `endEvent` | The edition is `done` |
+
+The state of each run is saved in `<product>/8-evaluate/data/runs/<period>.state.json`. `statera status`
+lists where every product's latest edition (or cut) is: the pending BPMN element, the role of its lane
+and the evaluation alerts; `--product` lists every edition of one product.
 
 An automatic task that fails with no gateway after it also blocks the edition. Framework
 implementations: `py:statera.collect.step`, `dbt:build`, `py:statera.analyse.step`,

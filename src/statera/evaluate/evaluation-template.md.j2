@@ -8,15 +8,22 @@
 | Indicator | Dimension | Value | Alert | Status |
 |---|---|---:|---|---|
 {% for i in indicators %}
-| {{ i.id }} {{ i.name }} | {{ i.dimension }} | {{ i.formatted_value }} | {{ i.alert_text }} | {{ "⚠ alert" if i.in_alert else "ok" }} |
+| {{ i.id }} {{ i.name }} | {{ i.dimension }} | {{ i.formatted_value }} | {{ i.alert_text }}{{ " (blocking)" if i.blocking else "" }} | {{ ("⛔ blocking alert" if i.blocking else "⚠ alert") if i.in_alert else "ok" }} |
 {% endfor %}
 
 {% if alerts %}
 ## What to look at
 
 {% for i in alerts %}
-- **{{ i.id }} {{ i.name }}**: {{ i.description }} Value {{ i.formatted_value }} (alert {{ i.alert_text }}).
+- **{{ i.id }} {{ i.name }}**: {{ i.description }} Value {{ i.formatted_value }} (alert {{ i.alert_text }}){{ "; blocking: the edition does not go on" if i.blocking else "" }}.
 {% endfor %}
+
+{% if acknowledgement %}
+**Acknowledged** by {{ acknowledgement.by }} on {{ acknowledgement.at }} ({{ acknowledgement.task }}){{ ", simulated" if acknowledgement.simulated else "" }}: {{ acknowledgement.note }}
+{% else %}
+**Not acknowledged yet.** Approving the edition requires acknowledging the alerts
+(`statera resume --acknowledge-alerts "<why the edition goes on>"`).
+{% endif %}
 {% endif %}
 
 ## Open action plan (GSBPM 8.3)

@@ -41,6 +41,8 @@ class Edition:
     non_blocking_failures: int = 0
     failures: list[str] = field(default_factory=list)  # blocking failures (dbt, contracts, controls)
     revisions: list[dict] | None = None  # result of the revision control between editions
+    alerts: list[dict] = field(default_factory=list)  # indicators in alert in the edition's evaluation (phase 8)
+    acknowledgement: dict | None = None  # who took note of the alerts, when, and why the edition goes on
     publication: dict = field(default_factory=dict)  # folder, version, correction, suppressions
     cuts: dict = field(default_factory=dict)  # manifests of the pinned cuts of the input internal products
     history: list[dict] = field(default_factory=list)  # completed tasks, with status
