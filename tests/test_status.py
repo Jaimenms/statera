@@ -140,4 +140,5 @@ def test_tasks_says_what_to_do_about_a_blocked_edition_and_about_a_wait(minimal_
     assert "statera run --product sample --period 2026-01" in capsys.readouterr().out
     with pytest.raises(SystemExit):  # a role is one of governance/roles.yaml
         cli.main(["tasks", "--role", "nobody"])
-    assert "argument --role: invalid choice: 'nobody' (choose from team-x)" in capsys.readouterr().err
+    err = capsys.readouterr().err  # argparse's own wording of the choices changes between Python versions
+    assert "argument --role: invalid choice: 'nobody'" in err and "team-x" in err
