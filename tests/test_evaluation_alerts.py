@@ -84,6 +84,9 @@ def test_status_shows_the_alerts_and_the_acknowledgement(minimal_project, capsys
     assert cli.main(["status", "--product", "sample", "--period", "2026-01"]) == 0
     out = capsys.readouterr().out
     assert "1 indicator(s) in alert" in out and "QI-01 Check failures" in out and "not acknowledged" in out
+    task = execution.tasks()[0]  # `statera tasks` gives the command with the acknowledgement it needs
+    assert task["command"] == 'statera resume --product sample --period 2026-01 --acknowledge-alerts "<why the edition goes on>"'  # fmt: skip
+    assert "acknowledging the 1 alert(s)" in task["does"]
     execution.resume("sample", "2026-01", acknowledgement="seen")
     cli.main(["status", "--product", "sample", "--period", "2026-01"])
     assert "acknowledged by" in capsys.readouterr().out

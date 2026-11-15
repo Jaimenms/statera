@@ -446,12 +446,15 @@ class Agent:
     def _command(self, question: str, chosen: list[Card]) -> Outcome:
         name = chosen[0].id.partition(":")[2]
         products = "\n".join(c.line for c in self.knowledge.cards if c.kind == "product") or "(none)"
-        options, arguments, flags = _options(name)
+        options, arguments, doubted = _options(name)
 
         def check(reply: dict) -> Outcome:
             given = dict(reply.get("options") or {})
-            for flag in [k for k, v in given.items() if v is True]:  # a flag has to be asked for, not just plausible
-                given[flag] = self._asked_for(question, flag, flags[flag])
+            for option, value in list(given.items()):  # it has to be asked for, not just plausible
+                if option in doubted and value not in (False, "", None):
+                    shown = option if value is True else f"{option} {value}"
+                    if not self._asked_for(question, shown, doubted[option]):
+                        given[option] = False if value is True else ""
             return self._checked_command([name, *arguments(given)], reply)
 
         system = COMMAND.format(card=chosen[0].detail(), products=products)
@@ -459,8 +462,9 @@ class Agent:
         return self._fill("command", system, question, properties, check)
 
     def _asked_for(self, question: str, flag: str, meaning: str) -> bool:
-        """A second, narrow look at a flag the model turned on: small models turn on whatever sounds
-        related. It stays on only when the person asked for what it does."""
+        """A second, narrow look at a flag the model turned on, or at the value it picked for an optional
+        choice (`--role data-team`): small models turn on whatever sounds related. It stays only when
+        the person asked for what it does."""
         system = FLAG.format(flag=flag, meaning=meaning)
         reply = self._call(system, question, {"thought": TEXT, "asked": {"type": "string", "enum": ["yes", "no"]}}, [])
         kept = bool(reply) and reply.get("asked") == "yes"
@@ -591,7 +595,8 @@ class Agent:
 def _options(command: str) -> tuple[dict, Callable[[dict], list[str]], dict[str, str]]:
     """The options of a command as a JSON schema (one property per option, from the command line's own
     parser: a flag is a boolean, a choice is an enum), the function that turns a reply into arguments, and
-    what each flag means. So the model decides each option that exists, and cannot write one that does not."""
+    what each flag and each optional choice means (the ones looked at again when the model sets them). So
+    the model decides each option that exists, and cannot write one that does not."""
     from statera import cli
 
     subcommands = next(a for a in cli.parser()._actions if isinstance(a, argparse._SubParsersAction))
@@ -622,8 +627,12 @@ def _options(command: str) -> tuple[dict, Callable[[dict], list[str]], dict[str,
                 argv += [*flag, str(value).strip()]
         return argv
 
-    flags = {n: a.help or "" for a, n in names.items() if isinstance(a, argparse._StoreTrueAction)}
-    return {"type": "object", "properties": properties, "required": list(properties)}, arguments, flags
+    doubted = {
+        n: a.help or ""
+        for a, n in names.items()
+        if isinstance(a, argparse._StoreTrueAction) or (a.choices and a.option_strings)
+    }
+    return {"type": "object", "properties": properties, "required": list(properties)}, arguments, doubted
 
 
 def _strings(values) -> list[str]:

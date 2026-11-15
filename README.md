@@ -176,12 +176,17 @@ uv run statera demo
 ## Command line
 
 `statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
-cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
+tasks | cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
 clean | copilot`. See `statera --help`. Commands work from any folder of a data repository.
 
 `statera status` shows, for every product, where its latest edition (or cut) is in the BPMN process,
-the role that has to act and the evaluation alerts; `--product x` lists every edition of one product,
-and `--product x --period y` details one edition.
+the role that has to act, the evaluation alerts and the next edition its calendar expects (with the
+command to start the ones already due); `--product x` lists every edition of one product, and
+`--product x --period y` details one edition.
+
+`statera tasks` is the work list: the human tasks of every edition still open (not only the latest of
+each product), the role each one belongs to, since when it waits and, under "To do now", the command that
+takes each one on, by role. `--role x` shows one role's; `--all` adds the editions already done.
 
 ## Library
 

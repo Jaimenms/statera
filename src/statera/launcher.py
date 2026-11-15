@@ -42,7 +42,7 @@ ENV_NO_HANDOFF = "STATERA_NO_HANDOFF"
 LOCAL_COMMANDS = {"init"}  # never handed off: they create a repository, they don't run inside one
 # Commands that only read: they run with the repository's dependencies alone (no production tools).
 # Every other command produces or checks, and runs with all the repository's dependency groups.
-CONSUMPTION_COMMANDS = {"doctor", "query", "metric", "recipes", "cuts", "status", "evaluate"}
+CONSUMPTION_COMMANDS = {"doctor", "query", "metric", "recipes", "cuts", "status", "tasks", "evaluate"}
 COPILOT_COMMAND = "copilot"  # reads too, plus its own optional dependencies (extra and group `copilot`)
 COPILOT_GROUP = "copilot"
 

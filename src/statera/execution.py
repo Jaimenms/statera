@@ -28,10 +28,11 @@ from __future__ import annotations
 import getpass
 import os
 from collections import defaultdict
+from datetime import date
 
 from statera import openlineage
 from statera.design import bpmn, processes
-from statera.edition import Edition, EditionFailure
+from statera.edition import Edition, EditionFailure, read_jsonl
 from statera.extend.base import Task, TaskResult
 from statera.project import Project, current
 
@@ -331,16 +332,52 @@ def _step(unit, ed: Edition) -> tuple[str, str]:
     return (f"{element['name']} ({task})", _role(proc, element)) if element else (task, "?")
 
 
-def overview(product: str | None = None, latest_only: bool = True) -> list[dict]:
+def next_expected(unit, today: date | None = None) -> dict | None:
+    """The next edition the product's calendar expects and nobody started: the first one, in the order of
+    `1-specify/calendar.yaml`, with no run and not in the editions register (in an internal product: the
+    first cut its consumers request, with no run and not released). So it does not depend on the runs
+    alone, which `statera clean` deletes.
+
+    `state` places it against today: `scheduled` before its cut-off date, `due` from then on (it can be
+    run) and, in a dissemination product, `late` after its release date. None when the product has no
+    calendar or the calendar has nothing left to start."""
+    calendar = unit.read("1-specify/calendar.yaml") or {}
+    today_, started = (today or date.today()).isoformat(), set(editions(unit))
+    if unit.internal:
+        from statera.collect import released_cuts
+
+        started |= set(released_cuts(unit))
+        for cut in calendar.get("cuts") or []:
+            if (key := str(cut["cut_date"])) not in started:
+                state = "due" if key <= today_ else "scheduled"
+                return {"edition": key, "cut_date": key, "release": None, "state": state}
+        return None
+    from statera.disseminate import registry
+
+    registered = unit.has("7-disseminate/series.yaml")
+    for e in calendar.get("editions") or []:
+        key, cut_date, release = str(e["period"]), str(e["cut_date"]), str(e.get("release") or "")
+        if key in started or (registered and registry.is_published(unit, key)):
+            continue
+        state = "late" if release and release < today_ else "due" if cut_date <= today_ else "scheduled"
+        return {"edition": key, "cut_date": cut_date, "release": release or None, "state": state}
+    return None
+
+
+def overview(product: str | None = None, latest_only: bool = True, today: date | None = None) -> list[dict]:
     """One row per edition: status, the BPMN step it is at, the role that has to act, and the alerts.
-    All products (the latest edition of each), or every edition of one product."""
+    All products (the latest edition of each), or every edition of one product. The last row of each
+    product also has `next`: the next edition its calendar expects (`next_expected`), or None."""
     project = current()
     units = [project.product(product)] if product else project.products()
     rows = []
     for unit in units:
         keys = editions(unit)
         if not keys:
-            rows.append({"product": unit.name, "internal": unit.internal, "edition": None, "status": "no runs"})
+            rows.append({
+                "product": unit.name, "internal": unit.internal, "edition": None, "status": "no runs",
+                "next": next_expected(unit, today),
+            })  # fmt: skip
             continue
         for key in keys[-1:] if latest_only else keys:
             ed = Edition.load(unit, key)
@@ -350,7 +387,81 @@ def overview(product: str | None = None, latest_only: bool = True) -> list[dict]
                 "step": step, "role": role, "alerts": len(ed.alerts),
                 "acknowledged": bool(ed.acknowledgement), "blocking": any(a.get("blocking") for a in ed.alerts),
             })  # fmt: skip
+        rows[-1]["next"] = next_expected(unit, today)
     return rows
+
+
+def tasks(product: str | None = None, every: bool = False) -> list[dict]:
+    """The human tasks of every edition still open (with `every`, of the finished ones too): who has to
+    do what. One row per human task, in the order of the process: `approved` or `rejected` when it was
+    completed, `waiting` or `blocked` when it is where the edition stopped, `not reached` otherwise.
+
+    Where an edition stopped is a row even when it is not a human task (the event it awaits, the automatic
+    task that blocked it): someone has to act there too. An exception task is a row only when the edition
+    is blocked at it. Each row has the role of the element's lane, the time (of the completion; for where
+    the edition stopped, since when it is there) and, for where the edition stopped, the command that
+    takes it on and what that command does."""
+    project = current()
+    rows = []
+    for unit in [project.product(product)] if product else project.products():
+        recorded = read_jsonl(unit.runs_folder / "runs.jsonl")
+        events = read_jsonl(unit.runs_folder / "events.jsonl")
+        started = {e["run"]["runId"]: e["eventTime"] for e in events if e["eventType"] == "START"}
+        for key in editions(unit):
+            ed = Edition.load(unit, key)
+            if every or ed.status != "done":
+                times = [line["registered_at"] for line in recorded if line.get("period") == key]
+                done_at = {line["bpmn_task"]: line["registered_at"] for line in recorded if line.get("period") == key}
+                rows += _edition_tasks(unit, ed, done_at, times[-1] if times else started.get(ed.run_id))
+    return rows
+
+
+def _edition_tasks(unit, ed: Edition, done_at: dict[str, str], stopped_at: str | None) -> list[dict]:
+    """`done_at`: when each task was last recorded; `stopped_at`: when the edition got where it is (its
+    last task recorded or, with none yet, its start)."""
+    try:
+        proc = processes.load(unit.process)
+    except Exception:  # noqa: BLE001 - process changed or missing: only where the edition stopped, by its id
+        proc = {"elements": [], "lanes": []}
+    elements = list(proc["elements"])
+    if ed.pending and all(e["id"] != ed.pending for e in elements):  # the process no longer has that element
+        elements.append({"id": ed.pending, "type": "?", "lane": None})
+    completed = {h["task"]: h for h in ed.history if h.get("human")}
+    rows = []
+    for e in elements:
+        ext = e.get("statera") or {}
+        human = e["type"] in bpmn.TASKS and ext.get("type") in HUMAN_TYPES
+        here = e["id"] == ed.pending
+        if not here and (not human or ext.get("exception")):
+            continue
+        row = {
+            "product": unit.name, "internal": unit.internal, "edition": ed.period, "task": e["id"],
+            "name": e.get("name") or e["id"], "role": _role(proc, e), "state": "not reached", "at": None,
+            "simulated": False, "command": None, "does": None,
+        }  # fmt: skip
+        if here:
+            row |= {"state": ed.status, "at": stopped_at}
+            row["command"], row["does"] = _to_do(unit, ed, human)
+        elif done := completed.get(e["id"]):
+            row |= {"state": done["status"], "at": done_at.get(e["id"]), "simulated": bool(done.get("simulated"))}
+        rows.append(row)
+    return rows
+
+
+def _to_do(unit, ed: Edition, human: bool) -> tuple[str, str]:
+    """The command for whoever has to act where the edition stopped, and what it does."""
+    target = f"--product {unit.name} " + (f"--cut-date {ed.period}" if unit.internal else f"--period {ed.period}")
+    if ed.status == "blocked":
+        return f"statera run {target}", f"runs it again, once what `statera status {target}` lists is fixed"
+    if not human:
+        return f"statera resume {target}", "goes on, once what it awaits is there"
+    if ed.alerts and not ed.acknowledgement:
+        return (
+            f'statera resume {target} --acknowledge-alerts "<why the edition goes on>"',
+            f"completes it as approved, acknowledging the {len(ed.alerts)} alert(s) of the evaluation; "
+            "--reject, as rejected",
+        )
+    return f"statera resume {target}", "completes it as approved; --reject, as rejected"
 
 
 def ensure_dependencies(unit, cut_date: str, approve: bool = False) -> None:

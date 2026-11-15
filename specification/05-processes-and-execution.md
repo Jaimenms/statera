@@ -56,6 +56,24 @@ The state of each run is saved in `<product>/8-evaluate/data/runs/<period>.state
 lists where every product's latest edition (or cut) is: the pending BPMN element, the role of its lane
 and the evaluation alerts; `--product` lists every edition of one product.
 
+The last column is the **next edition the calendar expects**: the first edition of the product's
+`1-specify/calendar.yaml`, in its order, that nobody started (no run) and that is not in the editions
+register; in an internal product, the first cut its consumers request with no run and not released. It is
+read from the calendar and the register, not from the runs alone, so a product whose runs were deleted
+(`statera clean`) still says what comes next. It is marked `due` from its cut-off date on and, in a
+dissemination product, `late` after its release date; for these `statera status` prints the `statera run`
+that starts them. `—` means the calendar has nothing left to start.
+
+`statera tasks` lists the human tasks of **every edition still open**, in the order of the process, with
+the role of the task's lane: `approved` or `rejected` (and when), `waiting` or `blocked` where the edition
+stopped (and since when), `not reached` for the ones still to come. Where an edition stopped is listed even
+when it is not a human task (the event it awaits, the automatic task that blocked it), and an exception
+task only when the edition is blocked at it. For where each edition stopped it gives, by role (with the
+role's name and git team, from `governance/roles.yaml`), the command that takes it on: `statera resume`
+(with `--acknowledge-alerts` when the evaluation has alerts nobody acknowledged), or `statera run` again
+for a blocked edition. `--role` and `--product` narrow the list; `--all` includes the editions done. The
+time is that of the last task recorded in `runs.jsonl` (of the edition's start, when it has none yet).
+
 An automatic task that fails with no gateway after it also blocks the edition. Framework tasks:
 `Extract` (4.3), `DbtBuild` (5), `Gate` (controls, 6.2), `Package` (6.4, 7.1-7.2), `Evaluate` (8.1-8.2) and
 `Publish` (7.3-7.5). In an internal product, the run is a **cut** (`--cut-date` is given, not the

@@ -286,6 +286,16 @@ def test_a_command_takes_the_options_the_command_line_has(repository):
     assert agent.ask("validate and list everything that passed").text == "statera validate --verbose"
     assert model.schemas[1]["options"]["properties"]["level"]["enum"] == ["1", "2", "3", "4", ""]  # a choice, or none
 
+    tasks = {"product": "", "role": "team-x", "all": False}  # a choice the model picks is looked at again too
+    agent, model = agent_with(repository, choose("command", "command:tasks"), fill(options=tasks),
+                              json.dumps({"thought": "no role was named", "asked": "no"}),
+                              choose("command", "command:tasks"), fill(options=tasks),
+                              json.dumps({"thought": "team-x was named", "asked": "yes"}))  # fmt: skip
+    assert agent.ask("who has to do what?").text == "statera tasks"
+    assert model.schemas[1]["options"]["properties"]["role"]["enum"] == ["team-x", ""]  # the roles there are
+    assert "--role team-x, which means: only the tasks of this role" in model.shown[2]["system"]
+    assert agent.ask("what does team-x have to do?").text == "statera tasks --role team-x"
+
 
 @pytest.mark.parametrize(
     ("options", "reason"),

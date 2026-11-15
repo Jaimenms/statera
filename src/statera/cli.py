@@ -13,6 +13,7 @@ Production (the product's process):
     statera run --product bar-events --cut-date 2026-07-20         # internal product: one cut
     statera resume --product foo --period 2026-06                 # completes the task and continues
     statera status --product foo --period 2026-06
+    statera tasks                                                 # the human tasks: who has to do what
     statera cuts                                                  # cuts released by the internal products
 Quality and conformance:
     statera validate [--level 2]         statera conformance          statera contracts
@@ -117,27 +118,95 @@ def _cmd_status(args) -> int:
 
 
 def _status_overview(rows: list[dict]) -> int:
-    """One line per edition: where it is in the BPMN process and who has to act."""
-    table = [("product", "edition", "status", "step", "role", "alerts")]
+    """One line per edition: where it is in the BPMN process, who has to act, and the next edition the
+    product's calendar expects."""
+    table = [("product", "edition", "status", "step", "role", "alerts", "next in the calendar")]
     for r in rows:
         if r["edition"] is None:
-            table.append((r["product"], "—", "no runs", "", "", ""))
+            table.append((r["product"], "—", "no runs", "", "", "", _next(r)))
             continue
         alerts = ""
         if r["alerts"]:
             state = "blocking" if r["blocking"] else ("acknowledged" if r["acknowledged"] else "not acknowledged")
             alerts = f"{r['alerts']} ⚠ {state}"
-        table.append((r["product"], r["edition"], r["status"], r["step"], r["role"], alerts))
+        table.append((r["product"], r["edition"], r["status"], r["step"], r["role"], alerts, _next(r)))
+    _print_table(table)
+    waiting = [r for r in rows if r.get("status") in ("waiting", "blocked")]
+    if waiting:
+        print()
+        print(f"{len(waiting)} edition(s) need someone: statera tasks says who, and the command that takes each on")
+    due = [r for r in rows if r.get("next") and r["next"]["state"] != "scheduled"]
+    if due:
+        print("\nDue by the calendar (the cut-off date has passed and nobody started it):")
+    for r in due:
+        key = "--cut-date" if r["internal"] else "--period"
+        print(f"  statera run --product {r['product']} {key} {r['next']['edition']}")
+    return 0
+
+
+def _next(row: dict) -> str:
+    """The next edition of the calendar, on the last line of each product: `2026-03, cut-off 2026-04-10,
+    release 2026-04-15 (late)`; `—` when the calendar has nothing left."""
+    if "next" not in row:  # not the last line of its product
+        return ""
+    following = row["next"]
+    if following is None:
+        return "—"
+    text = following["edition"]
+    if not row["internal"]:
+        text += f", cut-off {following['cut_date']}"
+        text += f", release {following['release']}" if following["release"] else ""
+    return text + ("" if following["state"] == "scheduled" else f" ({following['state']})")
+
+
+def _print_table(table: list[tuple]) -> None:
+    """The lines in columns, the first one as the header."""
     widths = [max(len(str(line[i])) for line in table) for i in range(len(table[0]))]
     for i, line in enumerate(table):
         print("  ".join(str(v).ljust(w) for v, w in zip(line, widths, strict=True)).rstrip())
         if i == 0:
             print("  ".join("-" * w for w in widths))
-    waiting = [r for r in rows if r.get("status") in ("waiting", "blocked")]
-    if waiting:
-        print()
-        print(f"{len(waiting)} edition(s) need someone: statera status --product <p> --period <edition> for details")
+
+
+def _cmd_tasks(args) -> int:
+    """The human tasks of the open editions, then what there is to do now, by role."""
+    from statera import execution, governance
+
+    roles = governance.roles()
+    rows = [r for r in execution.tasks(args.product, every=args.all) if not args.role or r["role"] == args.role]
+    if not rows:
+        print("No human task to show: no edition is open" + ("." if args.all else " (--all lists the ones done)."))
+        return 0
+    table = [("product", "edition", "task", "role", "state", "when (UTC)")]
+    for r in rows:
+        state = r["state"] + (" (simulated)" if r["simulated"] else "")
+        table.append((r["product"], r["edition"], f"{r['name']} ({r['task']})", r["role"], state, _when(r)))
+    _print_table(table)
+    to_do = [r for r in rows if r["command"]]
+    if to_do:
+        print("\nTo do now:")
+    for role in dict.fromkeys(r["role"] for r in to_do):
+        who = roles.get(role, {})
+        print(f"  {role}" + (f" — {who['name']}, {who['git_team']}" if who else ""))
+        for r in (r for r in to_do if r["role"] == role):
+            print(f"    {r['command']}")
+            print(f"        {r['name']}: {r['does']}")
     return 0
+
+
+def _when(row: dict) -> str:
+    """When the task was completed; for the one an edition stopped at, since when, and how long ago."""
+    from datetime import UTC, datetime
+
+    if not row["at"]:
+        return ""
+    at = datetime.fromisoformat(row["at"])
+    text = at.strftime("%Y-%m-%d %H:%M")
+    if not row["command"]:
+        return text
+    minutes = int((datetime.now(UTC) - at).total_seconds() // 60)
+    ago = f"{minutes} min" if minutes < 120 else f"{minutes // 60} h" if minutes < 2880 else f"{minutes // 1440} d"
+    return f"since {text}, {ago}"
 
 
 def _cmd_cuts(args) -> int:
@@ -695,12 +764,26 @@ def parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "status",
-        help="where the editions are: all products (latest edition), one product (every edition), or one edition",
+        help="where the editions are: all products (latest edition, and the next one the calendar expects), "
+        "one product (every edition), or one edition",
     )
     s.add_argument("--product", dest="product", help="without it: every product, latest edition or cut")
     s.add_argument("--period", dest="period", help="with --product: one edition in detail (tasks, alerts)")
     s.add_argument("--cut-date", dest="cut_date", help="with --product: one cut of an internal product")
     s.set_defaults(func=_cmd_status)
+
+    s = sub.add_parser(
+        "tasks",
+        help="the human tasks of every open edition: who (which role) has to do what, since when, and the "
+        "command that takes each one on",
+    )
+    s.add_argument("--product", dest="product", help="only the editions of this product (without it: every product)")
+    s.add_argument(
+        "--role", dest="role", choices=_roles(),
+        help="only the tasks of this role, an id of governance/roles.yaml (without it: every role)",
+    )  # fmt: skip
+    s.add_argument("--all", dest="all", action="store_true", help="also the editions done: what was completed, when")
+    s.set_defaults(func=_cmd_tasks)
 
     s = sub.add_parser("cuts", help="cuts released by the internal products")
     s.add_argument("--product", dest="product")
@@ -862,6 +945,16 @@ def parse(argv: list[str]) -> argparse.Namespace:
     if args.command == "status" and (args.period or args.cut_date) and not args.product:
         p.error("give --product with --period or --cut-date")
     return args
+
+
+def _roles() -> list[str] | None:
+    """The roles of the repository, as the choices of an option (None, any value, outside a repository)."""
+    try:
+        from statera import governance
+
+        return list(governance.roles(_project())) or None
+    except Exception:  # outside a content repository, or roles.yaml missing
+        return None
 
 
 def _products() -> list:
