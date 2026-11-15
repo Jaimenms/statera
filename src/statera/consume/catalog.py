@@ -33,7 +33,6 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import urllib.request
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -96,6 +95,7 @@ class PublishedEdition:
     folder: Path
     period_column: str = "period"
     files_url: str | None = None  # publication storage of the edition's files, when they are not local
+    project: Project | None = None  # whose readers open the publication storage
 
     @property
     def provenance(self) -> dict:
@@ -140,10 +140,7 @@ class PublishedEdition:
             )
         base = self.files_url.format(product=self.product, period=self.period)
         url = base.rstrip("/") + "/" + path
-        if not connection.URL.match(url):
-            return url, Path(url).read_bytes()  # a network share
-        with urllib.request.urlopen(url, timeout=120) as response:  # noqa: S310 (declared in series.yaml)
-            return url, response.read()
+        return url, connection.read_bytes(url, self.project or current())
 
 
 class Catalog:
@@ -353,6 +350,7 @@ class Catalog:
             unit.data(7) / period,
             self.project.conventions["period_column"],
             registry.series_config(unit).get("files_url") if registry.series_file(unit).exists() else None,
+            self.project,
         )
 
     def editions(self, product: str) -> pd.DataFrame:

@@ -26,6 +26,7 @@ Groups (and the conformance level from which each one is required):
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from collections.abc import Callable
@@ -566,6 +567,31 @@ def _query_relations(project: Project, manifest: dict) -> list[Finding]:
     ]
 
 
+def _connectors(project: Project) -> list[Finding]:
+    """The repository's connectors and readers ([consumption.connectors], [consumption.readers]) point to a
+    function that exists. The file is
+    parsed, not run: a connector may import a driver that only its readers install."""
+    findings = []
+    for section, kind in (("connectors", "connector"), ("readers", "reader")):
+        for scheme, specification in (project.consumption.get(section) or {}).items():
+            file, _, function = str(specification).partition(":")
+            path = project.root / file
+            if not path.is_file() or not function:
+                message = f"{kind} {scheme}: '{specification}' is not an existing 'file.py:function'"
+            elif function not in _functions(path):
+                message = f"{kind} {scheme}: {file} has no function {function}"
+            else:
+                findings.append(Finding("consumption", True, f"{kind} {scheme}: {specification}", 2))
+                continue
+            findings.append(Finding("consumption", False, message, 2))
+    return findings
+
+
+def _functions(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return {n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+
+
 def check_consumer(project: Project, manifest: dict) -> list[Finding]:
     from statera.consume import metrics, queries, recipes
 
@@ -610,6 +636,7 @@ def check_consumer(project: Project, manifest: dict) -> list[Finding]:
                     Finding("consumption", False, f"metric {name}: component '{component}' does not exist", 2)
                 )
     findings += _query_relations(project, manifest)
+    findings += _connectors(project)
     findings += [Finding("consumption", False, p, 2) for p in recipes.header_problems(project)]
     findings.append(
         Finding(

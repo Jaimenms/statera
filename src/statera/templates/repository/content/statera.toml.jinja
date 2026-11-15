@@ -20,7 +20,17 @@ path = "dbt/data/warehouse.duckdb"
 # STATERA_ENGINE overrides it (for a URL with credentials, which never goes into git); `local` forces the
 # local engine. A DuckDB file is opened read-only: a path (network share), https:// or s3://.
 # engine = "s3://my-bucket/statistics/warehouse.duckdb"
-# engine = "postgres://reader@db.example.org/statistics"   # or any engine Ibis reads (statera[postgres], statera[trino])
+# engine = "postgres://reader@db.example.org/statistics"   # or any engine Ibis reads (statera[postgres], [trino]…)
+# engine = "athena://?s3_staging_dir=s3://my-results/statera/&region_name=us-east-1"  # statera[athena]
+#
+# Any other source is a connector of this repository (a function that returns an Ibis backend, chosen by the
+# URL's scheme) or of an installed package (entry point "statera.connectors"). Specification 07.
+# [consumption.connectors]
+# parquet+s3 = "connectors/parquet_s3.py:connect"
+# Likewise, a reader opens the publication storage of the editions (files_url in series.yaml) when it is
+# not a share or https://: a function read(url, project) -> bytes ("statera.readers" in a package).
+# [consumption.readers]
+# s3 = "readers/s3.py:read"
 
 [conventions]
 # Names of the convention columns in YOUR data (column names belong to the content). These are the

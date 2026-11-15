@@ -16,6 +16,7 @@ Production writes to the local engine (`[engine]`, built by `statera run`). Thos
 [consumption]
 engine = "s3://labor-stats/warehouse.duckdb"      # a DuckDB file: a path (network share), https://, s3://
 # engine = "postgres://reader@db.example.org/stats"   # or any engine Ibis connects to
+# engine = "athena://?s3_staging_dir=s3://results/statera/&region_name=us-east-1&work_group=analysts"
 ```
 
 The engine read is, in order: the explicit choice (`catalog.open(engine=…)`, `--engine` in `statera query`,
@@ -25,10 +26,83 @@ attached **read-only**; in the other engines, the reader's login and the generat
 boundary. Every output records which engine it read (`engine` in the provenance). With no local engine
 and no shared one, reading fails saying whom to ask; `statera doctor` reports it too.
 
+### Connectors: other sources are an extension
+
+Statera reads every engine through one interface, an Ibis backend (`ibis.BaseBackend`): what the
+catalog, the queries and the metrics use. It opens by itself a DuckDB file and, through `ibis.connect`,
+every engine Ibis has a backend for (PostgreSQL, Trino, MySQL, SQLite, Snowflake, BigQuery, Amazon
+Athena…; each with its Ibis backend installed, e.g. `statera[athena]`). Any other source (MariaDB under its
+own scheme, H2, Parquet files in a bucket, an internal API…) is **not** Statera's: whoever uses Statera adds
+a **connector**, a function that receives the URL and the project and returns an Ibis backend:
+
+```python
+# content/connectors/parquet_s3.py: Parquet files in a bucket, <prefix>/<schema>/<table>/*.parquet
+from urllib.parse import urlsplit
+
+import ibis
+from statera import contracts
+
+
+def connect(url, project):
+    parts = urlsplit(url)  # parquet+s3://bucket/prefix
+    con = ibis.duckdb.connect()
+    con.raw_sql("CREATE SECRET (TYPE s3, PROVIDER credential_chain)")
+    for table in contracts.by_table(project):  # every table with a contract: gold.x, ref.y…
+        schema, name = table.split(".")
+        if schema not in ("silver", "gold", "ref"):  # what queries may read
+            continue
+        files = f"s3://{parts.netloc}{parts.path}/{schema}/{name}/*.parquet"
+        con.raw_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+        con.raw_sql(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{files}')")
+    return con
+```
+
+The connector is chosen by the URL's **scheme**, from, in order:
+
+1. the **repository**, in `statera.toml`, as a `file.py:function` of the content (validation checks that
+   the function exists, without running it):
+
+   ```toml
+   [consumption.connectors]
+   parquet+s3 = "connectors/parquet_s3.py:connect"
+   ```
+
+2. an **installed package**, by its entry points in the group `statera.connectors` (one package serves
+   every repository of an organization):
+
+   ```toml
+   [project.entry-points."statera.connectors"]
+   h2 = "acme_connectors.h2:connect"
+   ```
+
+3. Statera's own behavior (DuckDB file, else `ibis.connect`).
+
+A repository connector overrides a package's, and both override the built-in behavior for their scheme.
+The connector **must** open the source read-only, and **must not** take credentials from the URL
+written in `statera.toml` (use `STATERA_ENGINE` or the source's own credential chain). `statera doctor`
+shows which connector opened the engine.
+
 **Published editions** are read from the local publication folder or, when it is not there, from the
-publication storage declared in the series (`files_url` in `series.yaml`, with `{period}`: an https://
-URL or a network path). Either way, each file is checked against the hash in the editions register, so a
-file changed after publication is refused.
+publication storage declared in the series (`files_url` in `series.yaml`, with `{period}` and optionally
+`{product}`). By itself, Statera reads a network path, `file://` and `https://`; any other storage (S3, GCS,
+Azure Blob, an internal service…) is a **reader**, an extension in the same way as the connectors: a function
+`read(url, project) -> bytes`, chosen by the URL's scheme, from the repository (`[consumption.readers]` in
+`statera.toml`) or from an installed package (entry points `statera.readers`):
+
+```python
+# content/readers/s3.py, declared as: [consumption.readers] s3 = "readers/s3.py:read"
+from urllib.parse import urlsplit
+
+import boto3
+
+
+def read(url, project):
+    parts = urlsplit(url)
+    return boto3.client("s3").get_object(Bucket=parts.netloc, Key=parts.path.lstrip("/"))["Body"].read()
+```
+
+Whatever reads the file, it is checked against the hash in the editions register, so a file changed after
+publication is refused.
 
 Partitioned tables (cuts of internal products, 09): the released cuts are recorded where the data is
 produced. Read from a shared engine, the cut **must** be given explicitly.

@@ -750,12 +750,20 @@ MISSING_PRODUCTION = (
 def _expected_errors() -> tuple[type[Exception], ...]:
     """Errors whose message says what to do: shown without a traceback (a reader is not a developer)."""
     from statera.consume.catalog import AccessDenied, CutNotAvailable
-    from statera.consume.connection import EngineNotAvailable
+    from statera.consume.connection import EngineNotAvailable, PublicationNotAvailable
     from statera.consume.metrics import MetricError
     from statera.consume.queries import QueryError
     from statera.process.dbt import ProductionToolsMissing
 
-    return (EngineNotAvailable, QueryError, MetricError, AccessDenied, CutNotAvailable, ProductionToolsMissing)
+    return (
+        EngineNotAvailable,
+        PublicationNotAvailable,
+        QueryError,
+        MetricError,
+        AccessDenied,
+        CutNotAvailable,
+        ProductionToolsMissing,
+    )
 
 
 def _version_problem() -> str | None:

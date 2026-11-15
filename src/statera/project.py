@@ -211,7 +211,7 @@ class Project:
 
     @property
     def required_version(self) -> str | None:
-        """Statera versions this repository accepts (`[project] required_version`, e.g. ">=0.3,<0.4")."""
+        """Statera versions this repository accepts (`[project] required_version`, e.g. ">=0.4,<0.5")."""
         return self._section("project").get("required_version")
 
     @property

@@ -45,7 +45,8 @@ The legacy groups are declared only by repositories whose products use that lang
 says when one is missing. The global `statera` hands the commands that produce or check (check, run, sync,
 docs…) off with `--all-groups`, so the data team gets every group the first time it needs it; the commands
 that only read (doctor, query, metric, recipes, status, cuts, evaluate) run with the dependencies alone.
-A shared engine other than DuckDB needs its Ibis backend: `statera[postgres]` or `statera[trino]`.
+A shared engine other than DuckDB needs its Ibis backend: `statera[postgres]`, `statera[trino]` or
+`statera[athena]`; any other source is a connector of the repository or of a package (07).
 
 On Windows, product folders can exceed the 260-character path limit: `statera init` sets
 `git config core.longpaths true` and `statera doctor` reports when long paths are disabled.
@@ -62,7 +63,7 @@ organization = "Labor statistics"   # avoid department names: they change
 acronym = "labor-stats"
 namespace = "org.example.labor-stats"   # 02-namespace.md
 specification = "0.1"
-required_version = "~=0.3.0"         # Statera versions accepted (PEP 440); commands refuse others
+required_version = "~=0.4.0"         # Statera versions accepted (PEP 440); commands refuse others
 repository_root = ".."               # repository root, where .github/CODEOWNERS lives (default: the git root)
 synthetic = false                    # true marks all output as SYNTHETIC DATA
 

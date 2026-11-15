@@ -1,6 +1,6 @@
 [project]
 name = "statera"
-version = "0.3.1"
+version = "0.4.0"
 description = "Framework for the statera standard: validation, process-driven execution, documentation, lineage, editions register and query library for statistical products"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -27,6 +27,7 @@ legacy-spss = ["pyreadstat>=1.2"]  # SPSS syntax through GNU PSPP (.sav files)
 # Shared engines other than DuckDB, for reading the data (statera.toml [consumption] engine)
 postgres = ["ibis-framework[postgres]>=10.0"]
 trino = ["ibis-framework[trino]>=10.0"]
+athena = ["ibis-framework[athena]>=10.0"]  # Amazon Athena (Glue databases gold, silver, ref)
 
 [project.scripts]
 statera = "statera.cli:main"

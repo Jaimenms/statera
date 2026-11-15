@@ -36,7 +36,7 @@ Linux and Mac. What you install depends on what you do:
 | **produce** it (the data team) | `statera[produce]` | dbt (the process) and Copier (`init`, `new-product`) |
 | keep products with legacy **R** code | `statera[legacy-r]` | reading and writing `.rds` (R itself is installed apart) |
 | keep products with legacy **SPSS** code | `statera[legacy-spss]` | reading and writing `.sav` (GNU PSPP is installed apart) |
-| read a shared PostgreSQL or Trino engine | `statera[postgres]`, `statera[trino]` | the Ibis backend |
+| read a shared PostgreSQL, Trino or Amazon Athena engine | `statera[postgres]`, `statera[trino]`, `statera[athena]` | the Ibis backend |
 
 In a data repository you rarely choose: its `pyproject.toml` lists only what reading needs, and the
 production tools as dependency groups (`produce`, `legacy-r`, `legacy-spss`) that the commands which produce
@@ -68,10 +68,15 @@ statera query list
 statera query run uf-series --param uf=SP --output result/
 ```
 
-The data comes from the shared engine the data team declares in `statera.toml` (`[consumption] engine`: a
-DuckDB file on a share, https:// or s3://, or a PostgreSQL/Trino URL); `STATERA_ENGINE` overrides it, for
-example with credentials. Published editions are read from the series' publication storage (`files_url`),
-with every file checked against the hash in the register. See [specification 07](specification/07-consumption.md).
+The data comes from the shared engine the data team declares in `statera.toml` (`[consumption] engine`);
+`STATERA_ENGINE` overrides it, for example with credentials. Statera opens a DuckDB file (on a share,
+https:// or s3://) and any engine Ibis knows (PostgreSQL, Trino, Amazon Athena, MySQL, Snowflake…).
+Any other source (MariaDB, H2, Parquet in a bucket, an internal API…) is an extension of the organization,
+not of Statera: a **connector**, a function that receives the URL and returns an Ibis backend, declared in
+`statera.toml` (`[consumption.connectors]`) or shipped in a package (entry point `statera.connectors`).
+Published editions are read from the series' publication storage (`files_url`: a share or https:// by
+itself; S3 and others through a **reader**, the same kind of extension), with every file checked against
+the hash in the register. See [specification 07](specification/07-consumption.md).
 
 ## Starting a data repository
 

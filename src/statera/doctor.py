@@ -295,11 +295,14 @@ def _data(root: Path | None) -> list[Check]:
                 "(or [consumption] engine in statera.toml); to produce: statera run",
             )
         ]
+    connector = connection.connector_for(project)
+    if connector:
+        where += f" · connector {connector.origin}"
     try:
         con = connection.connect(project)
         con.disconnect()
     except Exception as error:  # noqa: BLE001
-        return [Check(FAIL, "data", f"{where}: cannot connect ({str(error).splitlines()[0][:160]})")]
+        return [Check(FAIL, "data", f"{where}: cannot connect ({str(error).splitlines()[0][:200]})")]
     return [Check(OK, "data", where)]
 
 

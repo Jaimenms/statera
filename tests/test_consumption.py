@@ -166,36 +166,230 @@ def test_catalog_reads_the_shared_engine(readable, tmp_path, monkeypatch):
     assert catalog.open(readable, engine="local").source.startswith("local")
 
 
-def test_edition_from_the_publication_storage(readable, tmp_path):
-    unit = readable.product("sample")
-    storage = tmp_path / "storage" / "2026-01"
-    storage.mkdir(parents=True)
-    content = b"period,uf,value\n2026-01,SP,10\n"
-    (storage / "by-uf.csv").write_bytes(content)
+EDITION = b"period,uf,value\n2026-01,SP,10\n"
+
+
+def _published(project, files_url: str) -> None:
+    """An edition of `sample` in the register, whose files live only in the publication storage."""
     _write(
-        unit.phase(7) / "series.yaml",
+        project.product("sample").phase(7) / "series.yaml",
         f"""
-        files_url: "{tmp_path / "storage" / "{period}"}"
+        files_url: "{files_url}"
         edition_registry: {{edition: "sample/{{period}}.datapackage.json", index: sample/editions.csv}}
         """,
     )
+    resource = {"name": "by-uf", "path": "by-uf.csv", "format": "csv"}
     package = {
         "version": "1.0.0",
-        "resources": [
-            {
-                "name": "by-uf",
-                "path": "by-uf.csv",
-                "format": "csv",
-                "hash": f"sha256:{hashlib.sha256(content).hexdigest()}",
-            }
-        ],
+        "resources": [{**resource, "hash": f"sha256:{hashlib.sha256(EDITION).hexdigest()}"}],
         "x-statera": {"product": "sample", "period": "2026-01", "cutDate": "2026-02-20"},
     }
-    record = readable.edition_registry / "sample" / "2026-01.datapackage.json"
+    record = project.edition_registry / "sample" / "2026-01.datapackage.json"
     record.parent.mkdir(parents=True)
     record.write_text(json.dumps(package), encoding="utf-8")
+
+
+def test_edition_from_the_publication_storage(readable, tmp_path):
+    storage = tmp_path / "storage" / "2026-01"
+    storage.mkdir(parents=True)
+    (storage / "by-uf.csv").write_bytes(EDITION)
+    _published(readable, str(tmp_path / "storage" / "{period}"))
     edition = catalog.open(readable).edition("sample", "2026-01")
     assert edition.table("by-uf").to_pandas()["value"].tolist() == [10]
-    (storage / "by-uf.csv").write_bytes(content + b"2026-01,RJ,1\n")
+    (storage / "by-uf.csv").write_bytes(EDITION + b"2026-01,RJ,1\n")
     with pytest.raises(ValueError, match="hash differs"):
         edition.table("by-uf")
+
+
+BUCKET_READER = '''
+from pathlib import Path
+from urllib.parse import urlsplit
+
+
+def read(url, project):
+    """bucket://name/key: here a folder per bucket; in production, boto3, gcsfs, azure-storage-blob…"""
+    parts = urlsplit(url)
+    return (Path(project.root) / "buckets" / parts.netloc / parts.path.lstrip("/")).read_bytes()
+'''
+
+
+def test_repository_reader_for_the_publication_storage(readable):
+    _write(readable.root / "readers/bucket.py", BUCKET_READER)
+    (readable.root / "buckets/pub/sample/2026-01").mkdir(parents=True)
+    (readable.root / "buckets/pub/sample/2026-01/by-uf.csv").write_bytes(EDITION)
+    readable.config["consumption"] = {"readers": {"bucket": "readers/bucket.py:read"}}
+    _published(readable, "bucket://pub/{product}/{period}/")
+    edition = catalog.open(readable).edition("sample", "2026-01")
+    assert edition.table("by-uf").to_pandas()["value"].tolist() == [10]
+    (readable.root / "buckets/pub/sample/2026-01/by-uf.csv").write_bytes(EDITION + b"x\n")
+    with pytest.raises(ValueError, match="hash differs"):  # whatever read it, the hash is checked
+        edition.table("by-uf")
+
+
+def test_package_reader_and_unknown_storage(readable, monkeypatch):
+    _published(readable, "s3://pub/{product}/{period}/")
+    edition = catalog.open(readable).edition("sample", "2026-01")
+    with pytest.raises(connection.PublicationNotAvailable, match="declare a reader for 's3'"):
+        edition.table("by-uf")
+    seen = []
+    points = {connection.READER_ENTRY_POINTS: [_Point("s3", lambda url, project: seen.append(url) or EDITION)]}
+    monkeypatch.setattr(connection, "entry_points", lambda group: points.get(group, []))
+    assert edition.table("by-uf").to_pandas()["value"].tolist() == [10]
+    assert seen == ["s3://pub/sample/2026-01/by-uf.csv"]
+    points[connection.READER_ENTRY_POINTS] = [_Point("s3", lambda url, project: "text")]
+    with pytest.raises(connection.PublicationNotAvailable, match="must return bytes"):
+        edition.table("by-uf")
+
+
+# --- connectors: other sources are an extension of whoever uses Statera ------------------------------
+
+PARQUET_CONNECTOR = '''
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import ibis
+
+
+def connect(url, project):
+    """parquet+dir:///folder: <folder>/<schema>/<table>.parquet as views (the same idea serves S3)."""
+    folder = Path(urlsplit(url).path)
+    con = ibis.duckdb.connect()
+    for file in sorted(folder.glob("*/*.parquet")):
+        con.raw_sql(f"create schema if not exists {file.parent.name}")
+        con.raw_sql(f"create view {file.parent.name}.{file.stem} as select * from read_parquet('{file}')")
+    return con
+'''
+
+SQLITE_CONNECTOR = '''
+from urllib.parse import urlsplit
+
+import ibis
+
+
+def connect(url, project):
+    """sqlite+gold:///file.db: a SQLite file read as the gold schema (another engine, other SQL)."""
+    con = ibis.sqlite.connect()
+    con.raw_sql(f"attach database '{urlsplit(url).path}' as gold")
+    return con
+'''
+
+
+def _export_parquet(warehouse: Path, folder: Path) -> None:
+    con = duckdb.connect(str(warehouse), read_only=True)
+    (folder / "gold").mkdir(parents=True)
+    con.execute(f"copy gold.sample_by_uf to '{folder / 'gold' / 'sample_by_uf.parquet'}' (format parquet)")
+    con.close()
+
+
+def test_repository_connector_for_parquet_files(readable, tmp_path):
+    _export_parquet(_warehouse(tmp_path / "w.duckdb"), tmp_path / "lake")
+    _write(readable.root / "connectors/parquet_dir.py", PARQUET_CONNECTOR)
+    readable.config["consumption"] = {
+        "engine": f"parquet+dir://{tmp_path / 'lake'}",
+        "connectors": {"parquet+dir": "connectors/parquet_dir.py:connect"},
+    }
+    assert connection.connector_for(readable).origin == "statera.toml (connectors/parquet_dir.py:connect)"
+    assert queries.run("by-uf", {"uf": "SP"}, project=readable)["value"].tolist() == [10, 7]
+    assert catalog.open(readable).sql("select count(*) as n from gold.sample_by_uf where uf = 'RJ'")["n"][0] == 1
+
+
+def test_repository_connector_for_another_engine(readable, tmp_path):
+    import sqlite3
+
+    db = tmp_path / "gold.db"
+    with sqlite3.connect(db) as con:
+        con.execute("create table sample_by_uf (period text, uf text, value integer, cut_date text)")
+        con.executemany(
+            "insert into sample_by_uf values (?, ?, ?, ?)",
+            [
+                ("2026-01", "SP", 10, "2026-02-20"),
+                ("2026-01", "RJ", 4, "2026-02-20"),
+                ("2026-02", "SP", 7, "2026-03-20"),
+            ],
+        )
+    _write(readable.root / "connectors/sqlite_gold.py", SQLITE_CONNECTOR)
+    readable.config["consumption"] = {
+        "engine": f"sqlite+gold://{db}",
+        "connectors": {"sqlite+gold": "connectors/sqlite_gold.py:connect"},
+    }
+    assert queries.run("by-uf", {"uf": "SP"}, project=readable)["value"].tolist() == [10, 7]
+    # SQLite has no DuckDB parameters: the period and the filter go as literals quoted by sqlglot
+    total = metrics.compute("total", ["uf"], period="2026-01", filters={"uf": "SP"}, project=readable)
+    assert total["total"].tolist() == [10]
+    assert catalog.open(readable).sql("select count(*) as n from gold.sample_by_uf")["n"][0] == 3
+
+
+class _Point:
+    """An installed package's entry point (importlib.metadata.EntryPoint), without installing one."""
+
+    def __init__(self, name, function):
+        self.name, self.value, self.function = name, f"acme.{name}:connect", function
+        self.dist = type("Dist", (), {"name": "acme-connectors"})()
+
+    def load(self):
+        return self.function
+
+
+def test_package_connectors_and_repository_precedence(readable, tmp_path, monkeypatch):
+    shared = _warehouse(tmp_path / "w.duckdb")
+    calls = []
+
+    def package_connect(url, project):
+        calls.append(url)
+        return connection.ibis.duckdb.connect(str(shared), read_only=True)
+
+    monkeypatch.setattr(
+        connection,
+        "entry_points",
+        lambda group: [_Point("acme", package_connect)] if group == connection.ENTRY_POINTS else [],
+    )
+    readable.config["consumption"] = {"engine": "acme://warehouse/stats"}
+    assert connection.connector_for(readable).origin == "package acme-connectors (acme.acme:connect)"
+    assert queries.run("by-uf", {"uf": "RJ"}, project=readable)["value"].tolist() == [4]
+    assert calls == ["acme://warehouse/stats"]
+    _write(readable.root / "connectors/acme.py", "def connect(url, project):\n    return 'not a backend'\n")
+    readable.config["consumption"]["connectors"] = {"acme": "connectors/acme.py:connect"}
+    with pytest.raises(connection.EngineNotAvailable, match="must return an Ibis backend"):
+        connection.connect(readable)  # the repository's connector wins over the package's
+
+
+def test_unknown_scheme_points_to_the_extension(readable, monkeypatch):
+    monkeypatch.setenv(connection.ENV, "h2://server/stats")
+    with pytest.raises(connection.EngineNotAvailable, match=r"declare a connector for 'h2'"):
+        connection.connect(readable)
+
+
+def test_engines_ibis_knows_need_no_connector(readable, monkeypatch):
+    """Amazon Athena (like PostgreSQL, Trino, MySQL…) is opened by Ibis from the URL: no code in Statera."""
+    url = "athena://?s3_staging_dir=s3://results/statera/&region_name=us-east-1&work_group=analysts"
+    monkeypatch.setenv(connection.ENV, url)
+    seen = []
+    monkeypatch.setattr(connection.ibis, "connect", lambda value: seen.append(value) or "backend")
+    assert connection.connector_for(readable) is None
+    assert connection.connect(readable) == "backend" and seen == [url]
+
+    def refused(value):
+        raise RuntimeError("An error occurred (UnrecognizedClientException): the security token is invalid")
+
+    monkeypatch.setattr(connection.ibis, "connect", refused)
+    with pytest.raises(connection.EngineNotAvailable, match="cannot connect to athena://: An error occurred"):
+        connection.connect(readable)
+
+
+def test_validation_checks_the_declared_connectors(readable):
+    from statera import validation
+
+    _write(
+        readable.root / "connectors/ok.py", "import some_driver_only_readers_have\n\ndef connect(url, project): ...\n"
+    )
+    readable.config["consumption"] = {
+        "connectors": {"ok": "connectors/ok.py:connect", "typo": "connectors/ok.py:conect", "gone": "nope.py:connect"},
+        "readers": {"s3": "connectors/ok.py:read"},
+    }
+    findings = {f.message: f.ok for f in validation._connectors(readable)}
+    assert findings == {
+        "connector ok: connectors/ok.py:connect": True,
+        "connector typo: connectors/ok.py has no function conect": False,
+        "connector gone: 'nope.py:connect' is not an existing 'file.py:function'": False,
+        "reader s3: connectors/ok.py has no function read": False,
+    }
