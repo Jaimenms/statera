@@ -678,13 +678,19 @@ def path(project: Project | None = None) -> Path:
     return (project or current()).dbt_project / "target" / "catalog.html"
 
 
-def write(project: Project | None = None, parser=None, graph=UNSET, theme: str | None = None) -> tuple[Path, dict]:
+def write(
+    project: Project | None = None, parser=None, graph=UNSET, theme: str | None = None, output: Path | None = None
+) -> tuple[Path, dict]:
     """Writes the page; returns where, and the data it was built from. `theme`: the folder of the look to
-    give it (statera.page.theme); by default the repository's own, else the framework's."""
+    give it (statera.page.theme); by default the repository's own, else the framework's. `output`: another
+    file to write it to (a folder the intranet serves; docs/ to keep it in git), or a folder: a path with no
+    extension is one, and the page is `catalog.html` in it."""
     project = project or current()
     look = themes.of(project, theme)  # first: a theme that cannot be used stops here, before the slow part
     data = build(project, parser, graph)
-    output = path(project)
+    output = Path(output).absolute() if output else path(project)
+    if output.is_dir() or not output.suffix:
+        output = output / "catalog.html"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(render(data, look), encoding="utf-8")
     return output, data

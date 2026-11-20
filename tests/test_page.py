@@ -318,6 +318,39 @@ def test_without_the_production_tools_the_page_says_the_lineage_is_missing(repos
     assert opened == [page.path(repository).as_uri()]
 
 
+def test_the_page_is_written_where_it_is_asked_to_be(repository, tmp_path, monkeypatch, capsys):
+    """`--output`: a folder the intranet serves, or docs/ to keep the page in git."""
+    monkeypatch.setattr(page.dbt, "manifest", lambda **_: (_ for _ in ()).throw(RuntimeError("no dbt here.")))
+    monkeypatch.chdir(tmp_path)
+
+    assert cli.main(["docs", "--output", "site/index.html"]) == 0  # --output writes the page too
+    assert capsys.readouterr().out.strip() == f"catalog page (open in the browser): {tmp_path / 'site/index.html'}"
+    assert (tmp_path / "site/index.html").read_text(encoding="utf-8").startswith("<!doctype html>")
+    assert not page.path(repository).exists()  # written there instead of target/, not as well
+
+    kept, _ = page.write(repository, graph=None, output=repository.docs)  # a folder: catalog.html in it
+    assert kept == repository.docs / "catalog.html" and kept.is_file()
+    assert page.write(repository, graph=None, output=tmp_path / "new/place")[0] == tmp_path / "new/place/catalog.html"
+
+
+def test_the_examples_page_in_git_was_made_with_this_template():
+    """The example keeps its page in git (content/docs/catalog.html), for whoever wants to see one without
+    installing anything. What it shows is of the day it was written; how it looks and works is this version's:
+    when the template changes, the page is written again."""
+    example = Path(__file__).parents[1] / "examples/foo-bar/content"
+
+    def frame(text: str) -> str:  # the page without the catalog in it
+        start = text.index('<script type="application/json" id="data">')
+        return text[:start] + text[text.index("</script>", start) :]
+
+    kept = (example / "docs" / "catalog.html").read_text(encoding="utf-8")
+    assert frame(kept) == frame(page.render({})), (
+        "the example's page is out of date: in examples/foo-bar, run "
+        "`uv run --all-groups statera docs --page --output content/docs/catalog.html`"
+    )
+    assert "/Users/" not in kept and "/home/" not in kept  # nothing of the machine that wrote it
+
+
 # --- the look of the page: a theme chosen when it is made ---------------------------------------------
 
 PNG = bytes.fromhex(

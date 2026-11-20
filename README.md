@@ -11,6 +11,14 @@ every published edition.
 
 > *Statera* is the Roman steelyard: a measuring instrument with a calibrated, public weight.
 
+<p align="center">
+  <a href="#one-page-for-those-who-use-the-data"><img src="assets/readme/page-home.png" alt="The catalog page of the example: a menu in three questions (what you can ask, what there is, how it is made), six ways in (a number that is already defined, explore the data yourself, what was published, how a number is made, an example to start from, new here), and a table with the latest edition and the next one of each product." width="92%"></a>
+</p>
+<p align="center">
+  <sub>Everything a repository declares, in one page to browse and search, made by <code>statera docs --page</code>.<br>
+  This one is <a href="examples/foo-bar/content/docs/catalog.html">the example's</a>: a single file, to download and open in a browser.</sub>
+</p>
+
 The framework is **generic**: it knows no product. Everything that belongs to an organization (products,
 reference tables, queries, recipes, governance) lives in the organization's **data repository**, which
 declares Statera as a dependency. An improvement to the framework reaches everyone through a version
@@ -93,11 +101,18 @@ columns and code.
 metrics, recipes) and how each number is made (business rules with their worked cases, the code in SQL,
 Python, R and SPSS, the lineage, each product's process). It is a single file that opens from disk: no
 server, nothing fetched from outside, and no data in it, only metadata and code. Everything is linked to
-what it relates to, and one search covers names, columns, parameters and the text of rules and code.
+what it relates to, and one search covers names, columns, parameters and the text of rules and code. Its
+first page is the image at the top of this README; this is the page of a table:
 
 <p align="center">
-  <img src="assets/readme/page-home.png" alt="The catalog page of the example: a menu in three questions (what you can ask, what there is, how it is made), six ways in (a number that is already defined, explore the data yourself, what was published, how a number is made, an example to start from, new here), and a table with the latest edition and the next one of each product." width="92%">
+  <img src="assets/readme/page-table.png" alt="The catalog page of the table gold.bar_uf_monthly: its layer, classification and product, what a row is, its use and its limitations, what to mind when reading it (it is aggregated; period is the reference period; cut_date is when the data was cut off), its seven columns with type and sharing, and the SQL and the Python that read it, with a copy button." width="92%">
 </p>
+
+The page is written to `content/target/catalog.html`, outside git, and `--output <file>` writes it anywhere
+else: to the folder an intranet serves, or to `docs/`, for a repository that keeps its page in git. The
+example does, so there is one to see without installing anything:
+[`examples/foo-bar/content/docs/catalog.html`](examples/foo-bar/content/docs/catalog.html) (download it and
+open it in a browser).
 
 A query's parameters are a form. Each value is validated by its declared type, as the command does, and the
 page gives the SQL filled in, the command, and the call in Python, R and PSPP, each with a copy button; a
@@ -575,7 +590,7 @@ uv run statera demo
 
 `statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
 tasks | cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate |
-docs [--page [--theme <folder>] | --interactive] | clean | copilot`. See `statera --help`. Commands work from any folder of a data repository.
+docs [--page [--theme <folder>] [--output <file>] | --interactive] | clean | copilot`. See `statera --help`. Commands work from any folder of a data repository.
 
 `statera status` shows, for every product, where its latest edition (or cut) is in the BPMN process,
 the role that has to act, the evaluation alerts and the next edition its calendar expects (with the

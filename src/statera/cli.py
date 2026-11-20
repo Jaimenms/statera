@@ -446,10 +446,12 @@ def _cmd_evaluate(args) -> int:
 
 
 def _cmd_docs(args) -> int:
-    if getattr(args, "page", False) or getattr(args, "open", False) or getattr(args, "theme", None):
+    if any(getattr(args, option, None) for option in ("page", "open", "theme", "output")):
         from statera import page
 
-        output, data = page.write(parser=parser(), theme=getattr(args, "theme", None))
+        output, data = page.write(
+            parser=parser(), theme=getattr(args, "theme", None), output=getattr(args, "output", None)
+        )
         if reason := data["lineage"]["missing"]:
             print(f"[statera] the lineage was left out of the page: {reason}", file=sys.stderr)
         print(f"catalog page (open in the browser): {output}")
@@ -877,6 +879,13 @@ def parser() -> argparse.ArgumentParser:
     )
     s.add_argument(
         "--open", dest="open", action="store_true", help="writes the catalog page and opens it in the browser"
+    )
+    s.add_argument(
+        "--output",
+        dest="output",
+        metavar="FILE",
+        help="writes the catalog page to this file instead of target/catalog.html: a folder the intranet serves, "
+        "or docs/catalog.html to keep the page in git (a path with no extension is a folder: catalog.html in it)",
     )
     s.add_argument(
         "--theme",

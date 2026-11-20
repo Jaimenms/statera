@@ -250,6 +250,11 @@ It is the one door for someone who analyzes the data (`--open` also opens it in 
   are their synthetic cases.
 - **A view, not a source.** It is built by the loaders the commands use, so it says what they do. It lives
   in `target/` (outside git): the Markdown in `docs/` remains what a pull request reviews.
+- **Written elsewhere when asked.** `--output <file>` writes it to another file instead: the folder an
+  intranet serves, or `docs/catalog.html` for a repository that chooses to keep its page in git (a path
+  with no extension is a folder, and the page is `catalog.html` in it). Kept in git, it is a generated
+  file like the rest of `docs/`, written again by the same command, and what it says of the calendar is
+  of the day it was written.
 - **A query is filled in as `statera query show` fills it.** Each parameter is a field, validated by the
   declared type, with the declared default; the page gives the plain SQL, the command, and the call in
   Python, R and PSPP (in R and PSPP, Statera runs the query and the script reads `result.csv`: the

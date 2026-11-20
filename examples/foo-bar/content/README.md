@@ -46,6 +46,7 @@ statera conformance            # level of each product and what is missing for t
 statera rules test             # rule cases in Python models (the baz ones require PSPP and R)
 statera docs --open            # the whole catalog as one page, in the browser (content/target/catalog.html)
 statera docs --open --theme governance/themes/institute   # the same page with an institution's look (an example)
+statera docs --page --output content/docs/catalog.html    # from examples/foo-bar/: the page this example keeps in git
 statera docs --interactive     # the dbt project as a browsable page (content/target/static_index.html)
 ```
 
