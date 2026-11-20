@@ -1,0 +1,6 @@
+/* What the keys of theme.toml do not reach: this institute's squarer boxes and the line of its blue on
+   each way in of the first page. Use the page's variables (--accent, --line, --panel…) so that both the
+   light and the dark mode follow. */
+.tile, .codebox, .form, .case, .figure { border-radius: 4px; }
+.tile { border-top: 3px solid var(--accent); }
+h1.title { font-weight: 600; letter-spacing: -.01em; }

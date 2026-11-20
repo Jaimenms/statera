@@ -77,12 +77,46 @@ comes before a change: which products are downstream, and which team to tell.
 
 `statera docs` writes the documentation from the metadata the repository already has: catalog, lineage,
 processes, rules, series, queries, metrics, recipes and the conformance level of each product
-([the example's](examples/foo-bar/content/docs/README.md)). `statera docs --interactive` adds a browsable,
-searchable catalog in one page, where every table shows its layer, product, contract, URN, classification
-and owner next to its columns and code.
+([the example's](examples/foo-bar/content/docs/README.md)). It is Markdown, so a pull request shows what a
+change does to it. For those who work on the models, `statera docs --interactive` adds dbt's own browsable
+page, where every table shows its layer, product, contract, URN, classification and owner next to its
+columns and code.
 
 <p align="center">
   <img src="assets/readme/catalog.png" alt="The browsable catalog: the page of the table bar_uf_monthly, with its layer (gold), product, ODCS contract, URN, classification (broad, aggregated), business rules, owner, description and columns." width="92%">
+</p>
+
+### One page for those who use the data
+
+`statera docs --page` puts the whole catalog in **one page**, the one door for an analyst: what there is
+(products, tables and their contracts, published editions), what can be asked of it (recurring queries,
+metrics, recipes) and how each number is made (business rules with their worked cases, the code in SQL,
+Python, R and SPSS, the lineage, each product's process). It is a single file that opens from disk: no
+server, nothing fetched from outside, and no data in it, only metadata and code. Everything is linked to
+what it relates to, and one search covers names, columns, parameters and the text of rules and code.
+
+<p align="center">
+  <img src="assets/readme/page-home.png" alt="The catalog page of the example: a menu in three questions (what you can ask, what there is, how it is made), six ways in (a number that is already defined, explore the data yourself, what was published, how a number is made, an example to start from, new here), and a table with the latest edition and the next one of each product." width="92%">
+</p>
+
+A query's parameters are a form. Each value is validated by its declared type, as the command does, and the
+page gives the SQL filled in, the command, and the call in Python, R and PSPP, each with a copy button; a
+query cannot be copied while a value is missing or invalid, and the address keeps the values, so a filled-in
+query can be sent to someone.
+
+<p align="center">
+  <img src="assets/readme/page-query.png" alt="The catalog page of the query uf-series: its status, owner and the classification of what it returns, its limitations, a field for the parameter uf filled with RJ, and the SQL with the table gold.bar_uf_monthly and the value RJ in place, with tabs for the SQL as written, the terminal, Python, R and PSPP, and a copy button." width="92%">
+</p>
+
+The page is made to live on an institution's intranet, so its look is chosen when it is made:
+`statera docs --page --theme <folder>`. A theme is a folder of the repository with a `theme.toml` (the name,
+a notice such as "Internal use", the logo, the colors of the light and the dark mode, the fonts, the words of
+the first page, links back to the intranet) and, for what those keys do not reach, a `theme.css`
+([the example's](examples/foo-bar/content/governance/themes/institute/)). The logo and the CSS go inside the
+page, which stays a single file; a repository declares its own theme once, in `statera.toml`.
+
+<p align="center">
+  <img src="assets/readme/page-theme.png" alt="The same catalog page with the theme of a fictitious institute: a notice of internal use above a dark blue bar with the institute's logo, the name Data catalog and links to the intranet and to the data office; the first page with the institute's own title and introduction, and the ways in with squarer boxes and a blue line on top." width="92%">
 </p>
 
 ### A catalog of queries, with the SQL at hand
@@ -540,8 +574,8 @@ uv run statera demo
 ## Command line
 
 `statera init | doctor | check | new-product | sync | validate | conformance | run | resume | status |
-tasks | cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate | docs [--interactive] |
-clean | copilot`. See `statera --help`. Commands work from any folder of a data repository.
+tasks | cuts | synthetic | demo | query | metric | recipes | rules | contracts | lineage | evaluate |
+docs [--page [--theme <folder>] | --interactive] | clean | copilot`. See `statera --help`. Commands work from any folder of a data repository.
 
 `statera status` shows, for every product, where its latest edition (or cut) is in the BPMN process,
 the role that has to act, the evaluation alerts and the next edition its calendar expects (with the

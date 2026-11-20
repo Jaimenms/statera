@@ -157,7 +157,6 @@ def _metric_detail(name: str, m: dict) -> str:
 
 
 def _tables(project, catalog) -> list[Card]:
-    from statera import classification, contracts
     from statera.consume import metrics, queries
 
     used_by: dict[str, list[str]] = {}
@@ -168,32 +167,14 @@ def _tables(project, catalog) -> list[Card]:
         for source in m.get("sources", []):
             used_by.setdefault(source["table"], []).append(f"metric:{name}")
 
-    conventions = project.conventions
     cards = []
     for table in sorted(catalog._contracts, key=lambda t: (LAYER_ORDER.get(t.split(".")[0], 9), t)):
         try:
             d = catalog.describe(table)
         except KeyError:  # a contract without a description: `statera validate` says so; the copilot goes on
             continue
-        contract = catalog._contracts[table][1]
         columns = [c["name"] for c in d.columns]
-        notes = []
-        if grain := contract["schema"][0].get("dataGranularityDescription"):
-            notes.append(f"grain: {_one_line(grain)}.")
-        if classification.of_table(contract).get("nature") == "aggregated":
-            notes.append(
-                "aggregated: a row is a group, not an individual; add up its measures (sum), count(*) counts groups."
-            )
-        if conventions["period_column"] in columns:
-            column = conventions["period_column"]
-            notes.append(f"`{column}` is the reference period, text YYYY-MM (a whole year: {column} like '2026-%').")
-        if conventions["cut_date_column"] in columns:
-            notes.append(f"`{conventions['cut_date_column']}` is when the data was cut off, not a period to filter by.")
-        if contracts.custom_property_of(contract, "partitionedBy"):
-            notes.append(
-                f"One partition per cut: read ONE cut ({conventions['cut_date_column']} = (select "
-                f"max({conventions['cut_date_column']}) from {table})), never add up across cuts."
-            )
+        notes = catalog.notes(table)
         if table in used_by:
             notes.append(f"Already answered by: {', '.join(used_by[table])} (prefer them when they fit).")
         detail = "\n".join([str(d), *(f"  note: {n}" for n in notes)])

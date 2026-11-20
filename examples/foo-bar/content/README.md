@@ -44,7 +44,9 @@ statera synthetic --fault resent-january   # the source sends January twice: bar
                                            # (the correction, as a rule with its case: ../incident/resent-january.patch)
 statera conformance            # level of each product and what is missing for the next one
 statera rules test             # rule cases in Python models (the baz ones require PSPP and R)
-statera docs --interactive     # browsable catalog at content/target/static_index.html
+statera docs --open            # the whole catalog as one page, in the browser (content/target/catalog.html)
+statera docs --open --theme governance/themes/institute   # the same page with an institution's look (an example)
+statera docs --interactive     # the dbt project as a browsable page (content/target/static_index.html)
 ```
 
 Editions are registered in `../publications`.

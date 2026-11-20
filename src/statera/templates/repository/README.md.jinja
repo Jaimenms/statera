@@ -18,6 +18,7 @@ You do not need the production tools (dbt, legacy-code readers): only [uv](https
 ```bash
 uv sync                                  # installs only what reading needs
 uv run statera doctor                    # says where the data comes from (or whom to ask)
+uv run statera docs --open               # the whole catalog as one page, in the browser: start here
 uv run statera query list                # cataloged queries
 uv run statera query show <id> --help                    # what the query answers and its parameters
 uv run statera query show <id> --param uf=SP           # the plain SQL it runs (no {% raw %}{{ }}{% endraw %})
@@ -48,7 +49,8 @@ cat.edition("<product>", "2026-06")          # exactly what was published, hash 
 
 The data comes from the shared engine in `content/statera.toml` (`[consumption] engine`); if it needs
 credentials, the data team gives you a URL to put in the `STATERA_ENGINE` environment variable (never in
-git). The catalog of tables, queries and metrics is in [content/docs/](content/docs/README.md).
+git). The catalog page (`statera docs --open`) has every table, query, metric and rule, with a form for
+each query's parameters; the same catalog, as Markdown, is in [content/docs/](content/docs/README.md).
 
 ## Getting started (data team)
 
@@ -85,7 +87,8 @@ type, and the commands below are available as tasks (Terminal › Run Task…; C
 | check everything before the pull request | `statera check` (`--all` also runs the slow tests) |
 | produce an edition | `statera run --product my-statistic --period 2026-06 --with-dependencies` |
 | complete a human task (approval) and continue | `statera resume --product my-statistic --period 2026-06` |
-| documentation and browsable catalog | `statera docs` · `statera docs --interactive` |
+| documentation, and the catalog as one page to browse and search | `statera docs` · `statera docs --page` (`--open`; `--theme <folder>` for your institution's look) |
+| the dbt project as a browsable page | `statera docs --interactive` |
 
 All commands: `statera --help`.
 

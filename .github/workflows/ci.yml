@@ -41,10 +41,15 @@ jobs:
       - run: sudo apt-get update -q && sudo apt-get install -y -q pspp r-base-core
       - run: uv run --locked --all-groups statera check --all
       - run: uv run --locked --all-groups statera demo
+      - name: The catalog page, with the lineage
+        run: |
+          uv run --locked --all-groups statera docs --page
+          uv run --locked --all-groups statera docs --page --theme governance/themes/institute
       - name: Reading the data needs no production tools (dbt, Copier, legacy readers removed)
         run: |
           uv sync --locked --exact
           ! uv run --locked python -c "import dbt.version" 2>/dev/null
           uv run --locked statera doctor
           uv run --locked statera query run uf-series --param uf=SP
+          uv run --locked statera docs --page  # still written without dbt: it says the lineage was left out
           uv run --locked python -c "from statera.consume import catalog; print(catalog.open().edition('bar', '2026-01').table('by-uf').count().execute())"

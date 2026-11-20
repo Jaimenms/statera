@@ -234,6 +234,83 @@ of the rows of an aggregated table.
 
 The human tasks of a process stay human: the copilot can say how to approve an edition, never approve it.
 
+## The catalog page (`statera docs --page`)
+
+`statera docs --page` writes `target/catalog.html`: the whole catalog as ONE page, to browse and to search.
+It is the one door for someone who analyzes the data (`--open` also opens it in the browser).
+
+- **What it shows**, in three questions. *What you can ask*: the recurring queries, the metrics and the
+  recipes. *What there is*: the products (calendar, published editions, who may read an internal one) and
+  the tables (what a row is, each column, the classification, what to mind when reading it: the same notes
+  the copilot is shown). *How it is made*: the business rules with their cases, the code (SQL, Python and
+  the R and SPSS they call) and the lineage. It also has the vocabulary every product shares (edition,
+  cut-off date, classification, disclosure control) and the commands of someone who only reads.
+- **One file, nothing fetched.** It opens from disk, with no server, and loads nothing by address (no
+  script, style or font). It holds metadata and code, never data: the rows shown under a rule or a query
+  are their synthetic cases.
+- **A view, not a source.** It is built by the loaders the commands use, so it says what they do. It lives
+  in `target/` (outside git): the Markdown in `docs/` remains what a pull request reviews.
+- **A query is filled in as `statera query show` fills it.** Each parameter is a field, validated by the
+  declared type, with the declared default; the page gives the plain SQL, the command, and the call in
+  Python, R and PSPP (in R and PSPP, Statera runs the query and the script reads `result.csv`: the
+  disclosure control stays in one place). A query **must not** be copied while a value is missing or
+  invalid. The values go in the address, so a filled-in query can be sent to someone.
+- That is possible when the SQL is only `ref()` and `var()` with literal arguments. A query whose SQL
+  depends on a parameter (`{% if %}`, a filter on `var()`) is shown as written, with the command that
+  fills it.
+- **A metric** offers the dimensions its sources allow and one period or a range, and gives the command and
+  the Python call; a combination of dimensions no source allows is refused there, as in the command.
+- **Search** over names, identifiers, columns, parameters and the text of rules and code: every word
+  must be there, accents and case aside.
+- **The lineage needs the production tools** (it is drawn from the dbt project). Without them the page is
+  still written: it says so, shows the drawing `statera docs` last left in `docs/`, and leaves out what
+  each table is made from.
+
+### The look of the page
+
+The page is made to be put where an institution's people look for things (an intranet, a shared folder),
+so its look is chosen when it is made: `statera docs --page --theme <folder>`. Without `--theme`, the look
+is the repository's own (`[page] theme = "<folder>"` in `statera.toml`, a path from the content folder;
+`statera validate` checks it) or, when it declares none, the framework's. `--theme default` gives the
+framework's whatever the repository declares.
+
+A **theme is a folder**, reviewed and versioned like the rest of the repository:
+
+```
+<theme>/
+├── theme.toml    what is said and how it looks; every key is optional
+├── logo.svg      the images theme.toml names (svg, png, jpg, webp, gif; ico for the favicon)
+└── theme.css     optional: CSS added after the page's own, for what the keys do not reach
+```
+
+| Key of `theme.toml` | What it changes |
+|---|---|
+| `name` | The name on the bar and in the browser's tab, instead of the repository's |
+| `notice` | A strip above every page (e.g. "Internal use") |
+| `footer` | A line at the foot of every page (who keeps the catalog, whom to ask) |
+| `mode` | `auto` (light or dark, as the reader's system asks; default) · `light` · `dark` |
+| `favicon` | The icon of the browser's tab |
+| `[logo]` `file`, `dark`, `alt`, `height`, `alone` | The logo on the bar; another one for the dark mode; its height in pixels (12 to 120); `alone = true` when the logo already says the name |
+| `[colors]` | `background` · `surface` · `sidebar` · `text` · `muted` · `border` · `accent` · `accent_soft` · `header` · `header_text` · `code_background` · `warning` · `warning_soft` |
+| `[colors.dark]` | The same keys, for the dark mode |
+| `[fonts]` `text`, `code` | The font families (they must exist on the readers' computers) |
+| `[home]` `title`, `lead` | The first page, in the institution's words |
+| `[[links]]` `label`, `url` | Links on the bar (back to the intranet, who to ask): `https://`, `mailto:` or a path of the same site |
+
+- Everything goes **inside** the page: the images as data, the CSS as text. The page stays one file that
+  fetches nothing. (A `theme.css` that names an address, a font of the intranet for instance, is the
+  institution's choice: the page then asks for it.)
+- A theme that gives only light colors keeps the framework's dark ones, with its own `header`;
+  `mode = "light"` keeps the page light for everyone. `accent_soft`, when not given, is derived from
+  `accent` over the background.
+- In `theme.css`, the page's CSS variables (`--accent`, `--bg`, `--panel`, `--line`, `--ink`…) are what a
+  theme can rely on from one version to the next; the class names may change.
+- A theme is refused, with the file and the key, when it has an unknown key, a color or a font that is
+  more than a color or a font, an image outside its folder or over 512 kB, a link that is not an address
+  or CSS that would end its own block: what a theme writes ends up in a page other people open.
+- The texts of the page itself are in English; what the repository declares (descriptions, rules, titles)
+  appears in the language it was written in.
+
 ## Contribution and authorship
 
 Consumption evolves with contributions from people outside the data team (InnerSource model):
@@ -244,6 +321,7 @@ Consumption evolves with contributions from people outside the data team (InnerS
   declared visualization (`exposure` with `meta.visualization`, 04).
 - **Authorship:** `authors` in the query, `Authors:` in the recipe header and `meta.authors` in the
   visualization, published only with consent.
-- **Browsable catalog:** `statera docs --interactive` generates `dbt docs` as a single page, with
-  search, lineage and each table's `meta` (product, contract, URN, classification), generated from
-  the contracts.
+- **Browsable catalog:** the catalog page above, for those who use the data; and, for those who work on
+  the models, `statera docs --interactive`, which generates `dbt docs` as a single page, with search,
+  lineage and each table's `meta` (product, contract, URN, classification), generated from the
+  contracts.

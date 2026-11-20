@@ -8,7 +8,7 @@ organization = "Foo Bar (minimal example)"
 acronym = "foo-bar"
 namespace = "org.example.foo-bar"
 specification = "0.1"
-required_version = "~=0.9.0"         # Statera versions this repository accepts
+required_version = "~=0.10.0"        # Statera versions this repository accepts
 repository_root = ".."             # repository root (where .github/, publications/, docs/ live)
 synthetic = true
 
@@ -20,6 +20,11 @@ path = "dbt/data/warehouse.duckdb"
 # Shared engine for those outside the data team (statera.consume.connection). The example has none: it reads
 # the local engine that `statera demo` builds.
 # engine = "https://data.example.org/foo-bar/warehouse.duckdb"
+
+[page]
+# The look of the catalog page (`statera docs --page`): by default the framework's. A theme is a folder with
+# theme.toml (name, logo, colors, fonts, links) and an optional theme.css; the example has one, not in use:
+# theme = "governance/themes/institute"
 
 [dbt]
 folder = "dbt"

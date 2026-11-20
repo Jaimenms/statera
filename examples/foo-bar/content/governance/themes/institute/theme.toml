@@ -1,0 +1,41 @@
+# An example of a theme for the catalog page: the look of a (fictitious) institution, for its intranet.
+#     statera docs --open --theme governance/themes/institute
+# Every key is optional (specification 07, "The look of the page"). To make it the repository's own look,
+# so that plain `statera docs --page` uses it, declare it in statera.toml:  [page] theme = "governance/themes/institute"
+
+name = "Data catalog"
+notice = "Internal use · example theme, synthetic data"
+footer = "Example Institute of Statistics · data office · data@example.org"
+mode = "auto"            # auto: light or dark, as the reader's system asks; light | dark fix one
+favicon = "favicon.svg"
+
+[logo]
+file = "logo.svg"        # white: the bar it sits on is the institute's blue in both modes
+alt = "Example Institute of Statistics"
+height = 30
+
+[colors]
+accent = "#1f5fa8"
+background = "#ffffff"
+sidebar = "#f2f5f9"
+border = "#d9dfe8"
+header = "#12355b"
+header_text = "#ffffff"
+
+[colors.dark]
+accent = "#8fbce8"
+
+[fonts]
+text = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+
+[home]
+title = "Data of the Example Institute of Statistics"
+lead = "What the institute publishes and how each number is made: find a table, take a query that is already defined, or read an edition exactly as it was released."
+
+[[links]]
+label = "Intranet"
+url = "https://intranet.example.org"
+
+[[links]]
+label = "Ask the data office"
+url = "mailto:data@example.org"

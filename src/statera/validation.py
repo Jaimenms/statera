@@ -894,6 +894,20 @@ def check_hygiene(project: Project) -> list[Finding]:
     return findings
 
 
+def check_page_theme(project: Project) -> list[Finding]:
+    """The look the repository declares for its catalog page ([page] theme) can be used: `statera docs
+    --page` would stop on it. Nothing to check when it declares none."""
+    from statera.page import theme
+
+    if not project.config.get("page", {}).get("theme"):
+        return []
+    try:
+        look = theme.of(project)
+    except theme.ThemeError as error:
+        return [Finding("page", False, f"catalog page theme: {error}")]
+    return [Finding("page", True, f"catalog page theme: {project.rel(look.folder)}")]
+
+
 def check_conformance(project: Project, level: int | None) -> list[Finding]:
     from statera import conformance
 
@@ -939,6 +953,7 @@ def collect_findings(generate_manifest: bool = True, level: int | None = None) -
         lambda: check_processes(project, m),
         lambda: check_generated(project),
         lambda: check_hygiene(project),
+        lambda: check_page_theme(project),
         lambda: check_conformance(project, level),
     ]
     findings = [a for step in steps for a in step()]

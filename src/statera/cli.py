@@ -446,6 +446,18 @@ def _cmd_evaluate(args) -> int:
 
 
 def _cmd_docs(args) -> int:
+    if getattr(args, "page", False) or getattr(args, "open", False) or getattr(args, "theme", None):
+        from statera import page
+
+        output, data = page.write(parser=parser(), theme=getattr(args, "theme", None))
+        if reason := data["lineage"]["missing"]:
+            print(f"[statera] the lineage was left out of the page: {reason}", file=sys.stderr)
+        print(f"catalog page (open in the browser): {output}")
+        if getattr(args, "open", False):
+            import webbrowser
+
+            webbrowser.open(output.as_uri())
+        return 0
     from statera import documentation
 
     if getattr(args, "interactive", False):
@@ -856,6 +868,24 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help="generates the browsable, searchable catalog (dbt docs as a single page) in target/static_index.html",
     )
+    s.add_argument(
+        "--page",
+        dest="page",
+        action="store_true",
+        help="writes the whole catalog as one page to browse and search (products, tables, queries with a form "
+        "for their parameters, metrics, rules, code, lineage) in target/catalog.html",
+    )
+    s.add_argument(
+        "--open", dest="open", action="store_true", help="writes the catalog page and opens it in the browser"
+    )
+    s.add_argument(
+        "--theme",
+        dest="theme",
+        metavar="FOLDER",
+        help="the look of the catalog page: a folder with theme.toml (name, logo, colors, fonts, links) and an "
+        "optional theme.css; by default the repository's own ([page] theme in statera.toml); `default`: the "
+        "framework's",
+    )
     s.set_defaults(func=_cmd_docs)
 
     s = sub.add_parser("query", help="cataloged recurring queries")
@@ -993,9 +1023,11 @@ def _expected_errors() -> tuple[type[Exception], ...]:
     from statera.consume.connection import EngineNotAvailable, PublicationNotAvailable
     from statera.consume.metrics import MetricError
     from statera.consume.queries import QueryError
+    from statera.page.theme import ThemeError
     from statera.process.dbt import ProductionToolsMissing
 
     return (
+        ThemeError,
         EngineNotAvailable,
         PublicationNotAvailable,
         QueryError,

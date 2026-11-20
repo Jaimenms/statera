@@ -40,6 +40,11 @@ cut_date_column = "cut_date"       # cut-off date of the extraction
 valid_from_column = "valid_from"   # start of validity, in reference tables with a validity period
 valid_to_column = "valid_to"       # end of validity (empty = currently valid)
 
+[page]
+# The look of the catalog page (`statera docs --page`), for when it lives on your intranet: a folder with
+# theme.toml (name, notice, logo, colors, fonts, links) and an optional theme.css. Specification 07.
+# theme = "governance/page-theme"
+
 [dbt]
 folder = "dbt"
 project = "{{ name | replace('-', '_') }}"

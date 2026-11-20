@@ -229,6 +229,31 @@ class Catalog:
             columns=columns,
         )
 
+    def notes(self, name: str) -> list[str]:
+        """What to mind when reading the table, from what its contract declares: what a row is, how its
+        period and cut-off date columns are read, and its cuts. The copilot's cards and the catalog page
+        show the same notes."""
+        c = self._contract(name)
+        columns = [p["name"] for p in c["schema"][0]["properties"]]
+        conventions, notes = self.project.conventions, []
+        if grain := c["schema"][0].get("dataGranularityDescription"):
+            notes.append(f"grain: {' '.join(str(grain).split())}.")
+        if classification.of_table(c).get("nature") == "aggregated":
+            notes.append(
+                "aggregated: a row is a group, not an individual; add up its measures (sum), count(*) counts groups."
+            )
+        if conventions["period_column"] in columns:
+            column = conventions["period_column"]
+            notes.append(f"`{column}` is the reference period, text YYYY-MM (a whole year: {column} like '2026-%').")
+        if conventions["cut_date_column"] in columns:
+            notes.append(f"`{conventions['cut_date_column']}` is when the data was cut off, not a period to filter by.")
+        if contracts.custom_property_of(c, "partitionedBy"):
+            notes.append(
+                f"One partition per cut: read ONE cut ({conventions['cut_date_column']} = (select "
+                f"max({conventions['cut_date_column']}) from {name})), never add up across cuts."
+            )
+        return notes
+
     # --- reading --------------------------------------------------------------------------------
     def _caution(self, table: str, c: dict) -> str | None:
         dims = classification.of_table(c)
